@@ -1,385 +1,307 @@
+"use client"
+
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  Home,
-  Users,
-  MessageSquare,
-  Shield,
-  Car,
-  Calendar,
-  ArrowRight,
-  Phone,
-  Mail,
-  MapPin,
-  AlertTriangle,
-  Clock,
+import { Button } from "@/components/ui/button"
+import { 
+  Home, 
+  MessageSquare, 
+  AlertTriangle, 
+  Clock, 
+  Phone, 
+  FileText, 
+  ChevronLeft, 
+  ChevronRight,
+  RefreshCw
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
+import { motion, AnimatePresence } from "framer-motion"
+import { useState, useEffect } from "react"
 
-async function getRecentAnnouncements() {
-  const supabase = await createClient()
+export default function HomePage() {
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [announcements, setAnnouncements] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const { data: announcements } = await supabase
-    .from("announcements")
-    .select("*")
-    .eq("is_published", true)
-    .order("created_at", { ascending: false })
-    .limit(3)
+  // Load announcements on mount
+  useEffect(() => {
+    async function loadAnnouncements() {
+      try {
+        const res = await fetch("/api/announcements", { cache: "no-store" })
+        const json = await res.json()
+        const items = (json?.items || [])
+        setAnnouncements(items)
+      } catch (e) {
+        setAnnouncements([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadAnnouncements()
+  }, [])
 
-  return announcements || []
-}
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % Math.max(1, announcements.length))
+  }
 
-export default async function HomePage() {
-  const announcements = await getRecentAnnouncements()
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + Math.max(1, announcements.length)) % Math.max(1, announcements.length))
+  }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black font-inter">
+      {/* Safe Area Top */}
+      <div className="h-safe-area-inset-top bg-transparent" />
+      
       {/* Header */}
-      <header className="bg-card/80 backdrop-blur-sm border-b border-border sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-primary rounded-lg p-2">
-                <Home className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">Northfields</h1>
-                <p className="text-sm text-muted-foreground">Homeowners Association</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link href="/announcements">
-                <Button variant="outline" size="sm" className="hidden sm:inline-flex">
-                  Announcements
-                </Button>
-              </Link>
-              <Link href="/report">
-                <Button size="sm" className="shadow-sm">Report a Concern</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section className="py-12 md:py-16 px-4 relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 -z-10 [mask-image:radial-gradient(60%_50%_at_50%_20%,#000_40%,transparent_100%)]">
-          <div className="absolute -top-40 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"></div>
-        </div>
-        <div className="container mx-auto text-center max-w-4xl animate-fade-in-up">
-          <Badge variant="secondary" className="mb-4">
-            Community Management Platform
-          </Badge>
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6 text-balance animate-fade-in-up">
-            Welcome to Northfields Community
-          </h2>
-          <p className="text-xl text-muted-foreground mb-8 text-pretty animate-fade-in-up">
-            Your central hub for community announcements, issue reporting, and staying connected with your neighbors.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up">
-            <Link href="/report" className="group">
-              <Button size="lg" className="w-full sm:w-auto transition-all duration-200 group-hover:shadow-md">
-                Report a Concern
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </Button>
-            </Link>
-            <Link href="#announcements">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto bg-transparent">
-                View Announcements
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section id="announcements" className="py-12 md:py-16 px-4 bg-card/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12 animate-fade-in-up">
-            <h3 className="text-3xl font-bold text-foreground mb-4">Latest Announcements</h3>
-            <p className="text-lg text-muted-foreground">
-              Stay informed with the latest community updates and important notices.
+      <motion.header 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="px-6 py-6 bg-gray-900/80 backdrop-blur-xl border-b border-gray-700/30"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-white">
+              Northfields
+            </h1>
+            <p className="text-sm text-gray-400">
+              Executive Village HOA
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {announcements.length > 0 ? (
-              announcements.map((announcement) => (
-                <Card
-                  key={announcement.id}
-                  className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transform-gpu hover:-translate-y-1 transition-all animate-fade-in-up"
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div
-                        className={`rounded-lg p-2 w-fit ${
-                          announcement.priority === "high"
-                            ? "bg-destructive/10"
-                            : announcement.priority === "medium"
-                              ? "bg-secondary/10"
-                              : "bg-primary/10"
-                        }`}
-                      >
-                        {announcement.priority === "high" ? (
-                          <AlertTriangle
-                            className={`h-5 w-5 ${
-                              announcement.priority === "high"
-                                ? "text-destructive"
-                                : announcement.priority === "medium"
-                                  ? "text-secondary"
-                                  : "text-primary"
-                            }`}
-                          />
-                        ) : (
-                          <MessageSquare
-                            className={`h-5 w-5 ${
-                              announcement.priority === "high"
-                                ? "text-destructive"
-                                : announcement.priority === "medium"
-                                  ? "text-secondary"
-                                  : "text-primary"
-                            }`}
-                          />
-                        )}
-                      </div>
-                      <Badge
-                        variant={
-                          announcement.priority === "high"
-                            ? "destructive"
-                            : announcement.priority === "medium"
-                              ? "secondary"
-                              : "default"
-                        }
-                        className="text-xs"
-                      >
-                        {announcement.priority}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-foreground text-lg">{announcement.title}</CardTitle>
-                    <CardDescription className="text-muted-foreground line-clamp-3">
-                      {announcement.content}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {new Date(announcement.created_at).toLocaleDateString()}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No announcements available at this time.</p>
-              </div>
-            )}
-          </div>
-
-          <div className="text-center animate-fade-in-up">
-            <Link href="/announcements">
-              <Button variant="outline">
-                View All Announcements
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
         </div>
-      </section>
+      </motion.header>
 
-      <section className="py-12 md:py-16 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <Card className="border-0 shadow-lg bg-card backdrop-blur-sm animate-fade-in-up">
-            <CardHeader className="text-center animate-fade-in-up">
-              <CardTitle className="text-2xl text-foreground">Report an Issue</CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Help us maintain our community by reporting maintenance issues or concerns
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="animate-fade-in-up">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                <div className="flex flex-col items-center space-y-4 p-6 rounded-lg bg-muted/30">
-                  <div className="bg-destructive/10 rounded-full p-4">
-                    <AlertTriangle className="h-8 w-8 text-destructive" />
+      {/* Hero Announcements Section */}
+      <div className="px-6 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
+          <Card className="rounded-2xl border-0 shadow-2xl bg-gray-900/95 backdrop-blur-xl overflow-hidden border border-gray-700/30">
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center h-80 px-6">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  >
+                    <RefreshCw className="w-8 h-8 text-gray-400" />
+                  </motion.div>
+                </div>
+              ) : announcements.length > 0 ? (
+                <div className="relative">
+                  {/* Navigation Controls */}
+                  <div className="flex items-center justify-between p-6 pb-4">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={prevSlide}
+                      className="w-11 h-11 rounded-full bg-gray-700/80 flex items-center justify-center hover:bg-gray-600/80 transition-all shadow-sm border border-gray-600/50"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-300" />
+                    </motion.button>
+                    
+                    <div className="flex space-x-2">
+                      {announcements.map((_, idx) => (
+                        <motion.div
+                          key={idx}
+                          animate={{
+                            scale: idx === currentSlide ? 1.2 : 1,
+                            backgroundColor: idx === currentSlide ? "#FF6B35" : "#4B5563"
+                          }}
+                          transition={{ duration: 0.3 }}
+                          className="w-2 h-2 rounded-full"
+                        />
+                      ))}
+                    </div>
+                    
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={nextSlide}
+                      className="w-11 h-11 rounded-full bg-gray-700/80 flex items-center justify-center hover:bg-gray-600/80 transition-all shadow-sm border border-gray-600/50"
+                    >
+                      <ChevronRight className="w-5 h-5 text-gray-300" />
+                    </motion.button>
                   </div>
-                  <div className="text-center">
-                    <h4 className="font-semibold text-foreground mb-2">Emergency Issues</h4>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      For urgent matters requiring immediate attention
+
+                  {/* Announcement Content */}
+                  <div className="px-6 pb-8 min-h-[280px] flex items-center">
+                    <AnimatePresence mode="wait">
+                      {announcements[currentSlide] && (
+                        <motion.div
+                          key={currentSlide}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          transition={{ duration: 0.4, ease: "easeInOut" }}
+                          className="text-center w-full"
+                        >
+                          <motion.div
+                            initial={{ scale: 0.8 }}
+                            animate={{ scale: 1 }}
+                            transition={{ duration: 0.5, delay: 0.1 }}
+                            className={`w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg ${
+                              announcements[currentSlide].priority === "high"
+                                ? "bg-gradient-to-br from-red-500 to-red-600"
+                                : "bg-gradient-to-br from-blue-500 to-blue-600"
+                            }`}
+                          >
+                            {announcements[currentSlide].priority === "high" ? (
+                              <AlertTriangle className="w-10 h-10 text-white" />
+                            ) : (
+                              <MessageSquare className="w-10 h-10 text-white" />
+                            )}
+                          </motion.div>
+                          
+                          <h2 className="text-xl font-semibold text-white mb-4 leading-tight px-4">
+                            {announcements[currentSlide].title}
+                          </h2>
+                          
+                          <p className="text-base text-gray-300 leading-relaxed mb-6 px-4">
+                            {announcements[currentSlide].content}
+                          </p>
+                          
+                          <div className="flex items-center justify-center text-sm text-gray-400 mb-4">
+                            <Clock className="w-4 h-4 mr-2" />
+                            {new Date(announcements[currentSlide].created_at).toLocaleDateString()}
+                          </div>
+                          
+                          {announcements[currentSlide].priority === "high" && (
+                            <Badge className="bg-gradient-to-r from-red-500 to-red-600 text-white border-0 px-4 py-2 text-xs font-semibold rounded-full shadow-lg">
+                              HIGH PRIORITY
+                            </Badge>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-20 px-6">
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">
+                      Stay Connected
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      Community announcements will appear here
                     </p>
-                    <Button variant="destructive" size="sm">
-                      Report Emergency
-                    </Button>
-                  </div>
+                  </motion.div>
                 </div>
-                <div className="flex flex-col items-center space-y-4 p-6 rounded-lg bg-muted/30">
-                  <div className="bg-primary/10 rounded-full p-4">
-                    <Shield className="h-8 w-8 text-primary" />
-                  </div>
-                  <div className="text-center">
-                    <h4 className="font-semibold text-foreground mb-2">General Issues</h4>
-                    <p className="text-sm text-muted-foreground mb-4">Non-urgent maintenance and community concerns</p>
-                    <Link href="/report">
-                      <Button variant="outline" size="sm">
-                        Submit Report
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
-        </div>
-      </section>
+        </motion.div>
 
-      {/* Features Grid */}
-      <section className="py-12 md:py-16 px-4 bg-card/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12 animate-fade-in-up">
-            <h3 className="text-3xl font-bold text-foreground mb-4">Community Services</h3>
-            <p className="text-lg text-muted-foreground">
-              Everything you need to manage your community life in one place.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            <Link href="/announcements" className="block">
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transform-gpu hover:-translate-y-1 transition-all animate-fade-in-up">
-              <CardHeader>
-                <div className="bg-primary/10 rounded-lg p-3 w-fit">
-                  <MessageSquare className="h-6 w-6 text-primary" />
+        {/* Quick Actions - Compact */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="mt-6"
+        >
+          <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-gray-700/30 shadow-2xl overflow-hidden">
+            <Link href="/report">
+              <motion.div
+                whileTap={{ scale: 0.99 }}
+                className="flex items-center justify-between p-4 hover:bg-gray-800/50 transition-all border-b border-gray-700/30"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center shadow-sm">
+                    <FileText className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-base font-medium text-white">Report a Concern</span>
                 </div>
-                <CardTitle className="text-foreground">Announcements</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  Stay informed with important community updates and news
-                </CardDescription>
-              </CardHeader>
-            </Card>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </motion.div>
             </Link>
 
-            <Link href="/report" className="block">
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transform-gpu hover:-translate-y-1 transition-all animate-fade-in-up">
-              <CardHeader>
-                <div className="bg-secondary/10 rounded-lg p-3 w-fit">
-                  <Shield className="h-6 w-6 text-secondary" />
+            <Link href="/emergency">
+              <motion.div
+                whileTap={{ scale: 0.99 }}
+                className="flex items-center justify-between p-4 hover:bg-gray-800/50 transition-all border-b border-gray-700/30"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center shadow-sm">
+                    <Phone className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-base font-medium text-white">Emergency Hotline</span>
                 </div>
-                <CardTitle className="text-foreground">Issue Reporting</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  Report maintenance issues and track their resolution status
-                </CardDescription>
-              </CardHeader>
-            </Card>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </motion.div>
             </Link>
 
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow animate-fade-in-up">
-              <CardHeader>
-                <div className="bg-primary/10 rounded-lg p-3 w-fit">
-                  <Car className="h-6 w-6 text-primary" />
+            <Link href="/applications">
+              <motion.div
+                whileTap={{ scale: 0.99 }}
+                className="flex items-center justify-between p-4 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-sm">
+                    <FileText className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-base font-medium text-white">Applications</span>
                 </div>
-                <CardTitle className="text-foreground">Parking Management</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  Manage parking stickers and vehicle registrations
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow animate-fade-in-up">
-              <CardHeader>
-                <div className="bg-secondary/10 rounded-lg p-3 w-fit">
-                  <Users className="h-6 w-6 text-secondary" />
-                </div>
-                <CardTitle className="text-foreground">Community Directory</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  Connect with neighbors and access contact information
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow animate-fade-in-up">
-              <CardHeader>
-                <div className="bg-primary/10 rounded-lg p-3 w-fit">
-                  <Calendar className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle className="text-foreground">Events & Meetings</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  View upcoming community events and HOA meetings
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow animate-fade-in-up">
-              <CardHeader>
-                <div className="bg-secondary/10 rounded-lg p-3 w-fit">
-                  <Shield className="h-6 w-6 text-secondary" />
-                </div>
-                <CardTitle className="text-foreground">Secure Access</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  Role-based access ensures information security and privacy
-                </CardDescription>
-              </CardHeader>
-            </Card>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </motion.div>
+            </Link>
           </div>
-        </div>
-      </section>
+        </motion.div>
+      </div>
 
-      {/* Contact Section */}
-      <section className="py-12 md:py-16 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <Card className="border-0 shadow-lg bg-card backdrop-blur-sm animate-fade-in-up">
-            <CardHeader className="text-center animate-fade-in-up">
-              <CardTitle className="text-2xl text-foreground">Contact Management</CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Our management team is here to assist you
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="animate-fade-in-up">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-                <div className="flex flex-col items-center space-y-2">
-                  <div className="bg-primary/10 rounded-full p-3">
-                    <Phone className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Phone</p>
-                    <p className="text-sm text-muted-foreground">(555) 123-4567</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center space-y-2">
-                  <div className="bg-secondary/10 rounded-full p-3">
-                    <Mail className="h-5 w-5 text-secondary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Email</p>
-                    <p className="text-sm text-muted-foreground">info@northfields.com</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center space-y-2">
-                  <div className="bg-primary/10 rounded-full p-3">
-                    <MapPin className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Office</p>
-                    <p className="text-sm text-muted-foreground">123 Northfields Dr</p>
-                  </div>
-                </div>
+      {/* Bottom Navigation - Modern Dark Design */}
+      <motion.nav
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.6 }}
+        className="fixed bottom-4 left-4 right-4 bg-gray-900/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-700/30"
+      >
+        <div className="flex justify-around items-center py-4 px-2">
+          <Link href="/" className="flex flex-col items-center min-w-[60px] min-h-[60px] justify-center">
+            <motion.div
+              whileTap={{ scale: 0.95 }}
+              className="flex flex-col items-center"
+            >
+              <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center mb-2 shadow-lg">
+                <Home className="w-5 h-5 text-white" />
               </div>
-            </CardContent>
-          </Card>
+              <span className="text-white text-xs font-medium">Home</span>
+            </motion.div>
+          </Link>
+          
+          <Link href="/report" className="flex flex-col items-center min-w-[60px] min-h-[60px] justify-center">
+            <motion.div
+              whileTap={{ scale: 0.95 }}
+              className="flex flex-col items-center"
+            >
+              <div className="w-12 h-12 bg-gray-700/80 rounded-2xl flex items-center justify-center mb-2 border border-gray-600/50">
+                <FileText className="w-5 h-5 text-gray-300" />
+              </div>
+              <span className="text-gray-400 text-xs font-medium">Concern</span>
+            </motion.div>
+          </Link>
+          
+          <Link href="/emergency" className="flex flex-col items-center min-w-[60px] min-h-[60px] justify-center">
+            <motion.div
+              whileTap={{ scale: 0.95 }}
+              className="flex flex-col items-center"
+            >
+              <div className="w-12 h-12 bg-gray-700/80 rounded-2xl flex items-center justify-center mb-2 border border-gray-600/50">
+                <Phone className="w-5 h-5 text-gray-300" />
+              </div>
+              <span className="text-gray-400 text-xs font-medium">Hotline</span>
+            </motion.div>
+          </Link>
         </div>
-      </section>
+      </motion.nav>
 
-      {/* Footer */}
-      <footer className="bg-primary text-primary-foreground py-8 px-4">
-        <div className="container mx-auto text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <Home className="h-5 w-5" />
-            <span className="font-semibold">Northfields Homeowners Association</span>
-          </div>
-          <p className="text-primary-foreground/80 text-sm">
-            © 2024 Northfields Homeowners Association. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      {/* Safe Area Bottom */}
+      <div className="h-24" />
     </div>
   )
 }

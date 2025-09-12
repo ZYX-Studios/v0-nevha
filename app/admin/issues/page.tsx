@@ -1,4 +1,4 @@
-// Admin issues management page
+// Enhanced Admin issues management page with task tracker functionality
 
 "use client"
 
@@ -10,6 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -20,8 +23,28 @@ import {
 } from "@/components/ui/dialog"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { mockIssues, mockUsers } from "@/lib/mock-data"
-import type { Issue } from "@/lib/types"
-import { ArrowLeft, Search, Edit, CheckCircle, Clock, AlertCircle, Calendar, MapPin, User } from "lucide-react"
+import type { Issue, Department, IssueComment } from "@/lib/types"
+import { 
+  ArrowLeft, 
+  Search, 
+  Edit, 
+  CheckCircle, 
+  Clock, 
+  AlertCircle, 
+  Calendar, 
+  MapPin, 
+  User,
+  Building2,
+  MessageSquare,
+  Plus,
+  Send,
+  Eye,
+  Users,
+  Mail,
+  FileText,
+  Target,
+  Timer
+} from "lucide-react"
 
 function IssuesManagementContent() {
   const router = useRouter()
@@ -30,8 +53,25 @@ function IssuesManagementContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
+  const [departmentFilter, setDepartmentFilter] = useState("all")
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
   const [resolutionNotes, setResolutionNotes] = useState("")
+  const [newComment, setNewComment] = useState("")
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
+  
+  // Mock departments data
+  const [departments] = useState<Department[]>([
+    { id: "1", name: "Maintenance", description: "Property maintenance and repairs", email: "maintenance@hoa.local", isActive: true, createdAt: "", updatedAt: "" },
+    { id: "2", name: "Security", description: "Security and safety concerns", email: "security@hoa.local", isActive: true, createdAt: "", updatedAt: "" },
+    { id: "3", name: "Landscaping", description: "Grounds and landscaping issues", email: "landscaping@hoa.local", isActive: true, createdAt: "", updatedAt: "" },
+    { id: "4", name: "Administration", description: "Administrative and general inquiries", email: "admin@hoa.local", isActive: true, createdAt: "", updatedAt: "" },
+    { id: "5", name: "Finance", description: "Billing and financial matters", email: "finance@hoa.local", isActive: true, createdAt: "", updatedAt: "" }
+  ])
+  
+  const [assignedDepartments, setAssignedDepartments] = useState<{[key: string]: string[]}>({})
+  const [issueComments, setIssueComments] = useState<{[key: string]: IssueComment[]}>({})
+  const [isAssigningDepartment, setIsAssigningDepartment] = useState(false)
+  const [isAddingComment, setIsAddingComment] = useState(false)
 
   useEffect(() => {
     // Sort issues by creation date (newest first)
@@ -49,7 +89,8 @@ function IssuesManagementContent() {
         (issue) =>
           issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           issue.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          issue.category.toLowerCase().includes(searchTerm.toLowerCase()),
+          issue.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          issue.referenceCode?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
@@ -63,8 +104,15 @@ function IssuesManagementContent() {
       filtered = filtered.filter((issue) => issue.priority === priorityFilter)
     }
 
+    // Department filter
+    if (departmentFilter !== "all") {
+      filtered = filtered.filter((issue) => 
+        assignedDepartments[issue.id]?.includes(departmentFilter)
+      )
+    }
+
     setFilteredIssues(filtered)
-  }, [issues, searchTerm, statusFilter, priorityFilter])
+  }, [issues, searchTerm, statusFilter, priorityFilter, departmentFilter, assignedDepartments])
 
   const handleStatusChange = (issueId: string, newStatus: string) => {
     setIssues((prev) =>
@@ -132,50 +180,152 @@ function IssuesManagementContent() {
     return reporter ? `${reporter.firstName} ${reporter.lastName}` : "Unknown"
   }
 
+  const handleAssignDepartment = (issueId: string, departmentId: string) => {
+    setAssignedDepartments(prev => ({
+      ...prev,
+      [issueId]: [...(prev[issueId] || []), departmentId]
+    }))
+    // TODO: Send email notification to department
+    console.log(`Assigned issue ${issueId} to department ${departmentId}`)
+  }
+
+  const handleAddComment = (issueId: string) => {
+    if (!newComment.trim()) return
+    
+    const comment: IssueComment = {
+      id: Date.now().toString(),
+      issueId,
+      authorId: "current-user", // TODO: Get from auth
+      comment: newComment,
+      isInternal: false,
+      createdAt: new Date().toISOString()
+    }
+    
+    setIssueComments(prev => ({
+      ...prev,
+      [issueId]: [...(prev[issueId] || []), comment]
+    }))
+    setNewComment("")
+    setIsAddingComment(false)
+  }
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black">
       {/* Header */}
-      <header className="border-b bg-card">
+      <header className="bg-gray-900/95 backdrop-blur-xl border-b border-gray-700/30">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push("/admin")}
-              className="flex items-center space-x-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back</span>
-            </Button>
-            <div>
-              <h1 className="text-lg font-bold">Manage Issues</h1>
-              <p className="text-sm text-muted-foreground">Review and resolve community issues</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/admin")}
+                className="flex items-center space-x-2 text-gray-300 hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Admin</span>
+              </Button>
+              <div className="flex items-center space-x-2">
+                <div className="bg-orange-500 rounded-lg p-2">
+                  <AlertCircle className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-white">Issues Task Tracker</h1>
+                  <p className="text-sm text-gray-400">Manage and track community issues across departments</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant={viewMode === "cards" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("cards")}
+                className={viewMode === "cards" ? "bg-orange-500 hover:bg-orange-600" : "border-gray-600 text-gray-300 hover:bg-gray-800"}
+              >
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === "table" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+                className={viewMode === "table" ? "bg-orange-500 hover:bg-orange-600" : "border-gray-600 text-gray-300 hover:bg-gray-800"}
+              >
+                Table
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-400">Total Issues</p>
+                  <p className="text-2xl font-bold text-white">{issues.length}</p>
+                </div>
+                <AlertCircle className="h-8 w-8 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-400">Open</p>
+                  <p className="text-2xl font-bold text-orange-400">{issues.filter(i => i.status === 'open').length}</p>
+                </div>
+                <Clock className="h-8 w-8 text-orange-400" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-400">In Progress</p>
+                  <p className="text-2xl font-bold text-blue-400">{issues.filter(i => i.status === 'in_progress').length}</p>
+                </div>
+                <Timer className="h-8 w-8 text-blue-400" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-400">Resolved</p>
+                  <p className="text-2xl font-bold text-green-400">{issues.filter(i => i.status === 'resolved').length}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-400" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Filters */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
+        <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 mb-6">
+          <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search issues..."
+                    placeholder="Search issues by title, description, category, or reference code..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
                   />
                 </div>
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-40">
+                <SelectTrigger className="w-full md:w-40 bg-gray-800/50 border-gray-600 text-white">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-gray-800 border-gray-600">
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="open">Open</SelectItem>
                   <SelectItem value="in_progress">In Progress</SelectItem>
@@ -184,10 +334,10 @@ function IssuesManagementContent() {
                 </SelectContent>
               </Select>
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-full md:w-40">
+                <SelectTrigger className="w-full md:w-40 bg-gray-800/50 border-gray-600 text-white">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-gray-800 border-gray-600">
                   <SelectItem value="all">All Priority</SelectItem>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="normal">Normal</SelectItem>
@@ -195,6 +345,20 @@ function IssuesManagementContent() {
                   <SelectItem value="urgent">Urgent</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-full md:w-40 bg-gray-800/50 border-gray-600 text-white">
+                  <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-600">
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Badge variant="outline" className="text-gray-300 border-gray-600 whitespace-nowrap">
+                {filteredIssues.length} issues
+              </Badge>
             </div>
           </CardContent>
         </Card>

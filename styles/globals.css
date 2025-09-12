@@ -119,8 +119,37 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    @apply bg-gray-900;
+    overscroll-behavior: none;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-gray-900 text-foreground;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Fix iOS Safari overscroll white background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -100vh;
+    left: 0;
+    right: 0;
+    height: 100vh;
+    background: rgb(17 24 39); /* gray-900 */
+    z-index: -1;
+  }
+  
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -100vh;
+    left: 0;
+    right: 0;
+    height: 100vh;
+    background: rgb(17 24 39); /* gray-900 */
+    z-index: -1;
   }
 }
 
@@ -145,7 +174,7 @@
 }
 
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -155,6 +184,6 @@
 }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }

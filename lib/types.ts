@@ -25,6 +25,8 @@ export interface Homeowner {
   createdAt: string
   updatedAt: string
   user?: User
+  householdMembers?: HouseholdMember[]
+  carStickers?: CarSticker[]
 }
 
 export interface CarSticker {
@@ -70,11 +72,16 @@ export interface Issue {
   assignedTo?: string
   resolutionNotes?: string
   resolvedAt?: string
+  referenceCode?: string
+  estimatedCompletion?: string
+  actualCompletion?: string
   createdAt: string
   updatedAt: string
   reporter?: User
   assignee?: User
   attachments?: IssueAttachment[]
+  comments?: IssueComment[]
+  departments?: IssueDepartment[]
 }
 
 export interface IssueAttachment {
@@ -114,4 +121,67 @@ export interface CreateCarStickerData {
   vehicleColor?: string
   licensePlate?: string
   expiryDate?: string
+}
+
+export interface HouseholdMember {
+  id: string
+  homeownerId: string
+  fullName: string
+  relationship?: string
+  phone?: string
+  email?: string
+  dateOfBirth?: string
+  isActive: boolean
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Department {
+  id: string
+  name: string
+  description?: string
+  email: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface IssueComment {
+  id: string
+  issueId: string
+  authorId?: string
+  departmentId?: string
+  comment: string
+  isInternal: boolean
+  createdAt: string
+  author?: User
+  department?: Department
+}
+
+export interface IssueDepartment {
+  id: string
+  issueId: string
+  departmentId: string
+  assignedAt: string
+  assignedBy?: string
+  isPrimary: boolean
+  department?: Department
+  assignedByUser?: User
+}
+
+export interface CreateHouseholdMemberData {
+  homeownerId: string
+  fullName: string
+  relationship?: string
+  phone?: string
+  email?: string
+  dateOfBirth?: string
+  notes?: string
+}
+
+export interface CreateDepartmentData {
+  name: string
+  description?: string
+  email: string
 }

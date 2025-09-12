@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { mockAnnouncements } from "@/lib/mock-data"
 import type { Announcement } from "@/lib/types"
 import { Home, ArrowLeft, Search, Calendar, AlertCircle, Info, AlertTriangle } from "lucide-react"
+import { AnimatedSection } from "@/components/ui/animated-section"
 
 export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
@@ -19,24 +19,17 @@ export default function AnnouncementsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Filter only published announcements that haven't expired
-    const now = new Date()
-    const published = mockAnnouncements.filter((announcement) => {
-      const isPublished = announcement.isPublished
-      const isNotExpired = !announcement.expiryDate || new Date(announcement.expiryDate) > now
-      const isPublishDateReached = !announcement.publishDate || new Date(announcement.publishDate) <= now
-
-      return isPublished && isNotExpired && isPublishDateReached
-    })
-
-    // Sort by publish date (newest first)
-    published.sort((a, b) => {
-      const dateA = new Date(a.publishDate || a.createdAt)
-      const dateB = new Date(b.publishDate || b.createdAt)
-      return dateB.getTime() - dateA.getTime()
-    })
-
-    setAnnouncements(published)
+    async function load() {
+      try {
+        const res = await fetch("/api/announcements", { cache: "no-store" })
+        const json = await res.json()
+        const items = (json?.items || []) as Announcement[]
+        setAnnouncements(items)
+      } catch (e) {
+        setAnnouncements([])
+      }
+    }
+    load()
   }, [])
 
   useEffect(() => {
@@ -84,11 +77,11 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black">
       {/* Header */}
-      <header className="border-b bg-card sticky top-0 z-10">
+      <header className="border-b border-gray-700/30 bg-gray-900/80 backdrop-blur-xl sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between animate-fade-in-up">
+          <AnimatedSection className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
@@ -100,25 +93,25 @@ export default function AnnouncementsPage() {
                 <span>Back</span>
               </Button>
               <div className="flex items-center space-x-2">
-                <div className="bg-primary rounded-lg p-2">
-                  <Home className="h-5 w-5 text-primary-foreground" />
+                <div className="bg-orange-500 rounded-lg p-2">
+                  <Home className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold">Community Announcements</h1>
-                  <p className="text-sm text-muted-foreground">Stay informed with the latest updates</p>
+                  <h1 className="text-lg font-bold text-white">Community Announcements</h1>
+                  <p className="text-sm text-gray-400">Stay informed with the latest updates</p>
                 </div>
               </div>
             </div>
             <Button onClick={() => router.push("/report")} variant="outline" className="hidden sm:inline-flex">
               Report a Concern
             </Button>
-          </div>
+          </AnimatedSection>
         </div>
       </header>
 
       <div className="container mx-auto px-3 md:px-4 py-8 md:py-12 max-w-3xl">
         {/* Search */}
-        <div className="mb-6 md:mb-8 animate-fade-in-up">
+        <AnimatedSection className="mb-6 md:mb-8">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -128,27 +121,30 @@ export default function AnnouncementsPage() {
               className="pl-10"
             />
           </div>
-        </div>
+        </AnimatedSection>
 
         {/* Announcements */}
         <div className="space-y-6">
           {filteredAnnouncements.length === 0 ? (
-            <Card className="animate-fade-in-up">
+            <AnimatedSection>
+            <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 shadow-2xl">
               <CardContent className="text-center py-12">
-                <div className="bg-muted rounded-full p-3 w-fit mx-auto mb-4">
-                  <Info className="h-6 w-6 text-muted-foreground" />
+                <div className="bg-gray-700/80 rounded-full p-3 w-fit mx-auto mb-4">
+                  <Info className="h-6 w-6 text-gray-300" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">
+                <h3 className="text-lg font-semibold mb-2 text-white">
                   {searchTerm ? "No matching announcements" : "No announcements available"}
                 </h3>
-                <p className="text-muted-foreground">
+                <p className="text-gray-400">
                   {searchTerm ? "Try adjusting your search terms." : "Check back later for community updates."}
                 </p>
               </CardContent>
             </Card>
+            </AnimatedSection>
           ) : (
-            filteredAnnouncements.map((announcement) => (
-              <Card key={announcement.id} className="overflow-hidden animate-fade-in-up">
+            filteredAnnouncements.map((announcement, idx) => (
+              <AnimatedSection key={announcement.id} delay={idx * 0.06}>
+              <Card className="overflow-hidden bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 shadow-2xl">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="space-y-2 flex-1">
@@ -160,22 +156,22 @@ export default function AnnouncementsPage() {
                           {getPriorityIcon(announcement.priority)}
                           <span className="capitalize">{announcement.priority}</span>
                         </Badge>
-                        <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                        <div className="flex items-center space-x-1 text-sm text-gray-400">
                           <Calendar className="h-3 w-3" />
                           <span>{formatDate(announcement.publishDate || announcement.createdAt)}</span>
                         </div>
                       </div>
-                      <CardTitle className="text-xl">{announcement.title}</CardTitle>
+                      <CardTitle className="text-xl text-white">{announcement.title}</CardTitle>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="prose prose-sm max-w-none">
-                    <p className="text-foreground whitespace-pre-wrap">{announcement.content}</p>
+                    <p className="text-gray-300 whitespace-pre-wrap">{announcement.content}</p>
                   </div>
                   {announcement.expiryDate && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-sm text-muted-foreground flex items-center space-x-1">
+                    <div className="mt-4 pt-4 border-t border-gray-700/30">
+                      <p className="text-sm text-gray-400 flex items-center space-x-1">
                         <AlertCircle className="h-3 w-3" />
                         <span>Expires: {formatDate(announcement.expiryDate)}</span>
                       </p>
@@ -183,25 +179,26 @@ export default function AnnouncementsPage() {
                   )}
                 </CardContent>
               </Card>
+              </AnimatedSection>
             ))
           )}
         </div>
 
         {/* Call to Action */}
-        <div className="mt-10 md:mt-12 text-center animate-fade-in-up">
-          <Card className="animate-fade-in-up">
+        <AnimatedSection className="mt-10 md:mt-12 text-center">
+          <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 shadow-2xl">
             <CardContent className="py-8">
-              <h3 className="text-xl font-semibold mb-2">Want to report a concern?</h3>
-              <p className="text-muted-foreground mb-4">
+              <h3 className="text-xl font-semibold mb-2 text-white">Want to report a concern?</h3>
+              <p className="text-gray-400 mb-4">
                 Help us keep the community safe and tidy. Share details so we can act quickly.
               </p>
-              <Button onClick={() => router.push("/report")} size="lg">
+              <Button onClick={() => router.push("/report")} size="lg" className="bg-orange-500 hover:bg-orange-600 text-white">
                 Report a Concern
                 <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
               </Button>
             </CardContent>
           </Card>
-        </div>
+        </AnimatedSection>
       </div>
     </div>
   )

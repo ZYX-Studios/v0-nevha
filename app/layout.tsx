@@ -4,7 +4,6 @@ import { GeistSans as geistSans } from "geist/font/sans"
 import { GeistMono as geistMono } from "geist/font/mono"
 import { AuthProvider } from "@/hooks/use-auth"
 import { PWAWrapper } from "@/components/pwa/pwa-wrapper"
-import { DevTools } from "@/components/dev/dev-tools"
 import { Suspense } from "react"
 import "./globals.css"
 
@@ -71,12 +70,11 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-gray-900`} style={{backgroundColor: '#111827'}}>
         <Suspense fallback={<div>Loading...</div>}>
           <AuthProvider>
             <PWAWrapper>
               {children}
-              <DevTools />
             </PWAWrapper>
           </AuthProvider>
         </Suspense>

@@ -43,16 +43,16 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 shadow-2xl">
       <CardHeader className="text-center space-y-4">
         <div className="flex justify-center">
-          <div className="bg-primary rounded-full p-3">
-            <Home className="h-6 w-6 text-primary-foreground" />
+          <div className="bg-orange-500 rounded-full p-3">
+            <Home className="h-6 w-6 text-white" />
           </div>
         </div>
         <div>
-          <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-          <CardDescription>Sign in to your HOA account</CardDescription>
+          <CardTitle className="text-2xl font-bold text-white">Welcome Back</CardTitle>
+          <CardDescription className="text-gray-400">Sign in to your HOA account</CardDescription>
         </div>
       </CardHeader>
       <CardContent>
@@ -64,7 +64,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-gray-300">Email</Label>
             <Input
               id="email"
               type="email"
@@ -72,12 +72,12 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
-              className="h-12"
+              className="h-12 bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-gray-300">Password</Label>
             <div className="relative">
               <Input
                 id="password"
@@ -86,7 +86,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
-                className="h-12 pr-10"
+                className="h-12 pr-10 bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
               />
               <Button
                 type="button"
@@ -97,24 +97,24 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
                 disabled={isLoading}
               >
                 {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  <EyeOff className="h-4 w-4 text-gray-400" />
                 ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <Eye className="h-4 w-4 text-gray-400" />
                 )}
               </Button>
             </div>
           </div>
 
-          <Button type="submit" className="w-full h-12 text-base font-medium" disabled={isLoading}>
+          <Button type="submit" className="w-full h-12 text-base font-medium bg-orange-500 hover:bg-orange-600 text-white" disabled={isLoading}>
             {isLoading ? "Signing in..." : "Sign In"}
           </Button>
 
           <div className="text-center space-y-2">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-400">
               Demo credentials: admin@hoa.com or john.doe@email.com (any password)
             </p>
             {onSwitchToRegister && (
-              <Button type="button" variant="link" onClick={onSwitchToRegister} className="text-sm">
+              <Button type="button" variant="link" onClick={onSwitchToRegister} className="text-sm text-gray-300 hover:text-white">
                 Don't have an account? Sign up
               </Button>
             )}
