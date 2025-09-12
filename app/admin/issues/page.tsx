@@ -363,143 +363,366 @@ function IssuesManagementContent() {
           </CardContent>
         </Card>
 
-        {/* Issues List */}
-        <div className="space-y-4">
-          {filteredIssues.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <div className="bg-muted rounded-full p-3 w-fit mx-auto mb-4">
-                  <Search className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">No issues found</h3>
-                <p className="text-muted-foreground">
-                  {searchTerm || statusFilter !== "all" || priorityFilter !== "all"
-                    ? "Try adjusting your search or filters."
-                    : "No issues have been reported yet."}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredIssues.map((issue) => (
-              <Card key={issue.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center space-x-2 flex-wrap">
-                        <Badge variant={getPriorityVariant(issue.priority)} className="capitalize">
-                          {issue.priority}
-                        </Badge>
-                        <Badge variant={getStatusVariant(issue.status)} className="flex items-center space-x-1">
-                          {getStatusIcon(issue.status)}
-                          <span className="capitalize">{issue.status.replace("_", " ")}</span>
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {issue.category}
-                        </Badge>
-                        <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          <span>{formatDate(issue.createdAt)}</span>
+        {/* Issues Content */}
+        {viewMode === "cards" ? (
+          <div className="space-y-4">
+            {filteredIssues.length === 0 ? (
+              <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30">
+                <CardContent className="text-center py-12">
+                  <div className="bg-gray-800/50 rounded-full p-3 w-fit mx-auto mb-4">
+                    <Search className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 text-white">No issues found</h3>
+                  <p className="text-gray-400">
+                    {searchTerm || statusFilter !== "all" || priorityFilter !== "all" || departmentFilter !== "all"
+                      ? "Try adjusting your search or filters."
+                      : "No issues have been reported yet."}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredIssues.map((issue) => (
+                <Card key={issue.id} className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-3 flex-1">
+                        <div className="flex items-center space-x-2 flex-wrap gap-2">
+                          {issue.referenceCode && (
+                            <Badge variant="outline" className="text-orange-400 border-orange-500/30 bg-orange-500/10 font-mono">
+                              {issue.referenceCode}
+                            </Badge>
+                          )}
+                          <Badge variant={getPriorityVariant(issue.priority)} className="capitalize">
+                            {issue.priority}
+                          </Badge>
+                          <Badge variant={getStatusVariant(issue.status)} className="flex items-center space-x-1">
+                            {getStatusIcon(issue.status)}
+                            <span className="capitalize">{issue.status.replace("_", " ")}</span>
+                          </Badge>
+                          <Badge variant="outline" className="text-xs text-gray-300 border-gray-600">
+                            {issue.category}
+                          </Badge>
+                          <div className="flex items-center space-x-1 text-sm text-gray-400">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatDate(issue.createdAt)}</span>
+                          </div>
                         </div>
-                      </div>
-                      <CardTitle className="text-xl">{issue.title}</CardTitle>
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <User className="h-3 w-3" />
-                          <span>{getReporterName(issue.reporterId)}</span>
-                        </div>
-                        {issue.location && (
+                        <CardTitle className="text-xl text-white">{issue.title}</CardTitle>
+                        <div className="flex items-center space-x-4 text-sm text-gray-400">
                           <div className="flex items-center space-x-1">
-                            <MapPin className="h-3 w-3" />
-                            <span>{issue.location}</span>
+                            <User className="h-3 w-3" />
+                            <span>{getReporterName(issue.reporterId)}</span>
+                          </div>
+                          {issue.location && (
+                            <div className="flex items-center space-x-1">
+                              <MapPin className="h-3 w-3" />
+                              <span>{issue.location}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Assigned Departments */}
+                        {assignedDepartments[issue.id] && assignedDepartments[issue.id].length > 0 && (
+                          <div className="flex items-center space-x-2">
+                            <Building2 className="h-4 w-4 text-gray-400" />
+                            <div className="flex flex-wrap gap-1">
+                              {assignedDepartments[issue.id].map((deptId) => {
+                                const dept = departments.find(d => d.id === deptId)
+                                return dept ? (
+                                  <Badge key={deptId} variant="secondary" className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                    {dept.name}
+                                  </Badge>
+                                ) : null
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setSelectedIssue(issue)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Update Status
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Update Issue Status</DialogTitle>
-                            <DialogDescription>
-                              Change the status of this issue and add resolution notes if needed.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div>
-                              <h4 className="font-medium mb-2">{selectedIssue?.title}</h4>
-                              <p className="text-sm text-muted-foreground">{selectedIssue?.description}</p>
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium">New Status</label>
-                              <Select
-                                defaultValue={selectedIssue?.status}
-                                onValueChange={(value) => {
-                                  if (value === "resolved") {
-                                    // Show resolution notes field
-                                  } else {
-                                    handleStatusChange(selectedIssue?.id || "", value)
+                      
+                      <div className="flex items-center space-x-2">
+                        <Dialog open={isAssigningDepartment && selectedIssue?.id === issue.id} onOpenChange={setIsAssigningDepartment}>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setSelectedIssue(issue)}
+                              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                            >
+                              <Building2 className="h-4 w-4 mr-2" />
+                              Assign Dept
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 text-white">
+                            <DialogHeader>
+                              <DialogTitle className="text-white">Assign Department</DialogTitle>
+                              <DialogDescription className="text-gray-400">
+                                Assign this issue to one or more departments for handling.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-medium mb-2 text-white">{selectedIssue?.title}</h4>
+                                <p className="text-sm text-gray-400">{selectedIssue?.description}</p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-gray-300">Select Department</Label>
+                                <Select onValueChange={(deptId) => {
+                                  if (selectedIssue) {
+                                    handleAssignDepartment(selectedIssue.id, deptId)
+                                    setIsAssigningDepartment(false)
                                   }
-                                }}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="open">Open</SelectItem>
-                                  <SelectItem value="in_progress">In Progress</SelectItem>
-                                  <SelectItem value="resolved">Resolved</SelectItem>
-                                  <SelectItem value="closed">Closed</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                }}>
+                                  <SelectTrigger className="bg-gray-800/50 border-gray-600 text-white">
+                                    <SelectValue placeholder="Choose department" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-gray-800 border-gray-600">
+                                    {departments.map((dept) => (
+                                      <SelectItem key={dept.id} value={dept.id}>
+                                        <div className="flex items-center space-x-2">
+                                          <span>{dept.name}</span>
+                                          <span className="text-xs text-gray-400">({dept.email})</span>
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium">Resolution Notes (Optional)</label>
-                              <Textarea
-                                placeholder="Add notes about how this issue was resolved..."
-                                value={resolutionNotes}
-                                onChange={(e) => setResolutionNotes(e.target.value)}
-                                rows={3}
-                              />
+                          </DialogContent>
+                        </Dialog>
+                        
+                        <Dialog open={isAddingComment && selectedIssue?.id === issue.id} onOpenChange={setIsAddingComment}>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setSelectedIssue(issue)}
+                              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                            >
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Comment
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 text-white">
+                            <DialogHeader>
+                              <DialogTitle className="text-white">Add Comment</DialogTitle>
+                              <DialogDescription className="text-gray-400">
+                                Add a comment or update to this issue.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <Label className="text-gray-300">Comment</Label>
+                                <Textarea
+                                  placeholder="Enter your comment or update..."
+                                  value={newComment}
+                                  onChange={(e) => setNewComment(e.target.value)}
+                                  className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
+                                  rows={4}
+                                />
+                              </div>
+                              <div className="flex justify-end space-x-2">
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => setIsAddingComment(false)}
+                                  className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                                >
+                                  Cancel
+                                </Button>
+                                <Button 
+                                  onClick={() => selectedIssue && handleAddComment(selectedIssue.id)}
+                                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                                >
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Add Comment
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex gap-2">
-                              <Button variant="outline" onClick={() => setSelectedIssue(null)} className="flex-1">
-                                Cancel
-                              </Button>
-                              <Button
-                                onClick={() => handleStatusChange(selectedIssue?.id || "", "resolved")}
-                                className="flex-1"
-                              >
-                                Update Status
-                              </Button>
+                          </DialogContent>
+                        </Dialog>
+                        
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setSelectedIssue(issue)}
+                              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Update
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 text-white">
+                            <DialogHeader>
+                              <DialogTitle className="text-white">Update Issue Status</DialogTitle>
+                              <DialogDescription className="text-gray-400">
+                                Change the status of this issue and add resolution notes if needed.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-medium mb-2 text-white">{selectedIssue?.title}</h4>
+                                <p className="text-sm text-gray-400">{selectedIssue?.description}</p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-gray-300">New Status</Label>
+                                <Select
+                                  defaultValue={selectedIssue?.status}
+                                  onValueChange={(value) => handleStatusChange(selectedIssue?.id || "", value)}
+                                >
+                                  <SelectTrigger className="bg-gray-800/50 border-gray-600 text-white">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-gray-800 border-gray-600">
+                                    <SelectItem value="open">Open</SelectItem>
+                                    <SelectItem value="in_progress">In Progress</SelectItem>
+                                    <SelectItem value="resolved">Resolved</SelectItem>
+                                    <SelectItem value="closed">Closed</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-gray-300">Resolution Notes (Optional)</Label>
+                                <Textarea
+                                  placeholder="Add notes about how this issue was resolved..."
+                                  value={resolutionNotes}
+                                  onChange={(e) => setResolutionNotes(e.target.value)}
+                                  className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
+                                  rows={3}
+                                />
+                              </div>
                             </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-300 mb-4">{issue.description}</p>
+                    
+                    {/* Comments Section */}
+                    {issueComments[issue.id] && issueComments[issue.id].length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <h5 className="font-medium text-sm text-white">Comments:</h5>
+                        {issueComments[issue.id].map((comment) => (
+                          <div key={comment.id} className="p-3 bg-gray-800/50 rounded-lg border border-gray-700/30">
+                            <p className="text-sm text-gray-300">{comment.comment}</p>
+                            <p className="text-xs text-gray-500 mt-1">{formatDate(comment.createdAt)}</p>
                           </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-foreground mb-4">{issue.description}</p>
-                  {issue.resolutionNotes && (
-                    <div className="mt-4 p-3 bg-muted rounded-lg">
-                      <h5 className="font-medium text-sm mb-1">Resolution Notes:</h5>
-                      <p className="text-sm text-muted-foreground">{issue.resolutionNotes}</p>
-                      {issue.resolvedAt && (
-                        <p className="text-xs text-muted-foreground mt-2">Resolved on {formatDate(issue.resolvedAt)}</p>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {issue.resolutionNotes && (
+                      <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                        <h5 className="font-medium text-sm mb-1 text-green-400">Resolution Notes:</h5>
+                        <p className="text-sm text-gray-300">{issue.resolutionNotes}</p>
+                        {issue.resolvedAt && (
+                          <p className="text-xs text-gray-500 mt-2">Resolved on {formatDate(issue.resolvedAt)}</p>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        ) : (
+          <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30">
+            <CardHeader>
+              <CardTitle className="text-white">Issues Table View</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-gray-700">
+                      <TableHead className="text-gray-300">Reference</TableHead>
+                      <TableHead className="text-gray-300">Title</TableHead>
+                      <TableHead className="text-gray-300">Status</TableHead>
+                      <TableHead className="text-gray-300">Priority</TableHead>
+                      <TableHead className="text-gray-300">Category</TableHead>
+                      <TableHead className="text-gray-300">Departments</TableHead>
+                      <TableHead className="text-gray-300">Reporter</TableHead>
+                      <TableHead className="text-gray-300">Created</TableHead>
+                      <TableHead className="text-gray-300">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredIssues.map((issue) => (
+                      <TableRow key={issue.id} className="border-gray-700 hover:bg-gray-800/50">
+                        <TableCell>
+                          <span className="font-mono text-orange-400 text-sm">
+                            {issue.referenceCode || `ISS-${issue.id.slice(0, 8)}`}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-xs">
+                            <div className="font-medium text-white truncate">{issue.title}</div>
+                            <div className="text-sm text-gray-400 truncate">{issue.description}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusVariant(issue.status)} className="flex items-center space-x-1 w-fit">
+                            {getStatusIcon(issue.status)}
+                            <span className="capitalize">{issue.status.replace("_", " ")}</span>
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getPriorityVariant(issue.priority)} className="capitalize">
+                            {issue.priority}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-gray-300 border-gray-600">
+                            {issue.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {assignedDepartments[issue.id]?.map((deptId) => {
+                              const dept = departments.find(d => d.id === deptId)
+                              return dept ? (
+                                <Badge key={deptId} variant="secondary" className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                  {dept.name}
+                                </Badge>
+                              ) : null
+                            })}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-gray-300">{getReporterName(issue.reporterId)}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-gray-400">{formatDate(issue.createdAt)}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-gray-400 hover:text-white hover:bg-gray-800"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-gray-400 hover:text-white hover:bg-gray-800"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )
