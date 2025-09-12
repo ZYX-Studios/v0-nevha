@@ -5,7 +5,7 @@
 import type React from "react"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import type { User } from "@/lib/types"
 
@@ -19,11 +19,15 @@ export function ProtectedRoute({ children, requiredRole, fallbackPath = "/auth" 
   const { session } = useAuth()
   const isLoading = session.isLoading
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const qs = searchParams?.toString()
+  const current = pathname + (qs ? `?${qs}` : "")
 
   useEffect(() => {
     if (!isLoading) {
       if (!session.isAuthenticated) {
-        router.push(fallbackPath)
+        router.push(`/auth?redirect=${encodeURIComponent(current)}`)
         return
       }
 

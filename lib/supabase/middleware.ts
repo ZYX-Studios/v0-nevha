@@ -78,20 +78,22 @@ export async function updateSession(request: NextRequest) {
 
   // Protect admin-only routes: redirect anonymous users to home
   if (isAdminRoute && !user) {
-    const redirectUrl = url.clone()
-    redirectUrl.pathname = "/"
-    redirectUrl.search = ""
-    return NextResponse.redirect(redirectUrl)
+    const redirectTo = encodeURIComponent(url.pathname + (url.search || ""))
+    const dest = new URL(request.url)
+    dest.pathname = "/auth"
+    dest.search = `?redirect=${redirectTo}`
+    return NextResponse.redirect(dest)
   }
 
   if (
-    // For any other non-public route, if not authenticated, send home
+    // For any other non-public route, if not authenticated, send to auth with redirect back
     !user
   ) {
-    const redirectUrl = url.clone()
-    redirectUrl.pathname = "/"
-    redirectUrl.search = ""
-    return NextResponse.redirect(redirectUrl)
+    const redirectTo = encodeURIComponent(url.pathname + (url.search || ""))
+    const dest = new URL(request.url)
+    dest.pathname = "/auth"
+    dest.search = `?redirect=${redirectTo}`
+    return NextResponse.redirect(dest)
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

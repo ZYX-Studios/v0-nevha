@@ -3,7 +3,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { LoginForm } from "@/components/auth/login-form"
 import { RegisterForm } from "@/components/auth/register-form"
 import { useAuth } from "@/hooks/use-auth"
@@ -12,16 +12,20 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
   const { session } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get("redirect") || "/dashboard"
+  const isSafeRedirect = redirect.startsWith("/") && !redirect.startsWith("//")
+  const redirectTo = isSafeRedirect ? redirect : "/dashboard"
 
   useEffect(() => {
     // Redirect if already authenticated
     if (session.isAuthenticated) {
-      router.push("/dashboard")
+      router.push(redirectTo)
     }
-  }, [session.isAuthenticated, router])
+  }, [session.isAuthenticated, router, redirectTo])
 
   const handleAuthSuccess = () => {
-    router.push("/dashboard")
+    router.push(redirectTo)
   }
 
   if (session.isAuthenticated) {
