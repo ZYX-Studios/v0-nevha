@@ -1,28 +1,18 @@
 import type React from "react"
-import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import type { Metadata, Viewport } from "next"
+import { GeistSans as geistSans } from "geist/font/sans"
+import { GeistMono as geistMono } from "geist/font/mono"
 import { AuthProvider } from "@/hooks/use-auth"
 import { PWAWrapper } from "@/components/pwa/pwa-wrapper"
 import { DevTools } from "@/components/dev/dev-tools"
 import { Suspense } from "react"
 import "./globals.css"
 
-const geistSans = Geist({
-  subsets: ["latin"],
-  variable: "--font-geist-sans",
-})
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-geist-mono",
-})
-
 export const metadata: Metadata = {
   title: "Oakwood Commons HOA",
   description: "Homeowners Association community management app",
   generator: "v0.app",
   manifest: "/manifest.json",
-  themeColor: "#1f2937",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -42,6 +32,10 @@ export const metadata: Metadata = {
     title: "Oakwood Commons HOA",
     description: "Homeowners Association community management app",
   },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#1f2937",
 }
 
 export default function RootLayout({

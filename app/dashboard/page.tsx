@@ -116,7 +116,7 @@ function DashboardContent() {
           <Button
             variant="outline"
             className="h-20 flex-col space-y-2 bg-transparent"
-            onClick={() => router.push("/report-issue")}
+            onClick={() => router.push("/report")}
           >
             <Plus className="h-5 w-5" />
             <span className="text-sm">Report Issue</span>
@@ -215,7 +215,7 @@ function DashboardContent() {
                         variant="outline"
                         size="sm"
                         className="mt-2 bg-transparent"
-                        onClick={() => router.push("/report-issue")}
+                        onClick={() => router.push("/report")}
                       >
                         Report an Issue
                       </Button>

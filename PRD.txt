@@ -1,0 +1,110 @@
+You are generating a production-ready, mobile-first PWA for a Homeowners Association.
+
+## Goal
+Build a Next.js 15 (App Router, TypeScript) app with TWO interfaces:
+1) Public site for homeowners to view announcements and report neighborhood concerns.
+2) Admin site for authenticated staff to manage homeowners, car stickers, and issues.
+
+Design must feel like it was crafted by an Apple design team: calm, minimal, elegant, highly legible, with subtle motion and zero gimmicks. Performance, accessibility, and offline resiliency are non-negotiable.
+
+## Tech & Libraries
+- Framework: Next.js 15 + TypeScript
+- Styling: Tailwind CSS + shadcn/ui components
+- Motion: Framer Motion (micro-interactions, 60fps)
+- State: Zustand (client), Server Actions for mutations
+- Forms/Validation: React Hook Form + Zod
+- Auth: NextAuth (Email magic link + GitHub), roles: PUBLIC, STAFF, ADMIN
+- DB/Storage: Supabase (SQL + RLS), edge-friendly; keep a clean repository layer so Airtable could be swapped later
+- PWA: next-pwa (or workbox), manifest + service worker, offline cache, background sync for queued submissions
+- Images/QR: next/image; qrcode for sticker codes
+- Testing: Vitest + React Testing Library for critical components and utils
+- Lint/Format: ESLint + Prettier; commit hooks via simple npm script
+
+## Routes & IA
+Public:
+- `/` — hero + value prop + quick links
+- `/announcements` — list/detail with infinite scroll, offline cached
+- `/report` — report a concern (title, description, location selector, media upload, contact optional)
+- `/status/[ref]` — lookup concern by reference code
+
+Admin (protected; role-gated UI & server actions):
+- `/admin` — dashboard: open issues, SLAs, recent submissions, sticker stats
+- `/admin/homeowners` — table + filters + CRUD + CSV import (name, address, contact, household members)
+- `/admin/stickers` — issue/renew/revoke, generate QR, batch print (A4 layout), assign to homeowner/vehicle
+- `/admin/issues` — triage inbox; statuses: NEW, TRIAGED, IN_PROGRESS, NEEDS_INFO, RESOLVED, CLOSED; priorities: P1–P4; assignment to staff; comment thread & attachments
+- `/admin/announcements` — create/publish/schedule; markdown editor; attachments
+- `/auth/signin` — minimalist sign-in
+
+## Data Models (SQL-ish for Supabase)
+- `users (id, email, name, role ENUM['PUBLIC','STAFF','ADMIN'], created_at)`
+- `homeowners (id, full_name, address_line, phase_block_lot, phone, email, created_at)`
+- `members (id, homeowner_id FK, full_name, relation, phone, email, is_active)`
+- `vehicles (id, homeowner_id FK, plate_no, make, model, color)`
+- `stickers (id, homeowner_id FK, vehicle_id FK, code UNIQUE, status ENUM['ACTIVE','EXPIRED','REVOKED'], issued_at, expires_at, notes)`
+- `announcements (id, title, slug, content_md, published_at, created_by)`
+- `issues (id, ref_code UNIQUE, title, description, category, priority ENUM['P1','P2','P3','P4'], status ENUM['NEW','TRIAGED','IN_PROGRESS','NEEDS_INFO','RESOLVED','CLOSED'], location_text, lat, lng, reporter_name, reporter_email, reporter_phone, created_at, updated_at, assigned_to FK users)`
+- `issue_attachments (id, issue_id FK, file_url, file_type, created_at)`
+- `issue_comments (id, issue_id FK, author_user_id FK NULLABLE, author_label, body, created_at)`
+- `activity_logs (id, actor_user_id, action, entity, entity_id, diff_json, created_at)`
+
+Add appropriate indexes (by `ref_code`, `status`, `homeowner_id`, `plate_no`).
+
+## Security
+- NextAuth with role-based server action guards.
+- Supabase RLS: admin/staff only for mutations; public can INSERT issues with limited columns; `announcements` SELECT to all.
+- Validate all server actions with zod. Sanitize uploads. Rate-limit public submissions (IP + email heuristic).
+
+## PWA & Offline
+- Register service worker, add manifest & icons.
+- Cache app shell, fonts, and `/announcements` list.
+- `/report` must work offline: queue form + files in IndexedDB, retry via Background Sync; render optimistic “Pending upload” state.
+- Graceful error states and retry UX.
+
+## UX & Visual System
+- Type: Inter or SF-like stack. Tight vertical rhythm, large tap targets.
+- Components: shadcn/ui (Card, Sheet, Dialog, Table, Badge, Tabs, Dropdown, Toast).
+- Motion: subtle opacity/translate on section enter; hover tilt on cards; parallax in the hero (GPU-accelerated transforms).
+- Color: neutral base with a single accent; accessible contrast (WCAG AA+).
+- Empty states: optimistic, instructive, with “Add first …” CTAs.
+- Forms: segmented steps on mobile; obvious validation; progress feedback.
+
+## Key Features (must implement now)
+Public
+- Landing hero with 2–3 tasteful micro-interactions and parallax.
+- Announcements feed with skeleton loading; detail page; offline readable.
+- Report Concern form (title, description, category select, location picker with MapLibre or simple address text, media upload, contact optional). On submit: generate `ref_code`, show confirmation screen with copy/share. Offline queue if no network.
+- Status lookup via `ref_code`.
+
+Admin
+- Dashboard cards: Open issues by status/priority, newly submitted today, stickers expiring next 30 days.
+- Homeowners CRUD with CSV import; search by name/address/plate; view household members.
+- Stickers issuance flow: assign to homeowner & vehicle, auto-generate `code`, QR preview, print layout page (A4 grid).
+- Issues inbox: filters, assignment, status transitions with audit log; comments & attachments; email reply template (no send needed yet, just copy).
+- Announcements CMS: create/edit markdown, schedule publish.
+
+## API/Server Actions
+- `/api/report` create issue (public) → returns `ref_code`.
+- `/api/status?ref=` read-only issue snapshot (public fields only).
+- `/api/admin/*` actions for homeowners, stickers, issues, announcements (role-guarded).
+- File uploads to Supabase storage; return public URLs.
+
+## Developer Ergonomics
+- Provide a `seed` script (npm run seed) that inserts:
+  - 25 homeowners with members & vehicles
+  - 40 issues across all statuses with attachments & comments
+  - 12 announcements
+  - 15 active stickers
+- Include `.env.example` with all keys.
+- README with setup (Supabase, NextAuth providers), PWA notes, and how to swap the data repo to Airtable later.
+
+## Testing & Quality
+- Unit tests for `generateRefCode`, role guards, and server validations.
+- Component tests for Report form and Issues table filters.
+- Lighthouse pass: PWA installable, performance > 90 on Mobile, a11y > 95.
+
+## Deliverables
+- Full Next.js project with pages, components, server actions, DB migrations (Supabase SQL), seed script, PWA setup, and tests.
+- Pixel-perfect mobile-first UI; desktop enhances layout (2–3 column admin tables).
+- Print-ready sticker QR batch page.
+
+Please generate the complete codebase with the above constraints, with clear file structure and explanatory comments where non-obvious. 

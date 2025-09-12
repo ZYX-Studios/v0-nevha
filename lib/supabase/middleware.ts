@@ -37,16 +37,59 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const url = request.nextUrl
+  const path = url.pathname
+
+  // Publicly accessible routes (no login required)
+  const isPublic =
+    path === "/" ||
+    path.startsWith("/announcements") ||
+    path.startsWith("/report") ||
+    path.startsWith("/status") ||
+    path.startsWith("/api/report") ||
+    path === "/manifest.json" ||
+    path === "/sw.js"
+
+  // Admin/staff-only areas
+  const isAdminRoute = path.startsWith("/admin") || path.startsWith("/dashboard") || path.startsWith("/api/admin")
+
+  // Optionally gate /auth behind a secret key if provided
+  if (path.startsWith("/auth")) {
+    const requiredKey = process.env.ADMIN_ACCESS_KEY
+    if (requiredKey) {
+      const key = url.searchParams.get("key")
+      if (key !== requiredKey) {
+        const redirectUrl = url.clone()
+        redirectUrl.pathname = "/"
+        redirectUrl.search = ""
+        return NextResponse.redirect(redirectUrl)
+      }
+    }
+    // Allow /auth when key requirement passes (or not configured)
+    return supabaseResponse
+  }
+
+  // Protect admin-only routes: redirect anonymous users to home
+  if (isAdminRoute && !user) {
+    const redirectUrl = url.clone()
+    redirectUrl.pathname = "/"
+    redirectUrl.search = ""
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  // Allow all public routes without requiring login
+  if (isPublic) {
+    return supabaseResponse
+  }
+
   if (
-    request.nextUrl.pathname !== "/" &&
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
+    // For any other non-public route, if not authenticated, send home
+    !user
   ) {
-    // no user, potentially respond by redirecting the user to the login page
-    const url = request.nextUrl.clone()
-    url.pathname = "/auth/login"
-    return NextResponse.redirect(url)
+    const redirectUrl = url.clone()
+    redirectUrl.pathname = "/"
+    redirectUrl.search = ""
+    return NextResponse.redirect(redirectUrl)
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

@@ -49,32 +49,40 @@ export default async function HomePage() {
                 <p className="text-sm text-muted-foreground">Homeowners Association</p>
               </div>
             </div>
-            <Link href="/auth/login">
-              <Button variant="default" size="sm">
-                Resident Login
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/announcements">
+                <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+                  Announcements
+                </Button>
+              </Link>
+              <Link href="/report">
+                <Button size="sm" className="shadow-sm">Report a Concern</Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto text-center max-w-4xl">
+      <section className="py-12 md:py-16 px-4 relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 -z-10 [mask-image:radial-gradient(60%_50%_at_50%_20%,#000_40%,transparent_100%)]">
+          <div className="absolute -top-40 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"></div>
+        </div>
+        <div className="container mx-auto text-center max-w-4xl animate-fade-in-up">
           <Badge variant="secondary" className="mb-4">
             Community Management Platform
           </Badge>
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6 text-balance">
+          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6 text-balance animate-fade-in-up">
             Welcome to Northfields Community
           </h2>
-          <p className="text-xl text-muted-foreground mb-8 text-pretty">
+          <p className="text-xl text-muted-foreground mb-8 text-pretty animate-fade-in-up">
             Your central hub for community announcements, issue reporting, and staying connected with your neighbors.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/login">
-              <Button size="lg" className="w-full sm:w-auto">
-                Access Portal
-                <ArrowRight className="ml-2 h-4 w-4" />
+          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up">
+            <Link href="/report" className="group">
+              <Button size="lg" className="w-full sm:w-auto transition-all duration-200 group-hover:shadow-md">
+                Report a Concern
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Button>
             </Link>
             <Link href="#announcements">
@@ -86,9 +94,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="announcements" className="py-16 px-4 bg-card/30">
+      <section id="announcements" className="py-12 md:py-16 px-4 bg-card/30">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 animate-fade-in-up">
             <h3 className="text-3xl font-bold text-foreground mb-4">Latest Announcements</h3>
             <p className="text-lg text-muted-foreground">
               Stay informed with the latest community updates and important notices.
@@ -100,7 +108,7 @@ export default async function HomePage() {
               announcements.map((announcement) => (
                 <Card
                   key={announcement.id}
-                  className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow"
+                  className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transform-gpu hover:-translate-y-1 transition-all animate-fade-in-up"
                 >
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -169,7 +177,7 @@ export default async function HomePage() {
             )}
           </div>
 
-          <div className="text-center">
+          <div className="text-center animate-fade-in-up">
             <Link href="/announcements">
               <Button variant="outline">
                 View All Announcements
@@ -180,17 +188,17 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="py-16 px-4">
+      <section className="py-12 md:py-16 px-4">
         <div className="container mx-auto max-w-4xl">
-          <Card className="border-0 shadow-lg bg-card backdrop-blur-sm">
-            <CardHeader className="text-center">
+          <Card className="border-0 shadow-lg bg-card backdrop-blur-sm animate-fade-in-up">
+            <CardHeader className="text-center animate-fade-in-up">
               <CardTitle className="text-2xl text-foreground">Report an Issue</CardTitle>
               <CardDescription className="text-muted-foreground">
                 Help us maintain our community by reporting maintenance issues or concerns
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <CardContent className="animate-fade-in-up">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div className="flex flex-col items-center space-y-4 p-6 rounded-lg bg-muted/30">
                   <div className="bg-destructive/10 rounded-full p-4">
                     <AlertTriangle className="h-8 w-8 text-destructive" />
@@ -212,7 +220,7 @@ export default async function HomePage() {
                   <div className="text-center">
                     <h4 className="font-semibold text-foreground mb-2">General Issues</h4>
                     <p className="text-sm text-muted-foreground mb-4">Non-urgent maintenance and community concerns</p>
-                    <Link href="/report-issue">
+                    <Link href="/report">
                       <Button variant="outline" size="sm">
                         Submit Report
                       </Button>
@@ -226,17 +234,18 @@ export default async function HomePage() {
       </section>
 
       {/* Features Grid */}
-      <section className="py-16 px-4 bg-card/30">
+      <section className="py-12 md:py-16 px-4 bg-card/30">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 animate-fade-in-up">
             <h3 className="text-3xl font-bold text-foreground mb-4">Community Services</h3>
             <p className="text-lg text-muted-foreground">
               Everything you need to manage your community life in one place.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            <Link href="/announcements" className="block">
+            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transform-gpu hover:-translate-y-1 transition-all animate-fade-in-up">
               <CardHeader>
                 <div className="bg-primary/10 rounded-lg p-3 w-fit">
                   <MessageSquare className="h-6 w-6 text-primary" />
@@ -247,8 +256,10 @@ export default async function HomePage() {
                 </CardDescription>
               </CardHeader>
             </Card>
+            </Link>
 
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow">
+            <Link href="/report" className="block">
+            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transform-gpu hover:-translate-y-1 transition-all animate-fade-in-up">
               <CardHeader>
                 <div className="bg-secondary/10 rounded-lg p-3 w-fit">
                   <Shield className="h-6 w-6 text-secondary" />
@@ -259,8 +270,9 @@ export default async function HomePage() {
                 </CardDescription>
               </CardHeader>
             </Card>
+            </Link>
 
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow">
+            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow animate-fade-in-up">
               <CardHeader>
                 <div className="bg-primary/10 rounded-lg p-3 w-fit">
                   <Car className="h-6 w-6 text-primary" />
@@ -272,7 +284,7 @@ export default async function HomePage() {
               </CardHeader>
             </Card>
 
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow">
+            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow animate-fade-in-up">
               <CardHeader>
                 <div className="bg-secondary/10 rounded-lg p-3 w-fit">
                   <Users className="h-6 w-6 text-secondary" />
@@ -284,7 +296,7 @@ export default async function HomePage() {
               </CardHeader>
             </Card>
 
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow">
+            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow animate-fade-in-up">
               <CardHeader>
                 <div className="bg-primary/10 rounded-lg p-3 w-fit">
                   <Calendar className="h-6 w-6 text-primary" />
@@ -296,7 +308,7 @@ export default async function HomePage() {
               </CardHeader>
             </Card>
 
-            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow">
+            <Card className="border-0 shadow-sm bg-card backdrop-blur-sm hover:shadow-md transition-shadow animate-fade-in-up">
               <CardHeader>
                 <div className="bg-secondary/10 rounded-lg p-3 w-fit">
                   <Shield className="h-6 w-6 text-secondary" />
@@ -312,16 +324,16 @@ export default async function HomePage() {
       </section>
 
       {/* Contact Section */}
-      <section className="py-16 px-4">
+      <section className="py-12 md:py-16 px-4">
         <div className="container mx-auto max-w-4xl">
-          <Card className="border-0 shadow-lg bg-card backdrop-blur-sm">
-            <CardHeader className="text-center">
+          <Card className="border-0 shadow-lg bg-card backdrop-blur-sm animate-fade-in-up">
+            <CardHeader className="text-center animate-fade-in-up">
               <CardTitle className="text-2xl text-foreground">Contact Management</CardTitle>
               <CardDescription className="text-muted-foreground">
                 Our management team is here to assist you
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="animate-fade-in-up">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
                 <div className="flex flex-col items-center space-y-2">
                   <div className="bg-primary/10 rounded-full p-3">

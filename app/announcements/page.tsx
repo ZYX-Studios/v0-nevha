@@ -88,7 +88,7 @@ export default function AnnouncementsPage() {
       {/* Header */}
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between animate-fade-in-up">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
@@ -109,16 +109,16 @@ export default function AnnouncementsPage() {
                 </div>
               </div>
             </div>
-            <Button onClick={() => router.push("/auth")} variant="outline">
-              Resident Login
+            <Button onClick={() => router.push("/report")} variant="outline" className="hidden sm:inline-flex">
+              Report a Concern
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-3 md:px-4 py-8 md:py-12 max-w-3xl">
         {/* Search */}
-        <div className="mb-8">
+        <div className="mb-6 md:mb-8 animate-fade-in-up">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -133,7 +133,7 @@ export default function AnnouncementsPage() {
         {/* Announcements */}
         <div className="space-y-6">
           {filteredAnnouncements.length === 0 ? (
-            <Card>
+            <Card className="animate-fade-in-up">
               <CardContent className="text-center py-12">
                 <div className="bg-muted rounded-full p-3 w-fit mx-auto mb-4">
                   <Info className="h-6 w-6 text-muted-foreground" />
@@ -148,7 +148,7 @@ export default function AnnouncementsPage() {
             </Card>
           ) : (
             filteredAnnouncements.map((announcement) => (
-              <Card key={announcement.id} className="overflow-hidden">
+              <Card key={announcement.id} className="overflow-hidden animate-fade-in-up">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="space-y-2 flex-1">
@@ -188,15 +188,15 @@ export default function AnnouncementsPage() {
         </div>
 
         {/* Call to Action */}
-        <div className="mt-12 text-center">
-          <Card>
+        <div className="mt-10 md:mt-12 text-center animate-fade-in-up">
+          <Card className="animate-fade-in-up">
             <CardContent className="py-8">
-              <h3 className="text-xl font-semibold mb-2">Want to stay more connected?</h3>
+              <h3 className="text-xl font-semibold mb-2">Want to report a concern?</h3>
               <p className="text-muted-foreground mb-4">
-                Sign in to access your personal dashboard, report issues, and manage your account.
+                Help us keep the community safe and tidy. Share details so we can act quickly.
               </p>
-              <Button onClick={() => router.push("/auth")} size="lg">
-                Resident Login
+              <Button onClick={() => router.push("/report")} size="lg">
+                Report a Concern
                 <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
               </Button>
             </CardContent>

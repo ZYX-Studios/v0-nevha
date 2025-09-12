@@ -59,7 +59,7 @@
       "name": "Report Issue",
       "short_name": "Report",
       "description": "Report a community issue",
-      "url": "/report-issue",
+      "url": "/report",
       "icons": [
         {
           "src": "/icon-192x192.jpg",
