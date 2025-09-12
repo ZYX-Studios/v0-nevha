@@ -16,7 +16,8 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole, fallbackPath = "/auth" }: ProtectedRouteProps) {
-  const { session, isLoading } = useAuth()
+  const { session } = useAuth()
+  const isLoading = session.isLoading
   const router = useRouter()
 
   useEffect(() => {

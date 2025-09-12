@@ -1,265 +1,202 @@
+// Admin homeowners management page
+
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { ProtectedRoute } from "@/components/auth/protected-route"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ProtectedRoute } from "@/components/auth/protected-route"
-import { useAuth } from "@/hooks/use-auth"
-import { mockHomeowners } from "@/lib/mock-data"
-import type { Homeowner, HouseholdMember, CreateHouseholdMemberData } from "@/lib/types"
-import { 
-  Home, 
-  Users, 
-  Plus, 
-  ArrowLeft, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Phone, 
-  Mail, 
-  Calendar,
-  UserPlus,
-  Eye,
-  MoreHorizontal
-} from "lucide-react"
+import type { Homeowner } from "@/lib/types"
+import { ArrowLeft, Plus, Search, Home, Calendar, User2, Phone } from "lucide-react"
 
-function HomeownersManagementContent() {
-  const { session } = useAuth()
+function HomeownersContent() {
   const router = useRouter()
-  const [homeowners, setHomeowners] = useState<Homeowner[]>([])
-  const [filteredHomeowners, setFilteredHomeowners] = useState<Homeowner[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedHomeowner, setSelectedHomeowner] = useState<Homeowner | null>(null)
-  const [isAddingHomeowner, setIsAddingHomeowner] = useState(false)
-  const [isAddingMember, setIsAddingMember] = useState(false)
-  const [viewingMembers, setViewingMembers] = useState<string | null>(null)
+  const [items, setItems] = useState<Homeowner[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [q, setQ] = useState("")
 
-  // Form states
-  const [homeownerForm, setHomeownerForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
+  // Create dialog state
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState({
     propertyAddress: "",
     unitNumber: "",
     moveInDate: "",
-    isOwner: true,
+    isOwner: "true",
     emergencyContactName: "",
     emergencyContactPhone: "",
-    notes: ""
+    notes: "",
   })
+  const [saving, setSaving] = useState(false)
 
-  const [memberForm, setMemberForm] = useState({
-    fullName: "",
-    relationship: "",
-    phone: "",
-    email: "",
-    dateOfBirth: "",
-    notes: ""
-  })
+  const fetchItems = async (query = "") => {
+    setLoading(true)
+    setError(null)
+    try {
+      const url = new URL("/api/admin/homeowners", window.location.origin)
+      if (query) url.searchParams.set("q", query)
+      const res = await fetch(url.toString(), { cache: "no-store" })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || "Failed to load homeowners")
+      setItems(json.items || [])
+    } catch (e: any) {
+      setError(e?.message || "Failed to load homeowners")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    // Load homeowners data
-    setHomeowners(mockHomeowners)
-    setFilteredHomeowners(mockHomeowners)
+    fetchItems()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    // Filter homeowners based on search term
-    const filtered = homeowners.filter(homeowner =>
-      homeowner.user?.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      homeowner.user?.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      homeowner.propertyAddress.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      homeowner.user?.email.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    setFilteredHomeowners(filtered)
-  }, [searchTerm, homeowners])
-
-  const handleAddHomeowner = () => {
-    // TODO: Implement actual API call
-    console.log("Adding homeowner:", homeownerForm)
-    setIsAddingHomeowner(false)
-    resetHomeownerForm()
+  const onCreate = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      const payload = {
+        propertyAddress: form.propertyAddress.trim(),
+        unitNumber: form.unitNumber.trim() || null,
+        moveInDate: form.moveInDate || null,
+        isOwner: form.isOwner === "true",
+        emergencyContactName: form.emergencyContactName.trim() || null,
+        emergencyContactPhone: form.emergencyContactPhone.trim() || null,
+        notes: form.notes.trim() || null,
+      }
+      const res = await fetch("/api/admin/homeowners", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to create homeowner")
+      setOpen(false)
+      setForm({
+        propertyAddress: "",
+        unitNumber: "",
+        moveInDate: "",
+        isOwner: "true",
+        emergencyContactName: "",
+        emergencyContactPhone: "",
+        notes: "",
+      })
+      fetchItems(q)
+    } catch (e: any) {
+      setError(e?.message || "Failed to create homeowner")
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleAddMember = () => {
-    if (!selectedHomeowner) return
-    // TODO: Implement actual API call
-    console.log("Adding member to homeowner:", selectedHomeowner.id, memberForm)
-    setIsAddingMember(false)
-    resetMemberForm()
-  }
-
-  const resetHomeownerForm = () => {
-    setHomeownerForm({
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      propertyAddress: "",
-      unitNumber: "",
-      moveInDate: "",
-      isOwner: true,
-      emergencyContactName: "",
-      emergencyContactPhone: "",
-      notes: ""
-    })
-  }
-
-  const resetMemberForm = () => {
-    setMemberForm({
-      fullName: "",
-      relationship: "",
-      phone: "",
-      email: "",
-      dateOfBirth: "",
-      notes: ""
-    })
-  }
-
-  const getStatusBadge = (isActive: boolean) => {
-    return (
-      <Badge variant={isActive ? "default" : "secondary"} className="text-xs">
-        {isActive ? "Active" : "Inactive"}
-      </Badge>
-    )
-  }
+  const filteredCount = useMemo(() => items.length, [items])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-gray-900/95 backdrop-blur-xl border-b border-gray-700/30">
+      <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/admin")}
-                className="flex items-center space-x-2 text-gray-300 hover:text-white"
-              >
+              <Button variant="ghost" size="sm" onClick={() => router.push("/admin")} className="flex items-center space-x-2">
                 <ArrowLeft className="h-4 w-4" />
-                <span>Back to Admin</span>
+                <span>Back</span>
               </Button>
               <div className="flex items-center space-x-2">
-                <div className="bg-orange-500 rounded-lg p-2">
-                  <Users className="h-5 w-5 text-white" />
+                <div className="bg-primary rounded-lg p-2">
+                  <Home className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-white">Homeowners Management</h1>
-                  <p className="text-sm text-gray-400">Manage homeowners and household members</p>
+                  <h1 className="text-lg font-bold">Manage Homeowners</h1>
+                  <p className="text-sm text-muted-foreground">List, search, and create homeowner records</p>
                 </div>
               </div>
             </div>
-            <Dialog open={isAddingHomeowner} onOpenChange={setIsAddingHomeowner}>
+            <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Homeowner
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Homeowner
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 text-white max-w-2xl">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle className="text-white">Add New Homeowner</DialogTitle>
+                  <DialogTitle>New Homeowner</DialogTitle>
+                  <DialogDescription>Create a homeowner record</DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-2 gap-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName" className="text-gray-300">First Name</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Property Address</Label>
                     <Input
-                      id="firstName"
-                      value={homeownerForm.firstName}
-                      onChange={(e) => setHomeownerForm({...homeownerForm, firstName: e.target.value})}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                      placeholder="Enter first name"
+                      placeholder="e.g., 123 Oak Street"
+                      value={form.propertyAddress}
+                      onChange={(e) => setForm((f) => ({ ...f, propertyAddress: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-gray-300">Last Name</Label>
+                    <Label>Unit Number</Label>
+                    <Input placeholder="A1" value={form.unitNumber} onChange={(e) => setForm((f) => ({ ...f, unitNumber: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Move-in Date</Label>
+                    <Input type="date" value={form.moveInDate} onChange={(e) => setForm((f) => ({ ...f, moveInDate: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ownership</Label>
+                    <Select value={form.isOwner} onValueChange={(v) => setForm((f) => ({ ...f, isOwner: v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">Owner</SelectItem>
+                        <SelectItem value="false">Renter</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Emergency Contact Name</Label>
                     <Input
-                      id="lastName"
-                      value={homeownerForm.lastName}
-                      onChange={(e) => setHomeownerForm({...homeownerForm, lastName: e.target.value})}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                      placeholder="Enter last name"
+                      placeholder="Contact name"
+                      value={form.emergencyContactName}
+                      onChange={(e) => setForm((f) => ({ ...f, emergencyContactName: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-gray-300">Email</Label>
+                    <Label>Emergency Contact Phone</Label>
                     <Input
-                      id="email"
-                      type="email"
-                      value={homeownerForm.email}
-                      onChange={(e) => setHomeownerForm({...homeownerForm, email: e.target.value})}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                      placeholder="Enter email address"
+                      placeholder="Contact phone"
+                      value={form.emergencyContactPhone}
+                      onChange={(e) => setForm((f) => ({ ...f, emergencyContactPhone: e.target.value }))}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-gray-300">Phone</Label>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Notes</Label>
                     <Input
-                      id="phone"
-                      value={homeownerForm.phone}
-                      onChange={(e) => setHomeownerForm({...homeownerForm, phone: e.target.value})}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                      placeholder="Enter phone number"
-                    />
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label htmlFor="propertyAddress" className="text-gray-300">Property Address</Label>
-                    <Input
-                      id="propertyAddress"
-                      value={homeownerForm.propertyAddress}
-                      onChange={(e) => setHomeownerForm({...homeownerForm, propertyAddress: e.target.value})}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                      placeholder="Enter property address"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unitNumber" className="text-gray-300">Unit Number</Label>
-                    <Input
-                      id="unitNumber"
-                      value={homeownerForm.unitNumber}
-                      onChange={(e) => setHomeownerForm({...homeownerForm, unitNumber: e.target.value})}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                      placeholder="Enter unit number"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="moveInDate" className="text-gray-300">Move-in Date</Label>
-                    <Input
-                      id="moveInDate"
-                      type="date"
-                      value={homeownerForm.moveInDate}
-                      onChange={(e) => setHomeownerForm({...homeownerForm, moveInDate: e.target.value})}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label htmlFor="notes" className="text-gray-300">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      value={homeownerForm.notes}
-                      onChange={(e) => setHomeownerForm({...homeownerForm, notes: e.target.value})}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                      placeholder="Enter any additional notes"
-                      rows={3}
+                      placeholder="Additional notes"
+                      value={form.notes}
+                      onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                     />
                   </div>
                 </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setIsAddingHomeowner(false)} className="border-gray-600 text-gray-300 hover:bg-gray-800">
+                <div className="flex gap-2 justify-end pt-2">
+                  <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
                     Cancel
                   </Button>
-                  <Button onClick={handleAddHomeowner} className="bg-orange-500 hover:bg-orange-600 text-white">
-                    Add Homeowner
+                  <Button onClick={onCreate} disabled={saving || !form.propertyAddress.trim()}>
+                    {saving ? "Creating..." : "Create"}
                   </Button>
                 </div>
               </DialogContent>
@@ -268,234 +205,101 @@ function HomeownersManagementContent() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Search and Filters */}
-        <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 mb-6">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search homeowners by name, address, or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                />
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by address, unit, or notes..."
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchItems(q)
+                    }}
+                    className="pl-10"
+                  />
+                </div>
               </div>
-              <Badge variant="outline" className="text-gray-300 border-gray-600">
-                {filteredHomeowners.length} homeowners
-              </Badge>
+              <Button variant="outline" onClick={() => fetchItems(q)} disabled={loading}>
+                {loading ? "Searching..." : "Search"}
+              </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Homeowners Table */}
-        <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30">
-          <CardHeader>
-            <CardTitle className="text-white">Homeowners Directory</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-gray-700">
-                    <TableHead className="text-gray-300">Name</TableHead>
-                    <TableHead className="text-gray-300">Property</TableHead>
-                    <TableHead className="text-gray-300">Contact</TableHead>
-                    <TableHead className="text-gray-300">Members</TableHead>
-                    <TableHead className="text-gray-300">Stickers</TableHead>
-                    <TableHead className="text-gray-300">Status</TableHead>
-                    <TableHead className="text-gray-300">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredHomeowners.map((homeowner) => (
-                    <TableRow key={homeowner.id} className="border-gray-700 hover:bg-gray-800/50">
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="bg-orange-500/20 rounded-full p-2">
-                            <Home className="h-4 w-4 text-orange-400" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-white">
-                              {homeowner.user?.firstName} {homeowner.user?.lastName}
-                            </div>
-                            <div className="text-sm text-gray-400">{homeowner.user?.email}</div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-white">{homeowner.propertyAddress}</div>
-                        {homeowner.unitNumber && (
-                          <div className="text-sm text-gray-400">Unit {homeowner.unitNumber}</div>
+        {/* List */}
+        <div className="space-y-4">
+          {error && (
+            <Card>
+              <CardContent className="py-6">
+                <p className="text-destructive">{error}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {filteredCount === 0 && !loading ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <div className="bg-muted rounded-full p-3 w-fit mx-auto mb-4">
+                  <Search className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No homeowners found</h3>
+                <p className="text-muted-foreground mb-4">
+                  {q ? "Try adjusting your search." : "Create your first homeowner to get started."}
+                </p>
+                <Button onClick={() => setOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Homeowner
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            items.map((h) => (
+              <Card key={h.id} className="overflow-hidden">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <CardTitle className="text-xl">
+                        {h.propertyAddress}
+                        {h.unitNumber ? <span className="text-muted-foreground"> • Unit {h.unitNumber}</span> : null}
+                      </CardTitle>
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                        <Badge variant={h.isOwner ? "default" : "outline"}>{h.isOwner ? "Owner" : "Renter"}</Badge>
+                        {h.moveInDate && (
+                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Moved in: {h.moveInDate}</span>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {homeowner.user?.phone && (
-                            <div className="flex items-center space-x-1 text-sm text-gray-300">
-                              <Phone className="h-3 w-3" />
-                              <span>{homeowner.user.phone}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center space-x-1 text-sm text-gray-300">
-                            <Mail className="h-3 w-3" />
-                            <span>{homeowner.user?.email}</span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setViewingMembers(viewingMembers === homeowner.id ? null : homeowner.id)}
-                          className="text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
-                        >
-                          <Users className="h-4 w-4 mr-1" />
-                          {homeowner.householdMembers?.length || 0}
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-gray-300 border-gray-600">
-                          {homeowner.carStickers?.filter(s => s.isActive).length || 0} active
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(homeowner.user?.isActive || false)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedHomeowner(homeowner)}
-                            className="text-gray-400 hover:text-white hover:bg-gray-800"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-gray-400 hover:text-white hover:bg-gray-800"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Dialog open={isAddingMember && selectedHomeowner?.id === homeowner.id} onOpenChange={setIsAddingMember}>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setSelectedHomeowner(homeowner)}
-                                className="text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
-                              >
-                                <UserPlus className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 text-white max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle className="text-white">Add Household Member</DialogTitle>
-                                <p className="text-gray-400">
-                                  Adding member to {selectedHomeowner?.user?.firstName} {selectedHomeowner?.user?.lastName}
-                                </p>
-                              </DialogHeader>
-                              <div className="grid grid-cols-2 gap-4 py-4">
-                                <div className="space-y-2 col-span-2">
-                                  <Label htmlFor="fullName" className="text-gray-300">Full Name</Label>
-                                  <Input
-                                    id="fullName"
-                                    value={memberForm.fullName}
-                                    onChange={(e) => setMemberForm({...memberForm, fullName: e.target.value})}
-                                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                                    placeholder="Enter full name"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="relationship" className="text-gray-300">Relationship</Label>
-                                  <Select value={memberForm.relationship} onValueChange={(value) => setMemberForm({...memberForm, relationship: value})}>
-                                    <SelectTrigger className="bg-gray-800/50 border-gray-600 text-white">
-                                      <SelectValue placeholder="Select relationship" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-gray-800 border-gray-600">
-                                      <SelectItem value="spouse">Spouse</SelectItem>
-                                      <SelectItem value="child">Child</SelectItem>
-                                      <SelectItem value="parent">Parent</SelectItem>
-                                      <SelectItem value="sibling">Sibling</SelectItem>
-                                      <SelectItem value="tenant">Tenant</SelectItem>
-                                      <SelectItem value="other">Other</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="dateOfBirth" className="text-gray-300">Date of Birth</Label>
-                                  <Input
-                                    id="dateOfBirth"
-                                    type="date"
-                                    value={memberForm.dateOfBirth}
-                                    onChange={(e) => setMemberForm({...memberForm, dateOfBirth: e.target.value})}
-                                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="memberPhone" className="text-gray-300">Phone</Label>
-                                  <Input
-                                    id="memberPhone"
-                                    value={memberForm.phone}
-                                    onChange={(e) => setMemberForm({...memberForm, phone: e.target.value})}
-                                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                                    placeholder="Enter phone number"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="memberEmail" className="text-gray-300">Email</Label>
-                                  <Input
-                                    id="memberEmail"
-                                    type="email"
-                                    value={memberForm.email}
-                                    onChange={(e) => setMemberForm({...memberForm, email: e.target.value})}
-                                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                                    placeholder="Enter email address"
-                                  />
-                                </div>
-                                <div className="space-y-2 col-span-2">
-                                  <Label htmlFor="memberNotes" className="text-gray-300">Notes</Label>
-                                  <Textarea
-                                    id="memberNotes"
-                                    value={memberForm.notes}
-                                    onChange={(e) => setMemberForm({...memberForm, notes: e.target.value})}
-                                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
-                                    placeholder="Enter any additional notes"
-                                    rows={3}
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex justify-end space-x-2">
-                                <Button variant="outline" onClick={() => setIsAddingMember(false)} className="border-gray-600 text-gray-300 hover:bg-gray-800">
-                                  Cancel
-                                </Button>
-                                <Button onClick={handleAddMember} className="bg-orange-500 hover:bg-orange-600 text-white">
-                                  Add Member
-                                </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                        {h.emergencyContactName && (
+                          <span className="flex items-center gap-1"><User2 className="h-3 w-3" /> {h.emergencyContactName}</span>
+                        )}
+                        {h.emergencyContactPhone && (
+                          <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {h.emergencyContactPhone}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <Button variant="outline" size="sm" onClick={() => router.push(`/admin/homeowners/${h.id}`)}>
+                        View
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-export default function HomeownersManagementPage() {
+export default function HomeownersPage() {
   return (
     <ProtectedRoute requiredRole="staff">
-      <HomeownersManagementContent />
+      <HomeownersContent />
     </ProtectedRoute>
   )
 }

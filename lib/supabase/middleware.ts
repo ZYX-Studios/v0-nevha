@@ -47,6 +47,8 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/report") ||
     path.startsWith("/status") ||
     path.startsWith("/api/report") ||
+    path.startsWith("/api/status") ||
+    path.startsWith("/api/admin/create-user") ||
     path === "/manifest.json" ||
     path === "/sw.js"
 
