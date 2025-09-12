@@ -71,17 +71,17 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
+  // Allow all public routes without requiring login (must come before admin gating)
+  if (isPublic) {
+    return supabaseResponse
+  }
+
   // Protect admin-only routes: redirect anonymous users to home
   if (isAdminRoute && !user) {
     const redirectUrl = url.clone()
     redirectUrl.pathname = "/"
     redirectUrl.search = ""
     return NextResponse.redirect(redirectUrl)
-  }
-
-  // Allow all public routes without requiring login
-  if (isPublic) {
-    return supabaseResponse
   }
 
   if (
