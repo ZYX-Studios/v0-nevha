@@ -9,13 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ProtectedRoute } from "@/components/auth/protected-route"
 import { mockAnnouncements } from "@/lib/mock-data"
 import type { Announcement } from "@/lib/types"
 import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, EyeOff, Calendar } from "lucide-react"
 
 function AnnouncementsManagementContent() {
   const router = useRouter()
+  const basePath = "/admin"
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [filteredAnnouncements, setFilteredAnnouncements] = useState<Announcement[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -103,7 +103,7 @@ function AnnouncementsManagementContent() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push("/admin")}
+                onClick={() => router.push(basePath)}
                 className="flex items-center space-x-2"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -114,7 +114,7 @@ function AnnouncementsManagementContent() {
                 <p className="text-sm text-muted-foreground">Create and manage community announcements</p>
               </div>
             </div>
-            <Button onClick={() => router.push("/admin/announcements/new")}>
+            <Button onClick={() => router.push(`${basePath}/announcements/new`)}>
               <Plus className="mr-2 h-4 w-4" />
               New Announcement
             </Button>
@@ -178,7 +178,7 @@ function AnnouncementsManagementContent() {
                     ? "Try adjusting your search or filters."
                     : "Create your first announcement to get started."}
                 </p>
-                <Button onClick={() => router.push("/admin/announcements/new")}>
+                <Button onClick={() => router.push(`${basePath}/announcements/new`)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Create Announcement
                 </Button>
@@ -247,9 +247,5 @@ function AnnouncementsManagementContent() {
 }
 
 export default function AnnouncementsManagementPage() {
-  return (
-    <ProtectedRoute requiredRole="staff">
-      <AnnouncementsManagementContent />
-    </ProtectedRoute>
-  )
+  return <AnnouncementsManagementContent />
 }

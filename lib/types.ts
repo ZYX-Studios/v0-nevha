@@ -14,7 +14,7 @@ export interface User {
 
 export interface Homeowner {
   id: string
-  userId: string
+  userId: string | null
   propertyAddress: string
   unitNumber?: string
   moveInDate?: string
@@ -25,6 +25,20 @@ export interface Homeowner {
   createdAt: string
   updatedAt: string
   user?: User
+  // Enriched optional fields
+  firstName?: string | null
+  lastName?: string | null
+  middleInitial?: string | null
+  block?: string | null
+  lot?: string | null
+  phase?: string | null
+  street?: string | null
+  contactNumber?: string | null
+  lengthOfResidency?: number | null
+  email?: string | null
+  facebookProfile?: string | null
+  datePaid?: string | null
+  amountPaid?: number | null
 }
 
 export interface CarSticker {
@@ -114,4 +128,39 @@ export interface CreateCarStickerData {
   vehicleColor?: string
   licensePlate?: string
   expiryDate?: string
+}
+
+// PRD-aligned entities
+export interface Member {
+  id: string
+  homeownerId: string
+  fullName: string
+  relation?: string
+  phone?: string
+  email?: string
+  isActive: boolean
+  createdAt: string
+}
+
+export interface Vehicle {
+  id: string
+  homeownerId: string
+  plateNo: string
+  make?: string
+  model?: string
+  color?: string
+  createdAt: string
+}
+
+export interface Sticker {
+  id: string
+  homeownerId: string
+  vehicleId?: string | null
+  code: string
+  status: "ACTIVE" | "EXPIRED" | "REVOKED"
+  issuedAt: string
+  expiresAt?: string | null
+  notes?: string | null
+  createdAt: string
+  updatedAt: string
 }

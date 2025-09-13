@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server-admin"
 import { z } from "zod"
 
 const CreateHomeownerSchema = z.object({
@@ -15,7 +15,7 @@ const CreateHomeownerSchema = z.object({
 
 export async function GET(req: Request) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { searchParams } = new URL(req.url)
     const q = (searchParams.get("q") || "").trim()
 
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
       // OR filter across address, unit, and notes
       const like = `%${q}%`
       query = query.or(
-        `property_address.ilike.${like},unit_number.ilike.${like},notes.ilike.${like}`,
+        `property_address.ilike.${like},unit_number.ilike.${like},notes.ilike.${like},first_name.ilike.${like},last_name.ilike.${like}`,
       ) as typeof query
     }
 
@@ -43,6 +43,8 @@ export async function GET(req: Request) {
       emergencyContactName: row.emergency_contact_name as string | null,
       emergencyContactPhone: row.emergency_contact_phone as string | null,
       notes: row.notes as string | null,
+      firstName: row.first_name as string | null,
+      lastName: row.last_name as string | null,
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
     }))
@@ -55,7 +57,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const json = await req.json()
     const parsed = CreateHomeownerSchema.safeParse(json)
     if (!parsed.success) {

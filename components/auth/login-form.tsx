@@ -110,14 +110,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
           </Button>
 
           <div className="text-center space-y-2">
-            <p className="text-sm text-gray-400">
-              Demo credentials: admin@hoa.com or john.doe@email.com (any password)
-            </p>
-            {onSwitchToRegister && (
-              <Button type="button" variant="link" onClick={onSwitchToRegister} className="text-sm text-gray-300 hover:text-white">
-                Don't have an account? Sign up
-              </Button>
-            )}
+            <p className="text-xs text-gray-400">Admins only. Use your admin email and password.</p>
           </div>
         </form>
       </CardContent>

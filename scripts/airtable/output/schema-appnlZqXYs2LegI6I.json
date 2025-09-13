@@ -1,0 +1,1604 @@
+[dotenv@17.2.2] injecting env (5) from .env -- tip: 📡 observe env with Radar: https://dotenvx.com/radar
+Base appnlZqXYs2LegI6I tables:
+- tbloPWTa4eKtAS9Eu  HOA_TABLE  (fields: 25)
+- tblHEeFUfuaZCdeeU  STICKER_TABLE 2  (fields: 13)
+- tbl4kLaMQGMP4korX  HOA_Duplicates  (fields: 14)
+- tblSrzhGQSSGqe9FL  Issue Tracker  (fields: 15)
+- tblf4oSYKsgSYevvr  Sheet1  (fields: 2)
+- tblKJeV5Z459diEoR  Sticker Table 2025  (fields: 12)
+- tblSgrQUcvYIx1rwW  Household Members  (fields: 6)
+- tblnYC99w8HXJxhv9  Issue Tracker copy  (fields: 25)
+- tblTi7SzBL6nd7azw  Issue Tracker_Actions  (fields: 14)
+- tblUSNeVt5Cfy1orZ  Roles  (fields: 2)
+
+Full JSON ->
+{
+  "tables": [
+    {
+      "id": "tbloPWTa4eKtAS9Eu",
+      "name": "HOA_TABLE",
+      "primaryFieldId": "fldIGAwWiEs0xUnye",
+      "fields": [
+        {
+          "type": "singleLineText",
+          "id": "fldIGAwWiEs0xUnye",
+          "name": "Full Name"
+        },
+        {
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "\"Block \" & {fldD8KeulyjF8uZq3} & \", Lot \" & {fldjZM3qBWhF6Ov7j} & \", Phase \" & {fldEhyCalSdxnXAfQ} & \", \" & {fldZ98UVlcFMw9tzm} & \" Street \" ",
+            "referencedFieldIds": [
+              "fldD8KeulyjF8uZq3",
+              "fldjZM3qBWhF6Ov7j",
+              "fldEhyCalSdxnXAfQ",
+              "fldZ98UVlcFMw9tzm"
+            ],
+            "result": {
+              "type": "singleLineText"
+            }
+          },
+          "id": "fldLmT0jBNINq18Gy",
+          "name": "Full Address"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldelY3QHJy7vz7hB",
+          "name": "Surname"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldidwwzGny5uMXOW",
+          "name": "First Name"
+        },
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fld781ydejBtGsWxO",
+          "name": "Contact Number"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldEhyCalSdxnXAfQ",
+          "name": "Phase"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldD8KeulyjF8uZq3",
+          "name": "Block"
+        },
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldjZM3qBWhF6Ov7j",
+          "name": "Lot"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldZ98UVlcFMw9tzm",
+          "name": "Street"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selufQcaQZw5k2BCE",
+                "name": "Owner",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selTqBd1cXce62Thw",
+                "name": "Family",
+                "color": "greenBright"
+              },
+              {
+                "id": "selg7Oj5Ej0eaSA3c",
+                "name": "Tenant",
+                "color": "tealLight2"
+              }
+            ]
+          },
+          "id": "fldaEyYvcjdDqfcgY",
+          "name": "Status"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblHEeFUfuaZCdeeU",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldOeAJeR69kOUr7J"
+          },
+          "id": "fldToTZjLGbpnFvaQ",
+          "name": "Stickers Released"
+        },
+        {
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldToTZjLGbpnFvaQ",
+            "fieldIdInLinkedTable": "fldJOnL6rcVAAvsRk",
+            "result": {
+              "type": "singleLineText"
+            }
+          },
+          "id": "fldUVOWIOHLpiEhMq",
+          "name": "Maker (from Stickers Released)"
+        },
+        {
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldToTZjLGbpnFvaQ",
+            "fieldIdInLinkedTable": "fldXbyG9aXiy276Fp",
+            "result": {
+              "type": "singleLineText"
+            }
+          },
+          "id": "flduykzptqSeGc3Jb",
+          "name": "Model (from Stickers Released)"
+        },
+        {
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldToTZjLGbpnFvaQ",
+            "fieldIdInLinkedTable": "fldTjXdmYvQbalMB7",
+            "result": {
+              "type": "singleLineText"
+            }
+          },
+          "id": "fldo0Cy9adzTaBCiD",
+          "name": "Plate No (from Stickers Released)"
+        },
+        {
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            }
+          },
+          "id": "fld8i7fH9oapDuZDI",
+          "name": "Birthday"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldTA6escLmgvGUg9",
+          "name": "Name of Lot Owner (If Tenant)"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblSgrQUcvYIx1rwW",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldkS0lKkrpDuJWY0"
+          },
+          "id": "fldIQLIIDW55yJBPh",
+          "name": "Household Members"
+        },
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldhTGZyrrY0oJwEe",
+          "name": "Length of Residency"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldxxAT1ibh5sfItD",
+          "name": "Facebook Profile"
+        },
+        {
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            }
+          },
+          "id": "fldRUm7yIBQed0Hn4",
+          "name": "Date Paid"
+        },
+        {
+          "type": "number",
+          "options": {
+            "precision": 1
+          },
+          "id": "fldjkrIapWTwbOgM8",
+          "name": "Amount Paid"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldUmS4lZ2ow1Bn5S",
+          "name": "Email"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldHSet8wlrv2sIzZ",
+          "name": "M Initial"
+        },
+        {
+          "type": "createdBy",
+          "id": "fld0kez7s6Kz9IOrx",
+          "name": "Created By"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblKJeV5Z459diEoR",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldRjAZpBG4upZRhG"
+          },
+          "id": "fldWtTfuvg6zYKVkN",
+          "name": "STICKER_TABLE 2 copy"
+        }
+      ],
+      "views": [
+        {
+          "id": "viwYsXPgbUDfBcH2H",
+          "name": "Grid view",
+          "type": "grid"
+        }
+      ]
+    },
+    {
+      "id": "tblHEeFUfuaZCdeeU",
+      "name": "STICKER_TABLE 2",
+      "primaryFieldId": "fldjkf8KsffpB81Lt",
+      "fields": [
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldjkf8KsffpB81Lt",
+          "name": "Sticker No"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbloPWTa4eKtAS9Eu",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldToTZjLGbpnFvaQ"
+          },
+          "id": "fldOeAJeR69kOUr7J",
+          "name": "Full Name"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldFtbA1QW6sAWogr",
+          "name": "Surname2"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldcy4ktWQIz9wVcu",
+          "name": "First Name2"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldJOnL6rcVAAvsRk",
+          "name": "Maker"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldXbyG9aXiy276Fp",
+          "name": "Model"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldTjXdmYvQbalMB7",
+          "name": "Plate No"
+        },
+        {
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "Php "
+          },
+          "id": "fldT0rnuNdywlnbx9",
+          "name": "Amount Pd"
+        },
+        {
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            }
+          },
+          "id": "fldcrzANOF4XYRd2r",
+          "name": "Date Issued"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selATQw1JPi31jvwB",
+                "name": "Sedan",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selfA8PusitNkE7hF",
+                "name": "Van",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selCc0kvDCKckiSup",
+                "name": "SUV",
+                "color": "tealLight2"
+              },
+              {
+                "id": "selJq0u6orMmsBxGo",
+                "name": "Truck",
+                "color": "greenLight2"
+              },
+              {
+                "id": "selfgROyJMVsboMcB",
+                "name": "Motorcycle",
+                "color": "yellowLight2"
+              },
+              {
+                "id": "selIAG5OcDr60BcIF",
+                "name": "Electric",
+                "color": "orangeLight2"
+              },
+              {
+                "id": "selBNRz5FOk7uRRbw",
+                "name": "ELF",
+                "color": "redLight2"
+              }
+            ]
+          },
+          "id": "fld3x372c2mi29sqE",
+          "name": "Category"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "sel1GfIjrl4uPxH4o",
+                "name": "Not yet Released",
+                "color": "blueLight2"
+              },
+              {
+                "id": "sel7HmFdKVuoD9xYj",
+                "name": "Released",
+                "color": "cyanLight2"
+              }
+            ]
+          },
+          "id": "flddq9ZXA0Bhjt6Wn",
+          "name": "Sticker Released?"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbl4kLaMQGMP4korX",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldzTIgVx8dLR7KXj"
+          },
+          "id": "flduJp0QDybGimGUc",
+          "name": "HOA_TABLE copy"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblSgrQUcvYIx1rwW",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldLzrcPLv7up3c3L"
+          },
+          "id": "fldCCSdFurF5N5BJX",
+          "name": "Household Members"
+        }
+      ],
+      "views": [
+        {
+          "id": "viw4x98WhQiuEBwK9",
+          "name": "Grid view",
+          "type": "grid"
+        },
+        {
+          "id": "viw6FtWDNmLyiH7qt",
+          "name": "Plate Number",
+          "type": "grid"
+        }
+      ]
+    },
+    {
+      "id": "tbl4kLaMQGMP4korX",
+      "name": "HOA_Duplicates",
+      "primaryFieldId": "fldobpNy46um1mClH",
+      "fields": [
+        {
+          "type": "singleLineText",
+          "id": "fldobpNy46um1mClH",
+          "name": "Full Name"
+        },
+        {
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "\"Block \" & {fldjDzv670l1CWedw} & \", Lot \" & {fldZuBk2noj1AgKUM} & \", Phase \" & {fldkMnTM7kfTRpP2j} & \", \" & {fldFEXbx7EH80BImP} & \" Street \" ",
+            "referencedFieldIds": [
+              "fldjDzv670l1CWedw",
+              "fldZuBk2noj1AgKUM",
+              "fldkMnTM7kfTRpP2j",
+              "fldFEXbx7EH80BImP"
+            ],
+            "result": {
+              "type": "singleLineText"
+            }
+          },
+          "id": "fldrRIhVnfK9Utnt1",
+          "name": "Full Address"
+        },
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldNDQPP0LDPaUbkh",
+          "name": "Contact No"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldkMnTM7kfTRpP2j",
+          "name": "Phase"
+        },
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldjDzv670l1CWedw",
+          "name": "Block"
+        },
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldZuBk2noj1AgKUM",
+          "name": "Lot"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldFEXbx7EH80BImP",
+          "name": "Street"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selufQcaQZw5k2BCE",
+                "name": "Owner",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selTqBd1cXce62Thw",
+                "name": "Family",
+                "color": "greenBright"
+              },
+              {
+                "id": "selg7Oj5Ej0eaSA3c",
+                "name": "Tenant",
+                "color": "tealLight2"
+              }
+            ]
+          },
+          "id": "fldQ9nf7YLfZUHr3r",
+          "name": "Status"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblHEeFUfuaZCdeeU",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "flduJp0QDybGimGUc"
+          },
+          "id": "fldzTIgVx8dLR7KXj",
+          "name": "Stickers Released"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldUQNkstbAtZ1m44",
+          "name": "Surname"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldYIlNbsPArYecBp",
+          "name": "First Name"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldnn3KKiNtRwUXms",
+          "name": "M Initial"
+        },
+        {
+          "type": "createdBy",
+          "id": "fldGP3QJeyMVDa3e0",
+          "name": "Created By"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblKJeV5Z459diEoR",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldxOpg1n86QTr649"
+          },
+          "id": "fldCYIw6hI8Vsca7g",
+          "name": "STICKER_TABLE 2 copy"
+        }
+      ],
+      "views": [
+        {
+          "id": "viwEXM6SXmFB5EWPa",
+          "name": "Grid view",
+          "type": "grid"
+        }
+      ]
+    },
+    {
+      "id": "tblSrzhGQSSGqe9FL",
+      "name": "Issue Tracker",
+      "primaryFieldId": "fldjnGKyEaLd6PgDx",
+      "fields": [
+        {
+          "type": "multilineText",
+          "id": "fldjnGKyEaLd6PgDx",
+          "name": "Timestamp"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldEUin1jYEMvp8Xm",
+          "name": "Full Name"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldMtI7HUNSNBZX4k",
+          "name": "Address (Street and Phase only)"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldN9YySp2sYv6aCT",
+          "name": "Contact number"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selnBDO338B2Uw6ol",
+                "name": "Maintenance",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selWYZhLZOXr6Grx1",
+                "name": "Others",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selwDBsixHhQjTiVE",
+                "name": "Peace and Order",
+                "color": "tealLight2"
+              }
+            ]
+          },
+          "id": "fldS57AGyvYiE7j87",
+          "name": "Issue Related to? "
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selkXYgbYXVb68IrX",
+                "name": "Grass Cutting",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selDF7uU73F9waJX8",
+                "name": "Drainage",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selZYwg1JqA399xyF",
+                "name": "Water ",
+                "color": "tealLight2"
+              },
+              {
+                "id": "selYaSHxYDP2eQJlx",
+                "name": "Flooding",
+                "color": "greenLight2"
+              },
+              {
+                "id": "selrqXqH4sNmPBfDq",
+                "name": "Water",
+                "color": "yellowLight2"
+              },
+              {
+                "id": "sel1Tw3DhsTNBDK9V",
+                "name": "Lighting",
+                "color": "orangeLight2"
+              },
+              {
+                "id": "selCaScK27maGnWJ0",
+                "name": "Security",
+                "color": "redLight2"
+              },
+              {
+                "id": "sel1AQqIp1UhV4PxF",
+                "name": "Animal Welfare",
+                "color": "pinkLight2"
+              }
+            ]
+          },
+          "id": "fldKwp3jIeNlgxJfx",
+          "name": "Duplicate of"
+        },
+        {
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          },
+          "id": "fldBOHCJhlETdFOBQ",
+          "name": "Is this concern unique to you and your household, or does this impact others as well?"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldRLCS5lV0X3WPMa",
+          "name": "Describe your concern"
+        },
+        {
+          "type": "multilineText",
+          "id": "fld9F8pte4JQRX49v",
+          "name": "Do you have any solution to suggest?"
+        },
+        {
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          },
+          "id": "fldnrujPgTzMUu1l6",
+          "name": "I understand that this is not an Emergency hotline and I shouldn't expect immediate response. The concern I just raised is to further improve the community of Northfields."
+        },
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldL0NkL2MUQMaAAP",
+          "name": "Priority Ranking"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selEsgJ8Iwjdr44Z5",
+                "name": "Closed",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selzIENm5nqPmmIZh",
+                "name": "In progress",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selHtJrBQjPFSa1vy",
+                "name": "Not Started",
+                "color": "tealLight2"
+              }
+            ]
+          },
+          "id": "fld6cvbdPFfkRqyQg",
+          "name": "Status"
+        },
+        {
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "client"
+          },
+          "id": "fldxJ5Dz55lya60nO",
+          "name": "Date of Action (MM/DD/YR)"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldLq3gSGJ9sWN7K1",
+          "name": "Actions Taken"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldPIm92a2vVa89B6",
+          "name": "Key Person Responsible"
+        }
+      ],
+      "views": [
+        {
+          "id": "viwTHyBOxRVg7GyBV",
+          "name": "Grid view",
+          "type": "grid"
+        }
+      ]
+    },
+    {
+      "id": "tblf4oSYKsgSYevvr",
+      "name": "Sheet1",
+      "primaryFieldId": "fldKrm5Cd3KbIgWnr",
+      "fields": [
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldKrm5Cd3KbIgWnr",
+          "name": "Priority Ranking"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldKEiGl7BUIlPmjY",
+          "name": "Recommended Response time"
+        }
+      ],
+      "views": [
+        {
+          "id": "viw0Ei6isdwBbvVrY",
+          "name": "Grid view",
+          "type": "grid"
+        }
+      ]
+    },
+    {
+      "id": "tblKJeV5Z459diEoR",
+      "name": "Sticker Table 2025",
+      "primaryFieldId": "fldmpfoVcPazcdrVq",
+      "fields": [
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldmpfoVcPazcdrVq",
+          "name": "Sticker No"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbloPWTa4eKtAS9Eu",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldWtTfuvg6zYKVkN"
+          },
+          "id": "fldRjAZpBG4upZRhG",
+          "name": "Full Name"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldIybQcAw1Cb1Oqo",
+          "name": "Surname2"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldfD4AEGqDJKBlmr",
+          "name": "First Name2"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldMTn1hbMQKbAS1h",
+          "name": "Maker"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fld0gyWkUxdIDcwPm",
+          "name": "Model"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldWoXtxI5LlLqcL4",
+          "name": "Plate No"
+        },
+        {
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "Php "
+          },
+          "id": "fldW5rDFxNtGWsBH6",
+          "name": "Amount Pd"
+        },
+        {
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "local",
+              "format": "l"
+            }
+          },
+          "id": "fldfwzQYyfZ7zWDco",
+          "name": "Date Issued"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selATQw1JPi31jvwB",
+                "name": "Sedan",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selfA8PusitNkE7hF",
+                "name": "Van",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selCc0kvDCKckiSup",
+                "name": "SUV",
+                "color": "tealLight2"
+              },
+              {
+                "id": "selJq0u6orMmsBxGo",
+                "name": "Truck",
+                "color": "greenLight2"
+              },
+              {
+                "id": "selfgROyJMVsboMcB",
+                "name": "Motorcycle",
+                "color": "yellowLight2"
+              },
+              {
+                "id": "selIAG5OcDr60BcIF",
+                "name": "Electric",
+                "color": "orangeLight2"
+              },
+              {
+                "id": "selBNRz5FOk7uRRbw",
+                "name": "ELF",
+                "color": "redLight2"
+              }
+            ]
+          },
+          "id": "fld6C3ndWChsDeSAB",
+          "name": "Category"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "sel1GfIjrl4uPxH4o",
+                "name": "Not yet Released",
+                "color": "blueLight2"
+              },
+              {
+                "id": "sel7HmFdKVuoD9xYj",
+                "name": "Released",
+                "color": "cyanLight2"
+              }
+            ]
+          },
+          "id": "fldgv9f8kAwrUyw6k",
+          "name": "Sticker Released?"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbl4kLaMQGMP4korX",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldCYIw6hI8Vsca7g"
+          },
+          "id": "fldxOpg1n86QTr649",
+          "name": "HOA_TABLE copy"
+        }
+      ],
+      "views": [
+        {
+          "id": "viw7C9o71qdEfGWU6",
+          "name": "Grid view",
+          "type": "grid"
+        },
+        {
+          "id": "viw9KtcOxWGITMxAq",
+          "name": "Plate Number",
+          "type": "grid"
+        }
+      ]
+    },
+    {
+      "id": "tblSgrQUcvYIx1rwW",
+      "name": "Household Members",
+      "primaryFieldId": "fldxz1iUluHcdO3bV",
+      "fields": [
+        {
+          "type": "autoNumber",
+          "id": "fldxz1iUluHcdO3bV",
+          "name": "Number"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tbloPWTa4eKtAS9Eu",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldIQLIIDW55yJBPh"
+          },
+          "id": "fldkS0lKkrpDuJWY0",
+          "name": "Member Name"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldf3WohMnqWb6nAi",
+          "name": "Name"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "sel1YFWvyDHYSw7W1",
+                "name": "Spouse of Homeowner/Tenant"
+              },
+              {
+                "id": "seljabiQ4wjdviAar",
+                "name": "Child of Homeowner/Tenant"
+              },
+              {
+                "id": "sel0q2z4NOV1ogjDB",
+                "name": "Parent of Homeowner/Tenant"
+              },
+              {
+                "id": "selptW4jHP9nRw8AW",
+                "name": "Relative of Homeowner/Tenant"
+              },
+              {
+                "id": "selP1mIqtfGR6yPpy",
+                "name": "Others"
+              }
+            ]
+          },
+          "id": "fldsfEQp3pEwgTTy1",
+          "name": "Relationship to Homeowner/Tenant"
+        },
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldNtv8e9aSQtb7ul",
+          "name": "Age"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblHEeFUfuaZCdeeU",
+            "isReversed": false,
+            "prefersSingleRecordLink": true,
+            "inverseLinkFieldId": "fldCCSdFurF5N5BJX"
+          },
+          "id": "fldLzrcPLv7up3c3L",
+          "name": "STICKER_TABLE 2"
+        }
+      ],
+      "views": [
+        {
+          "id": "viwFHZhoPvqfrz61C",
+          "name": "Grid view",
+          "type": "grid"
+        }
+      ]
+    },
+    {
+      "id": "tblnYC99w8HXJxhv9",
+      "name": "Issue Tracker copy",
+      "primaryFieldId": "fldcvgJifYBHA0ppj",
+      "fields": [
+        {
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "IF({fldOUJC1kqAup8otV}, DATETIME_FORMAT({fldOUJC1kqAup8otV}, 'YYMM') & '' & {fld0rC2CwBnQsTNpV}, DATETIME_FORMAT(NOW(), 'YYMM') & '' & {fld0rC2CwBnQsTNpV})",
+            "referencedFieldIds": [
+              "fldOUJC1kqAup8otV",
+              "fld0rC2CwBnQsTNpV"
+            ],
+            "result": {
+              "type": "singleLineText"
+            }
+          },
+          "id": "fldcvgJifYBHA0ppj",
+          "name": "Issue Number_1",
+          "description": "Generates a unique code using the year and month from the Timestamp field if available, otherwise uses the current year and month, followed by the ID."
+        },
+        {
+          "type": "autoNumber",
+          "id": "fld0rC2CwBnQsTNpV",
+          "name": "ID"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldOUJC1kqAup8otV",
+          "name": "Timestamp"
+        },
+        {
+          "type": "multilineText",
+          "id": "fld9rlfuZet3OIgNK",
+          "name": "Full Name"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldh0LZaA3H4Ui5UI",
+          "name": "Address (Street and Phase only)"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldiG1ql5ihfOpish",
+          "name": "Contact Number"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selnBDO338B2Uw6ol",
+                "name": "Maintenance",
+                "color": "greenBright"
+              },
+              {
+                "id": "selwDBsixHhQjTiVE",
+                "name": "Peace and Order",
+                "color": "cyanBright"
+              },
+              {
+                "id": "sel5XuUMm4cQ4vx9M",
+                "name": "Sports",
+                "color": "orangeLight1"
+              },
+              {
+                "id": "selLc0vmuhxFdPPmt",
+                "name": "Social Media",
+                "color": "purpleLight1"
+              },
+              {
+                "id": "seltCHkaTA6oFtAMD",
+                "name": "Grievance",
+                "color": "tealLight2"
+              },
+              {
+                "id": "selvFCHqdFu4k50j5",
+                "name": "Finance",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selDoAXWJ6SBkgOH5",
+                "name": "Membership",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selQgSJoO4z0JI4JA",
+                "name": "Livelihood",
+                "color": "greenLight2"
+              },
+              {
+                "id": "selWYZhLZOXr6Grx1",
+                "name": "Others",
+                "color": "yellowBright"
+              }
+            ]
+          },
+          "id": "fldnCas9eLNzXqrYv",
+          "name": "Issue Related to?"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selkXYgbYXVb68IrX",
+                "name": "Grass Cutting",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selDF7uU73F9waJX8",
+                "name": "Drainage",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "selZYwg1JqA399xyF",
+                "name": "Water ",
+                "color": "tealLight2"
+              },
+              {
+                "id": "selYaSHxYDP2eQJlx",
+                "name": "Flooding",
+                "color": "greenLight2"
+              },
+              {
+                "id": "selrqXqH4sNmPBfDq",
+                "name": "Water",
+                "color": "yellowLight2"
+              },
+              {
+                "id": "sel1Tw3DhsTNBDK9V",
+                "name": "Lighting",
+                "color": "orangeLight2"
+              },
+              {
+                "id": "selCaScK27maGnWJ0",
+                "name": "Security",
+                "color": "redLight2"
+              },
+              {
+                "id": "sel1AQqIp1UhV4PxF",
+                "name": "Animal Welfare",
+                "color": "pinkLight2"
+              }
+            ]
+          },
+          "id": "fldf3sVMouCCzQR5V",
+          "name": "Duplicate of"
+        },
+        {
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          },
+          "id": "fld6lKucXBtawYWre",
+          "name": "Is this concern unique to you and your household, or does this impact others as well?"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldmiFKy1bPemfXCy",
+          "name": "Describe your concern"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldEcbhWUky7agcZT",
+          "name": "Do you have any solution to suggest?"
+        },
+        {
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          },
+          "id": "fldSYxbiW9o3dN9bu",
+          "name": "I understand that this is not an Emergency hotline and I shouldn't expect immediate response. The concern I just raised is to further improve the community of Northfields."
+        },
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldgxQceI2J75tIqd",
+          "name": "Priority Ranking"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selEsgJ8Iwjdr44Z5",
+                "name": "Closed",
+                "color": "greenLight1"
+              },
+              {
+                "id": "selzIENm5nqPmmIZh",
+                "name": "In progress",
+                "color": "yellowBright"
+              },
+              {
+                "id": "selHtJrBQjPFSa1vy",
+                "name": "Not Started",
+                "color": "orangeBright"
+              }
+            ]
+          },
+          "id": "fldBJy3GvV4BaJGGE",
+          "name": "Status"
+        },
+        {
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "client"
+          },
+          "id": "fld2g8v2LlaPtp8dc",
+          "name": "Date of Action (MM/DD/YR)"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldgX68lmZYJf6fAp",
+          "name": "Actions Taken"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldkfp1vQikctrhru",
+          "name": "Key Person Responsible"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblTi7SzBL6nd7azw",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldlJy8JFvbWAcOPl"
+          },
+          "id": "fldjciqPBVcbBePPv",
+          "name": "Issue Tracker_Actions"
+        },
+        {
+          "type": "createdBy",
+          "id": "fldDQMJGXDmvO17k9",
+          "name": "Created By"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldAbasJOvb1PYd4C",
+          "name": "Email"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldTCUuHpskXHg6zO",
+          "name": "Street"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldD1WIR6QVjSw0pv",
+          "name": "Phase"
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldfDwTbx0yhm5iae",
+          "name": "Block"
+        },
+        {
+          "type": "number",
+          "options": {
+            "precision": 0
+          },
+          "id": "fldzrUrBWrDmGgF3Z",
+          "name": "Lot"
+        },
+        {
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "\"Block \" & {fldfDwTbx0yhm5iae} & \", Lot \" & {fldzrUrBWrDmGgF3Z} & \", Phase \" & {fldD1WIR6QVjSw0pv} & \", \" & {fldTCUuHpskXHg6zO} & \" Street \" ",
+            "referencedFieldIds": [
+              "fldfDwTbx0yhm5iae",
+              "fldzrUrBWrDmGgF3Z",
+              "fldD1WIR6QVjSw0pv",
+              "fldTCUuHpskXHg6zO"
+            ],
+            "result": {
+              "type": "singleLineText"
+            }
+          },
+          "id": "fldBgClduuqAqKjl1",
+          "name": "Address"
+        }
+      ],
+      "views": [
+        {
+          "id": "viwoeBthd7KxqZGrj",
+          "name": "Grid view",
+          "type": "grid"
+        }
+      ]
+    },
+    {
+      "id": "tblTi7SzBL6nd7azw",
+      "name": "Issue Tracker_Actions",
+      "primaryFieldId": "fldp3xWH9ga3DkWr5",
+      "fields": [
+        {
+          "type": "autoNumber",
+          "id": "fldp3xWH9ga3DkWr5",
+          "name": "ID"
+        },
+        {
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblnYC99w8HXJxhv9",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldjciqPBVcbBePPv"
+          },
+          "id": "fldlJy8JFvbWAcOPl",
+          "name": "Issue Number"
+        },
+        {
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldlJy8JFvbWAcOPl",
+            "fieldIdInLinkedTable": "fldnCas9eLNzXqrYv",
+            "result": {
+              "type": "singleSelect",
+              "options": {
+                "choices": [
+                  {
+                    "id": "selnBDO338B2Uw6ol",
+                    "name": "Maintenance",
+                    "color": "greenBright"
+                  },
+                  {
+                    "id": "selwDBsixHhQjTiVE",
+                    "name": "Peace and Order",
+                    "color": "cyanBright"
+                  },
+                  {
+                    "id": "sel5XuUMm4cQ4vx9M",
+                    "name": "Sports",
+                    "color": "orangeLight1"
+                  },
+                  {
+                    "id": "selLc0vmuhxFdPPmt",
+                    "name": "Social Media",
+                    "color": "purpleLight1"
+                  },
+                  {
+                    "id": "seltCHkaTA6oFtAMD",
+                    "name": "Grievance",
+                    "color": "tealLight2"
+                  },
+                  {
+                    "id": "selvFCHqdFu4k50j5",
+                    "name": "Finance",
+                    "color": "blueLight2"
+                  },
+                  {
+                    "id": "selDoAXWJ6SBkgOH5",
+                    "name": "Membership",
+                    "color": "cyanLight2"
+                  },
+                  {
+                    "id": "selQgSJoO4z0JI4JA",
+                    "name": "Livelihood",
+                    "color": "greenLight2"
+                  },
+                  {
+                    "id": "selWYZhLZOXr6Grx1",
+                    "name": "Others",
+                    "color": "yellowBright"
+                  }
+                ]
+              }
+            }
+          },
+          "id": "fldmPCtKZwl6k63bQ",
+          "name": "Issue Related to?  (from Issue Number)"
+        },
+        {
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldlJy8JFvbWAcOPl",
+            "fieldIdInLinkedTable": "fldAbasJOvb1PYd4C",
+            "result": {
+              "type": "singleLineText"
+            }
+          },
+          "id": "fld6ikHWtuYkJ5m14",
+          "name": "email (from Issue Number)"
+        },
+        {
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldlJy8JFvbWAcOPl",
+            "fieldIdInLinkedTable": "fldmiFKy1bPemfXCy",
+            "result": {
+              "type": "multilineText"
+            }
+          },
+          "id": "fldv97nDxVy1zFdi1",
+          "name": "Describe your concern (from Issue Number)"
+        },
+        {
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldlJy8JFvbWAcOPl",
+            "fieldIdInLinkedTable": "fld9rlfuZet3OIgNK",
+            "result": {
+              "type": "multilineText"
+            }
+          },
+          "id": "fld0kDRFvlu2eRvc8",
+          "name": "Full Name"
+        },
+        {
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldlJy8JFvbWAcOPl",
+            "fieldIdInLinkedTable": "fldiG1ql5ihfOpish",
+            "result": {
+              "type": "multilineText"
+            }
+          },
+          "id": "fldVs8WpPmyfGQywd",
+          "name": "Contact Number"
+        },
+        {
+          "type": "multipleLookupValues",
+          "options": {
+            "isValid": true,
+            "recordLinkFieldId": "fldlJy8JFvbWAcOPl",
+            "fieldIdInLinkedTable": "fldOUJC1kqAup8otV",
+            "result": {
+              "type": "multilineText"
+            }
+          },
+          "id": "fldzp1Y1bSmVuQSkI",
+          "name": "Timestamp (from Issue Number)"
+        },
+        {
+          "type": "multilineText",
+          "id": "fldTVj8vPPNSsHzIE",
+          "name": "Actions Taken"
+        },
+        {
+          "type": "multilineText",
+          "id": "fld8YYYaVNAmhLH4q",
+          "name": "Key Person Responsible"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selwSVqPeslZD1OiH",
+                "name": "Not Started",
+                "color": "redBright"
+              },
+              {
+                "id": "selCBRS0CUdEfmaqy",
+                "name": "In progress",
+                "color": "yellowBright"
+              },
+              {
+                "id": "seldT5IdGBfJIf4py",
+                "name": "Closed",
+                "color": "greenLight1"
+              }
+            ]
+          },
+          "id": "fldN9bhZ8nHfsKqVT",
+          "name": "Issue_Status"
+        },
+        {
+          "type": "formula",
+          "options": {
+            "isValid": true,
+            "formula": "IF({fldzp1Y1bSmVuQSkI}, DATETIME_FORMAT({fldzp1Y1bSmVuQSkI}, 'MM/DD/YY HH:mm'), DATETIME_FORMAT({fldp82MvMl6qLQZXs}, 'MM/DD/YY HH:mm'))",
+            "referencedFieldIds": [
+              "fldzp1Y1bSmVuQSkI",
+              "fldp82MvMl6qLQZXs"
+            ],
+            "result": {
+              "type": "singleLineText"
+            }
+          },
+          "id": "fldARybl22GWuORu0",
+          "name": "Date Updated",
+          "description": "Displays the current date and time."
+        },
+        {
+          "type": "singleLineText",
+          "id": "fldCSpk6WeE5WnJUg",
+          "name": "Updated By"
+        },
+        {
+          "type": "createdTime",
+          "options": {
+            "result": {
+              "type": "dateTime",
+              "options": {
+                "dateFormat": {
+                  "name": "local",
+                  "format": "l"
+                },
+                "timeFormat": {
+                  "name": "12hour",
+                  "format": "h:mma"
+                },
+                "timeZone": "Asia/Manila"
+              }
+            }
+          },
+          "id": "fldp82MvMl6qLQZXs",
+          "name": "Created"
+        }
+      ],
+      "views": [
+        {
+          "id": "viwqI98zXix6nuf82",
+          "name": "Grid view",
+          "type": "grid"
+        }
+      ]
+    },
+    {
+      "id": "tblUSNeVt5Cfy1orZ",
+      "name": "Roles",
+      "primaryFieldId": "fldG9n66ZRtN9lh1g",
+      "fields": [
+        {
+          "type": "singleLineText",
+          "id": "fldG9n66ZRtN9lh1g",
+          "name": "Email"
+        },
+        {
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              {
+                "id": "selIKxcK3YbDouPFl",
+                "name": "Admin",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selH2J5eOY6pA6QIz",
+                "name": "Editor",
+                "color": "cyanLight2"
+              },
+              {
+                "id": "seljT7b49swQwlDs5",
+                "name": "Viewer",
+                "color": "tealLight2"
+              }
+            ]
+          },
+          "id": "fldupwlPU0THaqz8y",
+          "name": "Role"
+        }
+      ],
+      "views": [
+        {
+          "id": "viwhUyKTKVik0HhGH",
+          "name": "Grid view",
+          "type": "grid"
+        }
+      ]
+    }
+  ]
+}

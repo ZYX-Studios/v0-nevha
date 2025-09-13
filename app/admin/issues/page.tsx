@@ -18,13 +18,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { ProtectedRoute } from "@/components/auth/protected-route"
 import { mockIssues, mockUsers } from "@/lib/mock-data"
 import type { Issue } from "@/lib/types"
 import { ArrowLeft, Search, Edit, CheckCircle, Clock, AlertCircle, Calendar, MapPin, User } from "lucide-react"
 
 function IssuesManagementContent() {
   const router = useRouter()
+  const basePath = "/admin"
   const [issues, setIssues] = useState<Issue[]>([])
   const [filteredIssues, setFilteredIssues] = useState<Issue[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -141,7 +141,7 @@ function IssuesManagementContent() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push("/admin")}
+              onClick={() => router.push(basePath)}
               className="flex items-center space-x-2"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -342,9 +342,5 @@ function IssuesManagementContent() {
 }
 
 export default function IssuesManagementPage() {
-  return (
-    <ProtectedRoute requiredRole="staff">
-      <IssuesManagementContent />
-    </ProtectedRoute>
-  )
+  return <IssuesManagementContent />
 }

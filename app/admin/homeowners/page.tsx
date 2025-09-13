@@ -4,11 +4,9 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ProtectedRoute } from "@/components/auth/protected-route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -20,10 +18,11 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Homeowner } from "@/lib/types"
-import { ArrowLeft, Plus, Search, Home, Calendar, User2, Phone } from "lucide-react"
+import { ArrowLeft, Plus, Search, Home } from "lucide-react"
 
 function HomeownersContent() {
   const router = useRouter()
+  const basePath = "/admin"
   const [items, setItems] = useState<Homeowner[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,7 +48,14 @@ function HomeownersContent() {
       const url = new URL("/api/admin/homeowners", window.location.origin)
       if (query) url.searchParams.set("q", query)
       const res = await fetch(url.toString(), { cache: "no-store" })
-      const json = await res.json()
+      const text = await res.text()
+      let json: any = null
+      try {
+        json = text ? JSON.parse(text) : null
+      } catch {
+        // Response is not JSON (likely HTML from a redirect). Treat as unauthorized.
+        throw new Error("Access denied. Please sign in as an admin and try again.")
+      }
       if (!res.ok) throw new Error(json?.error || "Failed to load homeowners")
       setItems(json.items || [])
     } catch (e: any) {
@@ -82,7 +88,9 @@ function HomeownersContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
-      const json = await res.json().catch(() => ({}))
+      const txt = await res.text()
+      let json: any = null
+      try { json = txt ? JSON.parse(txt) : null } catch { throw new Error("Access denied. Please sign in as an admin.") }
       if (!res.ok) throw new Error(json?.error || "Failed to create homeowner")
       setOpen(false)
       setForm({
@@ -102,6 +110,7 @@ function HomeownersContent() {
     }
   }
 
+  // derived count
   const filteredCount = useMemo(() => items.length, [items])
 
   return (
@@ -111,7 +120,7 @@ function HomeownersContent() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" onClick={() => router.push("/admin")} className="flex items-center space-x-2">
+              <Button variant="ghost" size="sm" onClick={() => router.push(basePath)} className="flex items-center space-x-2">
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back</span>
               </Button>
@@ -214,7 +223,7 @@ function HomeownersContent() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by address, unit, or notes..."
+                    placeholder="Search by name, address, unit, or notes..."
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     onKeyDown={(e) => {
@@ -231,65 +240,73 @@ function HomeownersContent() {
           </CardContent>
         </Card>
 
-        {/* List */}
-        <div className="space-y-4">
-          {error && (
-            <Card>
-              <CardContent className="py-6">
-                <p className="text-destructive">{error}</p>
-              </CardContent>
-            </Card>
-          )}
+        {/* List - Simple Table */}
+        {error && (
+          <Card className="mb-4">
+            <CardContent className="py-4">
+              <p className="text-destructive">{error}</p>
+            </CardContent>
+          </Card>
+        )}
 
-          {filteredCount === 0 && !loading ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <div className="bg-muted rounded-full p-3 w-fit mx-auto mb-4">
-                  <Search className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">No homeowners found</h3>
-                <p className="text-muted-foreground mb-4">
-                  {q ? "Try adjusting your search." : "Create your first homeowner to get started."}
-                </p>
-                <Button onClick={() => setOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Homeowner
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            items.map((h) => (
-              <Card key={h.id} className="overflow-hidden">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <CardTitle className="text-xl">
-                        {h.propertyAddress}
-                        {h.unitNumber ? <span className="text-muted-foreground"> • Unit {h.unitNumber}</span> : null}
-                      </CardTitle>
-                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                        <Badge variant={h.isOwner ? "default" : "outline"}>{h.isOwner ? "Owner" : "Renter"}</Badge>
-                        {h.moveInDate && (
-                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Moved in: {h.moveInDate}</span>
-                        )}
-                        {h.emergencyContactName && (
-                          <span className="flex items-center gap-1"><User2 className="h-3 w-3" /> {h.emergencyContactName}</span>
-                        )}
-                        {h.emergencyContactPhone && (
-                          <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {h.emergencyContactPhone}</span>
-                        )}
+        <div className="bg-card rounded-md border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-muted-foreground">
+                <tr>
+                  <th className="text-left px-4 py-2 font-medium">Name</th>
+                  <th className="text-left px-4 py-2 font-medium">Address</th>
+                  <th className="text-left px-4 py-2 font-medium">Unit</th>
+                  <th className="text-left px-4 py-2 font-medium">Ownership</th>
+                  <th className="text-left px-4 py-2 font-medium">Move-in</th>
+                  <th className="text-left px-4 py-2 font-medium">Contact Name</th>
+                  <th className="text-left px-4 py-2 font-medium">Contact Phone</th>
+                  <th className="text-right px-4 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-6 text-center text-muted-foreground">
+                      Loading homeowners...
+                    </td>
+                  </tr>
+                )}
+                {!loading && items.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-10 text-center">
+                      <div className="space-y-2">
+                        <div className="text-sm text-muted-foreground">No homeowners found</div>
+                        <div className="text-xs text-muted-foreground">{q ? "Try adjusting your search." : "Create your first homeowner to get started."}</div>
+                        <Button size="sm" onClick={() => setOpen(true)}>
+                          <Plus className="mr-2 h-4 w-4" /> New Homeowner
+                        </Button>
                       </div>
-                    </div>
-                    <div>
-                      <Button variant="outline" size="sm" onClick={() => router.push(`/admin/homeowners/${h.id}`)}>
-                        View
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            ))
-          )}
+                    </td>
+                  </tr>
+                )}
+                {!loading && items.map((h) => {
+                  const fullName = [h.firstName, h.lastName].filter(Boolean).join(" ") || "-"
+                  return (
+                    <tr key={h.id} className="border-t">
+                      <td className="px-4 py-2">{fullName}</td>
+                      <td className="px-4 py-2">{h.propertyAddress}</td>
+                      <td className="px-4 py-2">{h.unitNumber || "-"}</td>
+                      <td className="px-4 py-2">{h.isOwner ? "Owner" : "Renter"}</td>
+                      <td className="px-4 py-2">{h.moveInDate || "-"}</td>
+                      <td className="px-4 py-2">{h.emergencyContactName || "-"}</td>
+                      <td className="px-4 py-2">{h.emergencyContactPhone || "-"}</td>
+                      <td className="px-4 py-2 text-right">
+                        <Button variant="outline" size="sm" onClick={() => router.push(`${basePath}/homeowners/${h.id}`)}>
+                          View
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -297,9 +314,5 @@ function HomeownersContent() {
 }
 
 export default function HomeownersPage() {
-  return (
-    <ProtectedRoute requiredRole="staff">
-      <HomeownersContent />
-    </ProtectedRoute>
-  )
+  return <HomeownersContent />
 }

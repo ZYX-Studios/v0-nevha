@@ -26,7 +26,7 @@ export function DevTools() {
 
   const handleQuickLogin = async (userType: keyof typeof TEST_CREDENTIALS) => {
     const credentials = TEST_CREDENTIALS[userType]
-    await login(credentials.email, "any-password") // Mock auth accepts any password
+    await login(credentials.email, credentials.password)
   }
 
   const handleGenerateDemoData = () => {

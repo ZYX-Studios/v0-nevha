@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ProtectedRoute } from "@/components/auth/protected-route"
 import { useAuth } from "@/hooks/use-auth"
 import type { CreateAnnouncementData } from "@/lib/types"
 import { mockAnnouncements } from "@/lib/mock-data"
@@ -292,9 +291,5 @@ function CreateAnnouncementContent() {
 }
 
 export default function CreateAnnouncementPage() {
-  return (
-    <ProtectedRoute requiredRole="staff">
-      <CreateAnnouncementContent />
-    </ProtectedRoute>
-  )
+  return <CreateAnnouncementContent />
 }

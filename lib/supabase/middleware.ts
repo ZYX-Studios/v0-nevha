@@ -40,44 +40,34 @@ export async function updateSession(request: NextRequest) {
   const url = request.nextUrl
   const path = url.pathname
 
-  // Publicly accessible routes (no login required)
+  // Publicly accessible routes (minimal)
   const isPublic =
     path === "/" ||
-    path.startsWith("/announcements") ||
-    path.startsWith("/report") ||
-    path.startsWith("/status") ||
-    path.startsWith("/api/report") ||
-    path.startsWith("/api/status") ||
+    path.startsWith("/auth") ||
+    path.startsWith("/api/auth/sync") ||
     path.startsWith("/api/admin/create-user") ||
+    path.startsWith("/api/admin/reset-password") ||
+    path.startsWith("/api/admin/bootstrap") ||
     path === "/manifest.json" ||
     path === "/sw.js"
 
-  // Admin/staff-only areas
-  const isAdminRoute = path.startsWith("/admin") || path.startsWith("/dashboard") || path.startsWith("/api/admin")
+  // Admin/staff-only areas (keep simple: only /admin and /api/admin)
+  const isAdminRoute = path.startsWith("/admin") || path.startsWith("/api/admin")
 
-  // Optionally gate /auth behind a secret key if provided
-  if (path.startsWith("/auth")) {
-    const requiredKey = process.env.ADMIN_ACCESS_KEY
-    if (requiredKey) {
-      const key = url.searchParams.get("key")
-      if (key !== requiredKey) {
-        const redirectUrl = url.clone()
-        redirectUrl.pathname = "/"
-        redirectUrl.search = ""
-        return NextResponse.redirect(redirectUrl)
-      }
-    }
-    // Allow /auth when key requirement passes (or not configured)
-    return supabaseResponse
-  }
 
   // Allow all public routes without requiring login (must come before admin gating)
   if (isPublic) {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[mw] public route", { path, isPublic, hasUser: !!user })
+    }
     return supabaseResponse
   }
 
-  // Protect admin-only routes: redirect anonymous users to home
-  if (isAdminRoute && !user) {
+  // For any other non-public route, if not authenticated, send to auth with redirect back
+  if (!user) {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[mw] non-public and no user -> redirect to /auth", { path })
+    }
     const redirectTo = encodeURIComponent(url.pathname + (url.search || ""))
     const dest = new URL(request.url)
     dest.pathname = "/auth"
@@ -85,17 +75,40 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(dest)
   }
 
-  if (
-    // For any other non-public route, if not authenticated, send to auth with redirect back
-    !user
-  ) {
-    const redirectTo = encodeURIComponent(url.pathname + (url.search || ""))
-    const dest = new URL(request.url)
-    dest.pathname = "/auth"
-    dest.search = `?redirect=${redirectTo}`
-    return NextResponse.redirect(dest)
+  // Protect admin-only routes: authenticated but must be ADMIN/STAFF
+  if (isAdminRoute) {
+    // In development, bypass role checks to simplify local auth workflows
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[mw] dev mode: skipping admin role check", { path, hasUser: !!user })
+    } else {
+      try {
+        const { data: me } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle()
+        const role = me?.role as string | undefined
+        const allowed = role === "ADMIN" || role === "STAFF"
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[mw] admin role check", { path, role, allowed })
+        }
+        if (!allowed) {
+          const dest = new URL(request.url)
+          dest.pathname = "/auth"
+          dest.search = ""
+          return NextResponse.redirect(dest)
+        }
+      } catch {
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[mw] admin role check error -> redirect to /auth", { path })
+        }
+        const dest = new URL(request.url)
+        dest.pathname = "/auth"
+        dest.search = ""
+        return NextResponse.redirect(dest)
+      }
+    }
   }
 
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[mw] allow", { path, hasUser: !!user })
+  }
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:
   // 1. Pass the request in it, like so:

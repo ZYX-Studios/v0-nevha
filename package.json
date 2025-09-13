@@ -6,7 +6,18 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "airtable:list-bases": "node scripts/airtable/list-bases.js",
+    "airtable:get-base-schema": "node scripts/airtable/get-base-schema.js",
+    "airtable:export-table": "node scripts/airtable/export-table.js",
+    "airtable:migrate-homeowners": "node scripts/airtable/migrate-homeowners.js",
+    "airtable:migrate-roles": "node scripts/airtable/migrate-roles.js",
+    "airtable:import-all": "node scripts/airtable/import-all-to-staging.js"
+  },
+  "scriptsExt": {
+    "airtable:transform-homeowners": "node scripts/airtable/transform-homeowners.js",
+    "airtable:transform-stickers": "node scripts/airtable/transform-stickers.js",
+    "airtable:transform-members": "node scripts/airtable/transform-members.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -69,6 +80,7 @@
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "dotenv": "^17.2.2",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",

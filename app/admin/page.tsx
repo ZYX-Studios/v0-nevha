@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ProtectedRoute } from "@/components/auth/protected-route"
 import { useAuth } from "@/hooks/use-auth"
 import { mockHomeowners, mockAnnouncements, mockIssues, mockCarStickers } from "@/lib/mock-data"
 import type { Announcement, Issue } from "@/lib/types"
@@ -95,11 +94,11 @@ function AdminDashboardContent() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.push("/")}
                 className="flex items-center space-x-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Back to Dashboard</span>
+                <span>Back Home</span>
               </Button>
               <div className="flex items-center space-x-2">
                 <div className="bg-primary rounded-lg p-2">
@@ -188,10 +187,7 @@ function AdminDashboardContent() {
             <span className="text-sm">Manage Issues</span>
           </Button>
 
-          <Button variant="outline" onClick={() => router.push("/admin/parking")} className="h-16 flex-col space-y-2">
-            <Car className="h-5 w-5" />
-            <span className="text-sm">Parking Management</span>
-          </Button>
+          {/* Parking Management link removed as the route does not exist yet */}
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -285,9 +281,5 @@ function AdminDashboardContent() {
 }
 
 export default function AdminDashboardPage() {
-  return (
-    <ProtectedRoute requiredRole="staff">
-      <AdminDashboardContent />
-    </ProtectedRoute>
-  )
+  return <AdminDashboardContent />
 }
