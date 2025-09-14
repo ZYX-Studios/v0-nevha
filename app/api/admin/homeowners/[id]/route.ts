@@ -15,6 +15,17 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
+    // Compute dynamic residency years if residency_start_date is present
+    let dynYears: number | null = null
+    if (data.residency_start_date) {
+      const start = new Date(data.residency_start_date as string)
+      const now = new Date()
+      let years = now.getFullYear() - start.getFullYear()
+      const hadAnniversary = (now.getMonth() > start.getMonth()) || (now.getMonth() === start.getMonth() && now.getDate() >= start.getDate())
+      if (!hadAnniversary) years -= 1
+      dynYears = Math.max(0, years)
+    }
+
     const item = {
       id: data.id as string,
       userId: data.user_id as string | null,
@@ -29,12 +40,15 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       firstName: data.first_name as string | null,
       lastName: data.last_name as string | null,
       middleInitial: data.middle_initial as string | null,
+      suffix: data.suffix as string | null,
+      fullName: data.full_name as string | null,
+      residencyStartDate: data.residency_start_date as string | null,
       block: data.block as string | null,
       lot: data.lot as string | null,
       phase: data.phase as string | null,
       street: data.street as string | null,
       contactNumber: data.contact_number as string | null,
-      lengthOfResidency: data.length_of_residency as number | null,
+      lengthOfResidency: dynYears ?? (data.length_of_residency as number | null),
       email: data.email as string | null,
       facebookProfile: data.facebook_profile as string | null,
       datePaid: data.date_paid as string | null,

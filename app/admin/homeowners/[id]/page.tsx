@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Homeowner, Member, Sticker } from "@/lib/types"
-import { ArrowLeft, Calendar, Home, Phone, User2, UsersRound, Tag } from "lucide-react"
+import { ArrowLeft, Calendar, Home, Phone, User2, UsersRound, Tag, Mail, MapPin, CircleDollarSign, ExternalLink } from "lucide-react"
 
 export default function HomeownerDetailPage() {
   const router = useRouter()
@@ -78,12 +78,20 @@ export default function HomeownerDetailPage() {
 
   const headerSubtitle = useMemo(() => {
     if (!homeowner) return ""
-    const parts: string[] = []
-    if (homeowner.firstName || homeowner.lastName) {
-      parts.push(`${homeowner.firstName ?? ""} ${homeowner.lastName ?? ""}`.trim())
+    // Compute the display name (first + last + formatted suffix), fallback to fullName
+    const formatSuffix = (s?: string | null) => {
+      if (!s) return ""
+      const lower = s.toLowerCase().replace(/\.$/, "")
+      if (lower === "jr") return "Jr."
+      if (lower === "sr") return "Sr."
+      if (["ii", "iii", "iv", "v"].includes(lower)) return lower.toUpperCase()
+      if (["2nd", "3rd", "4th", "5th"].includes(lower)) return lower
+      return s
     }
-    if (homeowner.contactNumber) parts.push(`${homeowner.contactNumber}`)
-    return parts.join(" • ")
+    const baseName = `${homeowner.firstName ?? ""} ${homeowner.lastName ?? ""}`.trim()
+    const suffix = formatSuffix((homeowner as any).suffix)
+    const nameWithSuffix = [baseName, suffix].filter(Boolean).join(" ").trim() || (homeowner as any).fullName || ""
+    return nameWithSuffix
   }, [homeowner])
 
   const headerAddress = useMemo(() => {
@@ -95,6 +103,54 @@ export default function HomeownerDetailPage() {
     if (homeowner.street) parts.push(`${homeowner.street}`)
     return parts.join(", ") || homeowner.propertyAddress || ""
   }, [homeowner])
+
+  // Helpers
+  const formatDateLocal = (input?: string | null) => {
+    if (!input) return ""
+    // Handle plain YYYY-MM-DD as local date to avoid TZ shift
+    const m = /^\d{4}-\d{2}-\d{2}$/.exec(input)
+    let d: Date
+    if (m) {
+      const [y, mo, da] = input.split("-").map(Number)
+      d = new Date(y, (mo as number) - 1, da as number)
+    } else {
+      d = new Date(input)
+    }
+    if (isNaN(d.getTime())) return input
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+  }
+  const formatCurrency = (amount?: number | null) => {
+    if (typeof amount !== "number") return ""
+    return `₱${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+  const ensureHttp = (url?: string | null) => {
+    if (!url) return ""
+    if (/^https?:\/\//i.test(url)) return url
+    return `https://${url}`
+  }
+  const sanitizeNA = (val?: string | null) => {
+    if (!val) return ""
+    const s = String(val).trim()
+    if (!s) return ""
+    const lower = s.toLowerCase()
+    if (lower === "na" || lower === "n/a" || lower === "n.a." || lower === "-" || lower === "none") return ""
+    return s
+  }
+  const sanitizeNotes = (val?: string | null) => {
+    if (!val) return ""
+    let s = String(val)
+    // Remove segments like "Contact: 09xx..." possibly preceded by separators (|, •, -) or newlines
+    s = s.replace(/(^|\s*[|•\-]\s*)Contact:\s*[+()\-\d\s]+/gi, (m, p1) => (p1 ? "" : ""))
+    // Remove segments like "FB: NA/N.A./N/A/-/none"
+    s = s.replace(/(^|\s*[|•\-]\s*)FB:\s*(NA|N\/A|N\.A\.|-|none)\b/gi, (m, p1) => (p1 ? "" : ""))
+    // Collapse multiple separators and whitespace
+    s = s.replace(/\s*\|\s*/g, " | ")
+    s = s.replace(/\s{2,}/g, " ")
+    s = s.replace(/^(\s*[|•\-]\s*)+/, "").replace(/(\s*[|•\-]\s*)+$/, "")
+    s = s.trim()
+    s = sanitizeNA(s)
+    return s
+  }
 
   const onCreateMember = async () => {
     if (!id) return
@@ -168,22 +224,11 @@ export default function HomeownerDetailPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" onClick={() => router.push(`${basePath}/homeowners`)} className="flex items-center space-x-2">
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back</span>
-              </Button>
-              <div className="flex items-center space-x-2">
-                <div className="bg-primary rounded-lg p-2">
-                  <Home className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold">Homeowner Detail</h1>
-                  <p className="text-sm text-muted-foreground">{headerAddress}</p>
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center">
+            <Button variant="ghost" size="sm" onClick={() => router.push(`${basePath}/homeowners`)} className="flex items-center space-x-2">
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back</span>
+            </Button>
           </div>
         </div>
       </header>
@@ -198,18 +243,75 @@ export default function HomeownerDetailPage() {
         {/* Overview */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>{headerAddress}</span>
-              <Badge variant={homeowner?.isOwner ? "default" : "outline"}>{homeowner?.isOwner ? "Owner" : "Renter"}</Badge>
+            <CardTitle className="flex items-center gap-2">
+              <User2 className="h-5 w-5" />
+              {headerSubtitle || "Homeowner"}
+              {typeof homeowner?.isOwner === "boolean" ? (
+                <Badge variant={homeowner.isOwner ? "default" : "outline"}>{homeowner.isOwner ? "Owner" : "Renter"}</Badge>
+              ) : null}
             </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {headerAddress}
+              {homeowner?.contactNumber ? ` • ${homeowner.contactNumber}` : ""}
+            </p>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-sm text-muted-foreground">{headerSubtitle}</p>
+          <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-              {homeowner?.moveInDate && <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Move-in: {homeowner.moveInDate}</div>}
-              {homeowner?.emergencyContactName && <div className="flex items-center gap-2"><User2 className="h-4 w-4" /> {homeowner.emergencyContactName}</div>}
-              {homeowner?.emergencyContactPhone && <div className="flex items-center gap-2"><Phone className="h-4 w-4" /> {homeowner.emergencyContactPhone}</div>}
+              {(homeowner as any)?.unitNumber && (
+                <div className="flex items-center gap-2"><Home className="h-4 w-4" /> Unit: {(homeowner as any).unitNumber}</div>
+              )}
+              {sanitizeNA((homeowner as any)?.email) && (
+                <div className="flex items-center gap-2"><Mail className="h-4 w-4" /> <a href={`mailto:${sanitizeNA((homeowner as any)?.email)}`} className="hover:underline">{sanitizeNA((homeowner as any)?.email)}</a></div>
+              )}
+              {sanitizeNA((homeowner as any)?.facebookProfile) && (
+                <div className="flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  <a href={ensureHttp(sanitizeNA((homeowner as any)?.facebookProfile))} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">
+                    {sanitizeNA((homeowner as any)?.facebookProfile)}
+                  </a>
+                </div>
+              )}
+              {homeowner?.moveInDate && (
+                <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Move-in: {formatDateLocal(homeowner.moveInDate)}</div>
+              )}
+              {(homeowner as any)?.residencyStartDate && (
+                <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Residency Start: {formatDateLocal((homeowner as any).residencyStartDate)}</div>
+              )}
+              {typeof homeowner?.lengthOfResidency === "number" && (
+                <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Residency: {homeowner.lengthOfResidency} {homeowner.lengthOfResidency === 1 ? "year" : "years"}</div>
+              )}
+              {(homeowner as any)?.datePaid && (
+                <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Date Paid: {formatDateLocal((homeowner as any).datePaid)}</div>
+              )}
+              {typeof (homeowner as any)?.amountPaid === "number" && (
+                <div className="flex items-center gap-2"><CircleDollarSign className="h-4 w-4" /> Amount Paid: {formatCurrency((homeowner as any).amountPaid)}</div>
+              )}
+              {homeowner?.emergencyContactName && (
+                <div className="flex items-center gap-2"><User2 className="h-4 w-4" /> Emergency: {homeowner.emergencyContactName}</div>
+              )}
+              {homeowner?.emergencyContactPhone && (
+                <div className="flex items-center gap-2"><Phone className="h-4 w-4" /> <a href={`tel:${homeowner.emergencyContactPhone}`} className="hover:underline">{homeowner.emergencyContactPhone}</a></div>
+              )}
+              {homeowner?.street && (
+                <div className="flex items-center gap-2"><MapPin className="h-4 w-4" /> Street: {homeowner.street}</div>
+              )}
             </div>
+            {sanitizeNotes((homeowner as any)?.notes) ? (
+              <div className="text-sm">
+                <div className="font-medium mb-1">Notes</div>
+                <p className="text-muted-foreground whitespace-pre-wrap">{sanitizeNotes((homeowner as any)?.notes)}</p>
+              </div>
+            ) : null}
+            {(homeowner as any)?.createdAt || (homeowner as any)?.updatedAt ? (
+              <div className="text-xs text-muted-foreground">
+                {(homeowner as any)?.createdAt ? (
+                  <span>Created: {formatDateLocal((homeowner as any).createdAt)}</span>
+                ) : null}
+                {(homeowner as any)?.updatedAt ? (
+                  <span>{(homeowner as any)?.createdAt ? " • " : ""}Updated: {formatDateLocal((homeowner as any).updatedAt)}</span>
+                ) : null}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 
@@ -243,7 +345,16 @@ export default function HomeownerDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Relation</Label>
-                    <Input value={memberForm.relation} onChange={(e) => setMemberForm(f => ({...f, relation: e.target.value}))} />
+                    <Select value={memberForm.relation} onValueChange={(v) => setMemberForm(f => ({...f, relation: v}))}>
+                      <SelectTrigger><SelectValue placeholder="Select relation" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Child of homeowner/tenant">Child of homeowner/tenant</SelectItem>
+                        <SelectItem value="Spouse of homeowner/tenant">Spouse of homeowner/tenant</SelectItem>
+                        <SelectItem value="Relative of homeowner/tenant">Relative of homeowner/tenant</SelectItem>
+                        <SelectItem value="Parent of homeowner/tenant">Parent of homeowner/tenant</SelectItem>
+                        <SelectItem value="Others">Others</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Button onClick={onCreateMember} disabled={savingMember || !memberForm.fullName.trim()}>
                     {savingMember ? "Saving..." : "Add Member"}

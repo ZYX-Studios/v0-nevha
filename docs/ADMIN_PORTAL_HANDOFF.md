@@ -198,7 +198,7 @@ This section summarizes the concrete changes shipped to the Admin Homeowners lis
   - Homeowner create (dialog in `app/admin/homeowners/page.tsx`)
     - Added `Suffix` input (optional). Accepted values include `Jr.`, `Sr.`, roman numerals (e.g., `III`) or ordinals (e.g., `2nd`).
   - Homeowner detail (`app/admin/homeowners/[id]/page.tsx`)
-    - Header shows a composed address (Block, Lot, Phase, Street) and a subtitle with full name and contact number. Owner/Renter badge retained. Move-in and emergency contacts shown.
+    - Header shows a composed address (Block, Lot, Phase, Street) and a subtitle with full name (with suffix) and contact number. Owner/Renter badge retained. Move-in and emergency contacts shown.
     - Unified Vehicles and Stickers under a single Stickers tab.
     - Stickers list shows: code + status, plate/make/model/color, category, Paid/Released (Date Issued), Amount Paid, Notes.
     - “Add Sticker” form: Sticker No, Plate No, Maker, Model, Amount Paid, Date Issued (with subtle “Set today” link), Category dropdown, Notes. Removed Expiry Date and Sticker Released selector from the UI per latest decision.
