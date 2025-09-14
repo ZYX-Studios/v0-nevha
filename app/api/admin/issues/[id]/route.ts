@@ -60,6 +60,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
           "reporter_full_name",
           "reporter_email",
           "reporter_phone",
+          "reporter_block",
+          "reporter_lot",
+          "reporter_phase",
+          "reporter_street",
         ].join(", ")
       )
       .eq("id", id)
@@ -104,6 +108,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       reporterFullName: r.reporter_full_name as string | null,
       reporterEmail: r.reporter_email as string | null,
       reporterPhone: r.reporter_phone as string | null,
+      reporterBlock: r.reporter_block as string | null,
+      reporterLot: r.reporter_lot as string | null,
+      reporterPhase: r.reporter_phase as string | null,
+      reporterStreet: r.reporter_street as string | null,
       departmentName,
     }
 

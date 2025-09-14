@@ -3,7 +3,7 @@ import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 
 const PostSchema = z.object({
-  status: z.enum(["open", "in_progress", "resolved", "closed"]),
+  status: z.enum(["open", "in_progress", "resolved", "closed"]).optional(),
   notes: z.string().optional().nullable(),
   author_label: z.string().optional().nullable(),
 })
@@ -76,7 +76,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const supabase = createAdminClient()
 
-    const dbStatus = uiToDbStatus(parsed.data.status)
+    const uiStatus = (parsed.data.status as any) || "in_progress"
+    const dbStatus = uiToDbStatus(uiStatus)
     // 1) Update current issue status
     const { error: updateErr } = await supabase.from("issues").update({ status: dbStatus }).eq("id", issueId)
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 400 })

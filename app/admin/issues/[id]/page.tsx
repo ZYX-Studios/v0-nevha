@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Calendar, CheckCircle, Clock, AlertCircle, Tag, Mail, RefreshCw } from "lucide-react"
+import { ArrowLeft, Calendar, CheckCircle, Clock, AlertCircle, Tag, Mail, RefreshCw, MapPin } from "lucide-react"
 import { toast } from "sonner"
 
 interface IssueDetailItem {
@@ -27,6 +27,10 @@ interface IssueDetailItem {
   reporterEmail: string | null
   reporterPhone: string | null
   departmentName: string | null
+  reporterBlock: string | null
+  reporterLot: string | null
+  reporterPhase: string | null
+  reporterStreet: string | null
 }
 
 interface StatusUpdateItem {
@@ -111,12 +115,53 @@ export default function IssueDetailPage({ params }: { params: { id: string } }) 
   }
 
   const createdStr = useMemo(() => (item?.createdAt ? new Date(item.createdAt).toLocaleString() : ""), [item])
+  const currentStatus = useMemo<"open" | "in_progress" | "resolved" | "closed">(
+    () => (updates.length > 0 ? updates[0].status : (item?.status || "open")),
+    [updates, item],
+  )
+  const address = useMemo(() => {
+    if (!item) return ""
+    const parts: string[] = []
+    if (item.reporterPhase) parts.push(`Phase ${item.reporterPhase}`)
+    if (item.reporterBlock) parts.push(`Block ${item.reporterBlock}`)
+    if (item.reporterLot) parts.push(`Lot ${item.reporterLot}`)
+    if (item.reporterStreet) parts.push(`Street ${item.reporterStreet}`)
+    if (item.location) parts.push(item.location)
+    return parts.join(" • ")
+  }, [item])
 
-  async function updateStatus(newStatus: "open" | "in_progress" | "resolved" | "closed") {
+  async function addUpdate() {
     if (!item) return
     setSaving(true)
     try {
-      const payload: any = { status: newStatus }
+      const payload: any = {}
+      if (notes.trim()) payload.notes = notes.trim()
+      const res = await fetch(`/api/admin/issues/${item.id}/updates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to add update")
+      toast.success("Update added (set to In Progress)")
+      // Optimistically update pill
+      setItem((prev) => (prev ? { ...prev, status: "in_progress" } : prev))
+      setUpdates((prev) => [{ id: "optimistic", status: "in_progress", notes: notes.trim() || null, authorLabel: "You", createdAt: new Date().toISOString() }, ...prev])
+      setNotes("")
+      await load()
+    } catch (e) {
+      toast.error((e as any)?.message || "Failed to add update")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleResolve() {
+    if (!item) return
+    setSaving(true)
+    try {
+      const targetStatus: "in_progress" | "resolved" = currentStatus === "resolved" ? "in_progress" : "resolved"
+      const payload: any = { status: targetStatus }
       if (notes.trim()) payload.notes = notes.trim()
       const res = await fetch(`/api/admin/issues/${item.id}/updates`, {
         method: "POST",
@@ -125,7 +170,10 @@ export default function IssueDetailPage({ params }: { params: { id: string } }) 
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json?.error || "Failed to update status")
-      toast.success("Status updated")
+      toast.success(targetStatus === "resolved" ? "Marked as resolved" : "Reopened (In Progress)")
+      // Optimistically sync by inserting a synthetic first update so the pill reflects immediately
+      setUpdates((prev) => [{ id: "optimistic", status: targetStatus, notes: notes.trim() || null, authorLabel: "You", createdAt: new Date().toISOString() }, ...prev])
+      setNotes("")
       await load()
     } catch (e) {
       toast.error((e as any)?.message || "Failed to update status")
@@ -167,9 +215,9 @@ export default function IssueDetailPage({ params }: { params: { id: string } }) 
                     <div className="space-y-2">
                       <CardTitle className="text-xl">{item.title}</CardTitle>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant={statusVariant(item.status)} className="flex items-center gap-1 capitalize">
-                          {statusIcon(item.status)}
-                          <span>{item.status.replace("_", " ")}</span>
+                        <Badge variant={statusVariant(currentStatus)} className="flex items-center gap-1 capitalize">
+                          {statusIcon(currentStatus)}
+                          <span>{currentStatus.replace("_", " ")}</span>
                         </Badge>
                         <Badge variant="outline" className="capitalize">{item.priority}</Badge>
                         <Badge variant="outline" className="capitalize" title="Category">
@@ -192,6 +240,13 @@ export default function IssueDetailPage({ params }: { params: { id: string } }) 
                       <p className="text-sm text-muted-foreground mb-1">Description</p>
                       <p className="whitespace-pre-wrap text-foreground">{item.description}</p>
                     </div>
+                    {address && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <MapPin className="h-4 w-4" />
+                        <span className="text-muted-foreground">Address:</span>
+                        <span className="text-foreground">{address}</span>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       {item.reporterFullName && (
                         <div className="flex items-center gap-2">
@@ -222,9 +277,8 @@ export default function IssueDetailPage({ params }: { params: { id: string } }) 
                     rows={4}
                   />
                   <div className="flex gap-2 mt-3">
-                    <Button variant="outline" disabled={saving} onClick={() => updateStatus("in_progress")}>Mark In Progress</Button>
-                    <Button disabled={saving} onClick={() => updateStatus("resolved")}>Mark Resolved</Button>
-                    <Button variant="secondary" disabled={saving} onClick={() => updateStatus("closed")}>Close</Button>
+                    <Button variant="secondary" disabled={saving} onClick={addUpdate}>Add Update (In Progress)</Button>
+                    <Button disabled={saving} onClick={toggleResolve}>{currentStatus === "resolved" ? "Reopen" : "Mark Resolved"}</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -245,15 +299,22 @@ export default function IssueDetailPage({ params }: { params: { id: string } }) 
                   {updates.length === 0 ? (
                     <div className="text-sm text-muted-foreground">No status updates yet.</div>
                   ) : (
-                    <ul className="space-y-3 text-sm">
+                    <ul className="rounded-md border divide-y divide-border overflow-hidden">
                       {updates.map((u) => {
                         const d = new Date(u.createdAt)
                         const dateStr = d.toLocaleString()
+                        const statusLabel = u.status.replace("_", " ")
                         return (
-                          <li key={u.id} className="flex flex-col">
-                            <span className="text-muted-foreground">{dateStr}</span>
-                            <span>Set to <span className="uppercase">{u.status}</span>{u.authorLabel ? ` by ${u.authorLabel}` : ""}</span>
-                            {u.notes && <span className="text-muted-foreground">Notes: {u.notes}</span>}
+                          <li key={u.id} className="p-3">
+                            {u.notes && (
+                              <div className="text-foreground text-sm md:text-base whitespace-pre-wrap">
+                                {u.notes}
+                              </div>
+                            )}
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {dateStr} — set to <span className="capitalize">{statusLabel}</span>
+                              {u.authorLabel ? ` by ${u.authorLabel}` : ""}
+                            </div>
                           </li>
                         )
                       })}

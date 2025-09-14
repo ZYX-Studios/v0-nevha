@@ -53,6 +53,50 @@ function IssuesManagementContent() {
     }
   }, [])
 
+  // Add update without specifying status -> API defaults to in_progress
+  const handleAddUpdate = async (issueId: string) => {
+    try {
+      const payload: any = {}
+      if (resolutionNotes.trim()) payload.notes = resolutionNotes.trim()
+      const res = await fetch(`/api/admin/issues/${issueId}/updates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to add update")
+      toast.success("Update added (set to In Progress)")
+      setIssues((prev) => prev.map((it) => (it.id === issueId ? { ...it, status: "in_progress" as any } : it)))
+      setSelectedIssue(null)
+      setResolutionNotes("")
+    } catch (e) {
+      const msg = (e as any)?.message || e
+      toast.error(String(msg))
+    }
+  }
+
+  // Toggle between resolved and in_progress
+  const handleToggleResolve = async (issue: Issue) => {
+    try {
+      const targetStatus = issue.status === "resolved" ? "in_progress" : "resolved"
+      const payload: any = { status: targetStatus }
+      if (resolutionNotes.trim()) payload.notes = resolutionNotes.trim()
+      const res = await fetch(`/api/admin/issues/${issue.id}/updates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to update status")
+      toast.success(targetStatus === "resolved" ? "Marked as resolved" : "Reopened (In Progress)")
+      setIssues((prev) => prev.map((it) => (it.id === issue.id ? { ...it, status: targetStatus as any } : it)))
+      setSelectedIssue(null)
+      setResolutionNotes("")
+    } catch (e) {
+      toast.error((e as any)?.message || "Failed to update")
+    }
+  }
+
   useEffect(() => {
     // Apply filters
     let filtered = issues
@@ -316,29 +360,7 @@ function IssuesManagementContent() {
                               <h4 className="font-medium mb-2">{selectedIssue?.title}</h4>
                               <p className="text-sm text-muted-foreground">{selectedIssue?.description}</p>
                             </div>
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium">New Status</label>
-                              <Select
-                                defaultValue={selectedIssue?.status}
-                                onValueChange={(value) => {
-                                  if (value === "resolved") {
-                                    // Show resolution notes field
-                                  } else {
-                                    handleStatusChange(issue.id, value)
-                                  }
-                                }}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="open">Open</SelectItem>
-                                  <SelectItem value="in_progress">In Progress</SelectItem>
-                                  <SelectItem value="resolved">Resolved</SelectItem>
-                                  <SelectItem value="closed">Closed</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                            {/* No status picker: Add Update => In Progress; or Toggle Resolved/Reopen */}
                             {/* Notes entry (optional) */}
                             <div className="space-y-2">
                               <label className="text-sm font-medium">Notes (Optional)</label>
@@ -353,11 +375,11 @@ function IssuesManagementContent() {
                               <Button variant="outline" onClick={() => setSelectedIssue(null)} className="flex-1">
                                 Cancel
                               </Button>
-                              <Button
-                                onClick={() => handleStatusChange(issue.id, "resolved")}
-                                className="flex-1"
-                              >
-                                Update Status
+                              <Button onClick={() => handleAddUpdate(issue.id)} className="flex-1" variant="secondary">
+                                Add Update (In Progress)
+                              </Button>
+                              <Button onClick={() => handleToggleResolve(issue)} className="flex-1">
+                                {issue.status === "resolved" ? "Reopen" : "Mark Resolved"}
                               </Button>
                             </div>
                           </div>
