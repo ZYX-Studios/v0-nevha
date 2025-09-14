@@ -6,6 +6,7 @@ import { AuthProvider } from "@/hooks/use-auth"
 import { DevTools } from "@/components/dev/dev-tools"
 import { PWAWrapper } from "@/components/pwa/pwa-wrapper"
 import { Suspense } from "react"
+import { Toaster } from "sonner"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -95,6 +96,8 @@ export default function RootLayout({
             <PWAWrapper>
               {children}
               {process.env.NODE_ENV !== "production" && <DevTools />}
+              {/* Global toaster for notifications */}
+              <Toaster richColors position="top-right" />
             </PWAWrapper>
           </AuthProvider>
         </Suspense>

@@ -18,9 +18,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { mockIssues, mockUsers } from "@/lib/mock-data"
 import type { Issue } from "@/lib/types"
 import { ArrowLeft, Search, Edit, CheckCircle, Clock, AlertCircle, Calendar, MapPin, User } from "lucide-react"
+import { toast } from "sonner"
 
 function IssuesManagementContent() {
   const router = useRouter()
@@ -32,11 +32,25 @@ function IssuesManagementContent() {
   const [priorityFilter, setPriorityFilter] = useState("all")
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
   const [resolutionNotes, setResolutionNotes] = useState("")
+  // Resolution notes are handled within status updates; detailed view available per-issue
 
   useEffect(() => {
-    // Sort issues by creation date (newest first)
-    const sorted = [...mockIssues].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    setIssues(sorted)
+    let cancelled = false
+    async function load() {
+      try {
+        const res = await fetch("/api/admin/issues", { cache: "no-store" })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error || "Failed to load issues")
+        const items = Array.isArray(json.items) ? (json.items as Issue[]) : []
+        if (!cancelled) setIssues(items)
+      } catch {
+        if (!cancelled) setIssues([])
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -66,22 +80,51 @@ function IssuesManagementContent() {
     setFilteredIssues(filtered)
   }, [issues, searchTerm, statusFilter, priorityFilter])
 
-  const handleStatusChange = (issueId: string, newStatus: string) => {
-    setIssues((prev) =>
-      prev.map((issue) =>
-        issue.id === issueId
-          ? {
-              ...issue,
-              status: newStatus as any,
-              resolvedAt: newStatus === "resolved" ? new Date().toISOString() : undefined,
-              resolutionNotes: newStatus === "resolved" ? resolutionNotes : issue.resolutionNotes,
-            }
-          : issue,
-      ),
-    )
-    setSelectedIssue(null)
-    setResolutionNotes("")
+  const handleStatusChange = async (issueId: string, newStatus: string) => {
+    try {
+      const body: any = { status: newStatus }
+      if (resolutionNotes.trim()) {
+        body.notes = resolutionNotes.trim()
+      }
+
+      if (!issueId) {
+        console.warn("[Issues] Missing issueId for status update", { newStatus, body })
+        return
+      }
+
+      console.log("[Issues] PATCH status", { issueId, newStatus, body })
+      const res = await fetch(`/api/admin/issues/${issueId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to update status")
+      console.log("[Issues] Status updated", { issueId, newStatus })
+      toast.success("Status updated")
+
+      setIssues((prev) =>
+        prev.map((issue) =>
+          issue.id === issueId
+            ? {
+                ...issue,
+                status: newStatus as any,
+                resolvedAt: newStatus === "resolved" ? new Date().toISOString() : issue.resolvedAt,
+                resolutionNotes: newStatus === "resolved" ? (body.notes || issue.resolutionNotes) : issue.resolutionNotes,
+              }
+            : issue,
+        ),
+      )
+      setSelectedIssue(null)
+      setResolutionNotes("")
+    } catch (e) {
+      const msg = (e as any)?.message || e
+      console.warn("Update status failed:", msg)
+      toast.error(`Failed to update status: ${String(msg)}`)
+    }
   }
+
+  // No updates timeline on list page; use details page for in-depth view
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -126,10 +169,8 @@ function IssuesManagementContent() {
     })
   }
 
-  const getReporterName = (reporterId?: string) => {
-    if (!reporterId) return "Unknown"
-    const reporter = mockUsers.find((user) => user.id === reporterId)
-    return reporter ? `${reporter.firstName} ${reporter.lastName}` : "Unknown"
+  const getReporterName = (_reporterId?: string) => {
+    return "Anonymous"
   }
 
   return (
@@ -254,7 +295,11 @@ function IssuesManagementContent() {
                     <div className="flex items-center space-x-2">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setSelectedIssue(issue)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedIssue(issue)}
+                          >
                             <Edit className="h-4 w-4 mr-2" />
                             Update Status
                           </Button>
@@ -279,7 +324,7 @@ function IssuesManagementContent() {
                                   if (value === "resolved") {
                                     // Show resolution notes field
                                   } else {
-                                    handleStatusChange(selectedIssue?.id || "", value)
+                                    handleStatusChange(issue.id, value)
                                   }
                                 }}
                               >
@@ -294,10 +339,11 @@ function IssuesManagementContent() {
                                 </SelectContent>
                               </Select>
                             </div>
+                            {/* Notes entry (optional) */}
                             <div className="space-y-2">
-                              <label className="text-sm font-medium">Resolution Notes (Optional)</label>
+                              <label className="text-sm font-medium">Notes (Optional)</label>
                               <Textarea
-                                placeholder="Add notes about how this issue was resolved..."
+                                placeholder="Add notes about this status update..."
                                 value={resolutionNotes}
                                 onChange={(e) => setResolutionNotes(e.target.value)}
                                 rows={3}
@@ -308,7 +354,7 @@ function IssuesManagementContent() {
                                 Cancel
                               </Button>
                               <Button
-                                onClick={() => handleStatusChange(selectedIssue?.id || "", "resolved")}
+                                onClick={() => handleStatusChange(issue.id, "resolved")}
                                 className="flex-1"
                               >
                                 Update Status
@@ -317,20 +363,18 @@ function IssuesManagementContent() {
                           </div>
                         </DialogContent>
                       </Dialog>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => router.push(`/admin/issues/${issue.id}`)}
+                      >
+                        View Details
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <p className="text-foreground mb-4">{issue.description}</p>
-                  {issue.resolutionNotes && (
-                    <div className="mt-4 p-3 bg-muted rounded-lg">
-                      <h5 className="font-medium text-sm mb-1">Resolution Notes:</h5>
-                      <p className="text-sm text-muted-foreground">{issue.resolutionNotes}</p>
-                      {issue.resolvedAt && (
-                        <p className="text-xs text-muted-foreground mt-2">Resolved on {formatDate(issue.resolvedAt)}</p>
-                      )}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             ))

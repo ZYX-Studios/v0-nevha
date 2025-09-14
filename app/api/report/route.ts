@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { sendEmail } from "@/lib/resend"
 
 function generateRefCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -37,8 +38,17 @@ export async function POST(req: Request) {
 
     const title = rawTitle || (category ? `${category} Concern` : "Community Concern")
 
-    const allowedPriorities = ["P1", "P2", "P3", "P4", "low", "normal", "high", "urgent"]
-    const finalPriority = allowedPriorities.includes(priority) ? priority : "P3"
+    const priorityMap: Record<string, "P1"|"P2"|"P3"|"P4"> = {
+      p1: "P1",
+      p2: "P2",
+      p3: "P3",
+      p4: "P4",
+      urgent: "P1",
+      high: "P2",
+      normal: "P3",
+      low: "P4",
+    }
+    const finalPriority = priorityMap[String(priority).toLowerCase()] || "P3"
 
     // Attempt insert with a unique ref_code; retry a few times if collision occurs
     let ref_code = generateRefCode()
@@ -69,6 +79,41 @@ export async function POST(req: Request) {
       })
 
       if (!error) {
+        // Attempt to email the mapped department (category -> departments.name)
+        try {
+          const { data: depts } = await supabase
+            .from("departments")
+            .select("id,name,email,is_active")
+            .eq("is_active", true)
+          const dept = (depts || []).find((d: any) => String(d.name || "").toLowerCase() === category.toLowerCase())
+          if (dept?.email) {
+            const html = `
+              <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.5;">
+                <h2 style="margin:0 0 8px;">New Issue Reported</h2>
+                <p style="margin:0 0 12px;">Reference Code: <strong>${ref_code}</strong></p>
+                <p style="margin:0 0 6px;"><strong>Title:</strong> ${title}</p>
+                <p style="margin:0 0 6px;"><strong>Category:</strong> ${category}</p>
+                <p style="margin:0 0 6px;"><strong>Priority:</strong> ${finalPriority}</p>
+                <p style="margin:12px 0 6px;"><strong>Description</strong></p>
+                <div style="white-space:pre-wrap;">${description.replace(/</g, "&lt;")}</div>
+                <hr style="margin:16px 0;border:none;border-top:1px solid #eee;" />
+                <p style="margin:0 0 4px;"><strong>Reporter:</strong> ${reporter_full_name || "N/A"}</p>
+                <p style="margin:0 0 4px;"><strong>Phone:</strong> ${reporter_phone || "N/A"}</p>
+                <p style="margin:0 0 4px;"><strong>Email:</strong> ${reporter_email || "N/A"}</p>
+                <p style="margin:12px 0 0;">Open in Admin: <a href="${process.env.NEXT_PUBLIC_SITE_URL || ""}/admin/issues" target="_blank" rel="noopener noreferrer">Issues</a></p>
+              </div>
+            `
+            await sendEmail({
+              to: dept.email,
+              subject: `New Issue Reported: ${title} (${ref_code})`,
+              html,
+            })
+          }
+        } catch (e) {
+          // Non-fatal: logging only
+          console.warn("Failed to send department email:", (e as any)?.message || e)
+        }
+
         return NextResponse.json({ ref_code }, { status: 201 })
       }
 

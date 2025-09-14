@@ -182,6 +182,15 @@ function AdminDashboardContent() {
             <span className="text-sm">Manage Homeowners</span>
           </Button>
 
+          <Button
+            variant="outline"
+            onClick={() => router.push("/admin/departments")}
+            className="h-16 flex-col space-y-2"
+          >
+            <Home className="h-5 w-5" />
+            <span className="text-sm">Manage Departments</span>
+          </Button>
+
           <Button variant="outline" onClick={() => router.push("/admin/issues")} className="h-16 flex-col space-y-2">
             <AlertCircle className="h-5 w-5" />
             <span className="text-sm">Manage Issues</span>

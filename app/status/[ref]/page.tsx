@@ -8,7 +8,7 @@ export default async function StatusPage({ params }: { params: { ref: string } }
   const supabase = await createClient()
   const ref = decodeURIComponent(params.ref)
 
-  const { data, error } = await supabase.rpc("get_issue_public", { p_ref: ref })
+  const { data, error } = await supabase.rpc("get_issue_status", { ref })
 
   if (error) {
     return (
