@@ -29,11 +29,14 @@ export interface Homeowner {
   firstName?: string | null
   lastName?: string | null
   middleInitial?: string | null
+  suffix?: string | null
+  fullName?: string | null
   block?: string | null
   lot?: string | null
   phase?: string | null
   street?: string | null
   contactNumber?: string | null
+  residencyStartDate?: string | null
   lengthOfResidency?: number | null
   email?: string | null
   facebookProfile?: string | null
@@ -149,6 +152,7 @@ export interface Vehicle {
   make?: string
   model?: string
   color?: string
+  category?: string
   createdAt: string
 }
 
@@ -161,6 +165,13 @@ export interface Sticker {
   issuedAt: string
   expiresAt?: string | null
   notes?: string | null
+  amountPaid?: number | null
   createdAt: string
   updatedAt: string
+  // Optional joined vehicle fields for display
+  vehiclePlateNo?: string
+  vehicleMake?: string
+  vehicleModel?: string
+  vehicleColor?: string
+  vehicleCategory?: string
 }

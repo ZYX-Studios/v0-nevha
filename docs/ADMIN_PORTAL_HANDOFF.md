@@ -2,7 +2,7 @@
 
 Status: In Progress
 Owner: Engineering
-Last Updated: 2025-09-12
+Last Updated: 2025-09-14
 
 ## 1) Decisions and Scope
 
@@ -182,6 +182,94 @@ Note: We will implement an RPC `get_issue_status(ref text)` with `SECURITY DEFIN
 - Dashboard metrics and SLA widgets for `/admin` landing.
 - Accessibility and e2e tests for admin flows.
 
----
+## 13) Handoff – 2025-09-14 Admin Homeowners & Stickers Refinements
+
+This section summarizes the concrete changes shipped to the Admin Homeowners list and detail experience, associated API routes, and schema updates.
+
+### A. Summary of Changes
+
+- UI
+  - Homeowners list (`app/admin/homeowners/page.tsx`)
+    - Removed columns: Contact Name, Contact Phone.
+    - Added column: Contact Number (uses `homeowners.contact_number`).
+    - Name now formats suffix when available (e.g., `Jr.`, `Sr.`, `III`).
+    - CSV export columns now: Name, Address, Ownership, Move-in, Contact Number, Email.
+    - Search placeholder simplified to exclude removed fields.
+  - Homeowner create (dialog in `app/admin/homeowners/page.tsx`)
+    - Added `Suffix` input (optional). Accepted values include `Jr.`, `Sr.`, roman numerals (e.g., `III`) or ordinals (e.g., `2nd`).
+  - Homeowner detail (`app/admin/homeowners/[id]/page.tsx`)
+    - Header shows a composed address (Block, Lot, Phase, Street) and a subtitle with full name and contact number. Owner/Renter badge retained. Move-in and emergency contacts shown.
+    - Unified Vehicles and Stickers under a single Stickers tab.
+    - Stickers list shows: code + status, plate/make/model/color, category, Paid/Released (Date Issued), Amount Paid, Notes.
+    - “Add Sticker” form: Sticker No, Plate No, Maker, Model, Amount Paid, Date Issued (with subtle “Set today” link), Category dropdown, Notes. Removed Expiry Date and Sticker Released selector from the UI per latest decision.
+
+- API
+  - Homeowners list/search (`app/api/admin/homeowners/route.ts`)
+    - Server filters for unit/paid/amount removed (aligned with UI). Address is composed on server when full address is not provided.
+  - Homeowner detail (`app/api/admin/homeowners/[id]/route.ts`)
+    - Returns enriched fields (block/lot/phase/street/contact_number, etc.).
+  - Members (`app/api/admin/homeowners/[id]/members/route.ts`) and Vehicles (`app/api/admin/homeowners/[id]/vehicles/route.ts`)
+    - Unchanged semantics; vehicles are still available but now consumed via stickers join for display.
+  - Stickers (`app/api/admin/homeowners/[id]/stickers/route.ts`)
+    - GET: Uses `issued_at` ordering; joins `vehicles` to return plate/make/model/color/category. If PRD `stickers` is missing or incompatible, falls back to legacy `car_stickers` (ordered by `issue_date`). Avoids referencing `created_at` to prevent schema mismatch errors.
+    - POST: Accepts `code`, `vehiclePlateNo`, `vehicleMake`, `vehicleModel`, `vehicleCategory`, `issuedAt`, `amountPaid`, `notes`. Upserts vehicle by plate and sticker by code. Defaults status to ACTIVE server-side. Falls back to `car_stickers` if PRD stickers table is absent.
+  - Homeowners create (`POST /api/admin/homeowners`)
+    - Accepts `suffix` and composes `full_name` server-side from `firstName`, `lastName`, and `suffix`.
+    - Sanitizes NA-like street values before persisting.
+    - Computes and stores `residency_start_date` from `moveInDate` or derived from `lengthOfResidency`.
+
+- Schema (applied via Supabase migration)
+  - Added `stickers.amount_paid numeric(12,2)`.
+  - Added `vehicles.category varchar(30)`.
+  - Legacy table `car_stickers` remains for compatibility; stickers API auto-falls back when needed.
+
+- Types (`lib/types.ts`)
+  - `Sticker`: added `amountPaid`, and optional display joins `vehiclePlateNo`, `vehicleMake`, `vehicleModel`, `vehicleColor`, `vehicleCategory`.
+  - `Vehicle`: added optional `category`.
+
+### B. Design Decisions
+
+- Address composition happens on the server from Phase/Block/Lot/Street for consistency.
+- Homeowners list focuses on the most relevant contact field: Contact Number.
+- Vehicles are displayed within Stickers; we track stickers with vehicle metadata. No separate vehicles tab in the UI.
+- Date Issued is treated as Date Paid. Expiry and UI-released toggle removed for simplicity.
+- Stickers API is resilient across environments by falling back to `car_stickers`.
+
+### C. How to Test
+
+1) Homeowners list
+   - Navigate to `/admin/homeowners`
+   - Verify columns: Name, Address, Ownership, Move-in, Contact Number, Actions.
+   - Use search/filters; export CSV and confirm column set.
+
+2) Create homeowner
+   - Click New Homeowner; form requires either Street OR both Block and Lot.
+   - Submit; server composes `property_address` when needed.
+   - If you enter a Suffix (e.g., `Jr.`), verify the list shows the suffix in the Name and that CSV export includes it.
+
+3) Homeowner detail
+   - Open `/admin/homeowners/:id`.
+   - Overview shows composed address and contact line.
+   - Members tab CRUD works.
+   - Stickers tab shows list and “Add Sticker”. Try adding a sticker using Plate/Maker/Model/Category/Amount/Date Issued/Notes.
+   - Confirm list shows vehicle details, Paid/Released, Amount Paid.
+
+4) Stickers API fallback
+   - If PRD `stickers` exists, data writes/reads there.
+   - If not, API uses `car_stickers` without breaking the UI (fields limited by legacy schema).
+
+### D. Known Limitations / Notes
+
+- Legacy `car_stickers` does not store `amount_paid` or `notes`; these will only persist when PRD `stickers` is present.
+- Status badge is still shown in the stickers list for visibility, but there is no “released” toggle in the form. We can remove the badge if desired.
+- Created-at ordering is intentionally not used for stickers to avoid environment schema differences.
+
+### E. Follow-ups (Optional)
+
+- Remove the status badge in stickers list if we want a more minimal view.
+- Add auto-default for Date Issued to today when opening the form (we currently provide a subtle “Set today”).
+- Global Stickers list page and batch print are still planned features per Section 6.
+- When PRD `stickers` is fully adopted, consider removing the legacy fallback and cleaning up code paths.
+
 
 This document is the single source of truth for the Admin Portal work. Update it as phases complete and as decisions evolve.

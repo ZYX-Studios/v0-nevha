@@ -2,7 +2,7 @@
 
 Status: Ready for UI wiring
 Owner: Engineering
-Last Updated: 2025-09-13
+Last Updated: 2025-09-14
 
 ## Overview
 
@@ -51,12 +51,15 @@ Contents:
     - `first_name varchar(100)`
     - `last_name varchar(100)`
     - `middle_initial varchar(10)` (stored as single character when present)
+    - `suffix varchar(20)` (e.g., Jr, Sr, II, III)
+    - `full_name varchar(200)` (raw or reconstructed full name)
     - `block varchar(50)`
     - `lot varchar(50)`
     - `phase varchar(50)`
     - `street varchar(100)`
     - `contact_number varchar(30)`
     - `length_of_residency integer`
+    - `residency_start_date date` (derived; used for dynamic residency length)
     - `email varchar(255)`
     - `facebook_profile varchar(255)`
     - `date_paid date`
@@ -241,6 +244,7 @@ Contents:
 - `users(role)` constrained to `PUBLIC|STAFF|ADMIN`.
 - `stickers(status)` constrained to `ACTIVE|EXPIRED|REVOKED`.
 - PRD `issues(status, priority)` constraints in place.
+- `homeowners(residency_start_date)` indexed for filtering by dynamic residency length.
 
 ---
 
@@ -286,6 +290,7 @@ Notes
 - `airtable_record_map` preserves links between Airtable records and normalized rows; transforms can be safely re-run.
 - Legacy `car_stickers` remains in the repo sample schema but is superseded by `vehicles` + `stickers`.
 - We can add reporting queries and exception reports (unmatched stickers/members) to assist data cleanup.
+- Cleanup applied: normalized NA-like street values (`NA`, `N/A`, `N.A.`, `-`, `none`) to NULL and recomposed `property_address` accordingly.
 
 ---
 

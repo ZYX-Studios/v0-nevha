@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { Homeowner, Member, Vehicle, Sticker } from "@/lib/types"
-import { ArrowLeft, Calendar, Home, Phone, User2, UsersRound, Car, Tag } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { Homeowner, Member, Sticker } from "@/lib/types"
+import { ArrowLeft, Calendar, Home, Phone, User2, UsersRound, Tag } from "lucide-react"
 
 export default function HomeownerDetailPage() {
   const router = useRouter()
@@ -22,16 +23,22 @@ export default function HomeownerDetailPage() {
   const [homeowner, setHomeowner] = useState<Homeowner | null>(null)
 
   const [members, setMembers] = useState<Member[]>([])
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [stickers, setStickers] = useState<Sticker[]>([])
 
   // Create form states
   const [memberForm, setMemberForm] = useState({ fullName: "", relation: "" })
-  const [vehicleForm, setVehicleForm] = useState({ plateNo: "", make: "", model: "", color: "" })
-  const [stickerForm, setStickerForm] = useState({ code: "", vehiclePlateNo: "", issuedAt: "", expiresAt: "", notes: "" })
+  const [stickerForm, setStickerForm] = useState({
+    code: "",
+    vehiclePlateNo: "",
+    make: "",
+    model: "",
+    category: "",
+    amountPaid: "",
+    issuedAt: "",
+    notes: "",
+  })
 
   const [savingMember, setSavingMember] = useState(false)
-  const [savingVehicle, setSavingVehicle] = useState(false)
   const [savingSticker, setSavingSticker] = useState(false)
 
   const refreshAll = async () => {
@@ -39,28 +46,23 @@ export default function HomeownerDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      const [dRes, mRes, vRes, sRes] = await Promise.all([
+      const [dRes, mRes, sRes] = await Promise.all([
         fetch(`/api/admin/homeowners/${id}`, { cache: "no-store" }),
         fetch(`/api/admin/homeowners/${id}/members`, { cache: "no-store" }),
-        fetch(`/api/admin/homeowners/${id}/vehicles`, { cache: "no-store" }),
         fetch(`/api/admin/homeowners/${id}/stickers`, { cache: "no-store" }),
       ])
       const dTxt = await dRes.text()
       const mTxt = await mRes.text()
-      const vTxt = await vRes.text()
       const sTxt = await sRes.text()
-      let dJson: any, mJson: any, vJson: any, sJson: any
+      let dJson: any, mJson: any, sJson: any
       try { dJson = dTxt ? JSON.parse(dTxt) : null } catch { throw new Error("Access denied. Please sign in as an admin and try again.") }
       try { mJson = mTxt ? JSON.parse(mTxt) : null } catch { throw new Error("Access denied. Please sign in as an admin and try again.") }
-      try { vJson = vTxt ? JSON.parse(vTxt) : null } catch { throw new Error("Access denied. Please sign in as an admin and try again.") }
       try { sJson = sTxt ? JSON.parse(sTxt) : null } catch { throw new Error("Access denied. Please sign in as an admin and try again.") }
       if (!dRes.ok) throw new Error(dJson?.error || "Failed to load homeowner")
       if (!mRes.ok) throw new Error(mJson?.error || "Failed to load members")
-      if (!vRes.ok) throw new Error(vJson?.error || "Failed to load vehicles")
       if (!sRes.ok) throw new Error(sJson?.error || "Failed to load stickers")
       setHomeowner(dJson.item)
       setMembers(mJson.items || [])
-      setVehicles(vJson.items || [])
       setStickers(sJson.items || [])
     } catch (e: any) {
       setError(e?.message || "Failed to load data")
@@ -80,10 +82,18 @@ export default function HomeownerDetailPage() {
     if (homeowner.firstName || homeowner.lastName) {
       parts.push(`${homeowner.firstName ?? ""} ${homeowner.lastName ?? ""}`.trim())
     }
-    const blps = [homeowner.block, homeowner.lot, homeowner.phase, homeowner.street].filter(Boolean).join(" • ")
-    if (blps) parts.push(blps)
-    if (homeowner.contactNumber) parts.push(`📞 ${homeowner.contactNumber}`)
+    if (homeowner.contactNumber) parts.push(`${homeowner.contactNumber}`)
     return parts.join(" • ")
+  }, [homeowner])
+
+  const headerAddress = useMemo(() => {
+    if (!homeowner) return ""
+    const parts: string[] = []
+    if (homeowner.block) parts.push(`Block ${homeowner.block}`)
+    if (homeowner.lot) parts.push(`Lot ${homeowner.lot}`)
+    if (homeowner.phase) parts.push(`Phase ${homeowner.phase}`)
+    if (homeowner.street) parts.push(`${homeowner.street}`)
+    return parts.join(", ") || homeowner.propertyAddress || ""
   }, [homeowner])
 
   const onCreateMember = async () => {
@@ -112,33 +122,13 @@ export default function HomeownerDetailPage() {
     }
   }
 
-  const onUpsertVehicle = async () => {
-    if (!id) return
-    setSavingVehicle(true)
-    setError(null)
-    try {
-      const payload = {
-        plateNo: vehicleForm.plateNo.trim(),
-        make: vehicleForm.make.trim() || null,
-        model: vehicleForm.model.trim() || null,
-        color: vehicleForm.color.trim() || null,
-      }
-      const res = await fetch(`/api/admin/homeowners/${id}/vehicles`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      const txt = await res.text()
-      let json: any = null
-      try { json = txt ? JSON.parse(txt) : null } catch { throw new Error("Access denied. Please sign in as an admin.") }
-      if (!res.ok) throw new Error(json?.error || "Failed to save vehicle")
-      setVehicleForm({ plateNo: "", make: "", model: "", color: "" })
-      refreshAll()
-    } catch (e: any) {
-      setError(e?.message || "Failed to save vehicle")
-    } finally {
-      setSavingVehicle(false)
-    }
+  // Vehicles are displayed inline with stickers; creating a sticker can optionally link a vehicle by plate.
+
+  const setIssuedToday = () => {
+    const now = new Date()
+    const tzOffsetMs = now.getTimezoneOffset() * 60000
+    const local = new Date(now.getTime() - tzOffsetMs).toISOString().slice(0, 10)
+    setStickerForm((f) => ({ ...f, issuedAt: local }))
   }
 
   const onUpsertSticker = async () => {
@@ -149,8 +139,11 @@ export default function HomeownerDetailPage() {
       const payload = {
         code: stickerForm.code.trim(),
         vehiclePlateNo: stickerForm.vehiclePlateNo.trim() || null,
+        vehicleMake: stickerForm.make.trim() || null,
+        vehicleModel: stickerForm.model.trim() || null,
+        vehicleCategory: stickerForm.category || null,
         issuedAt: stickerForm.issuedAt || null,
-        expiresAt: stickerForm.expiresAt || null,
+        amountPaid: stickerForm.amountPaid !== "" ? Number(stickerForm.amountPaid) : null,
         notes: stickerForm.notes.trim() || null,
       }
       const res = await fetch(`/api/admin/homeowners/${id}/stickers`, {
@@ -162,7 +155,7 @@ export default function HomeownerDetailPage() {
       let json: any = null
       try { json = txt ? JSON.parse(txt) : null } catch { throw new Error("Access denied. Please sign in as an admin.") }
       if (!res.ok) throw new Error(json?.error || "Failed to save sticker")
-      setStickerForm({ code: "", vehiclePlateNo: "", issuedAt: "", expiresAt: "", notes: "" })
+      setStickerForm({ code: "", vehiclePlateNo: "", make: "", model: "", category: "", amountPaid: "", issuedAt: "", notes: "" })
       refreshAll()
     } catch (e: any) {
       setError(e?.message || "Failed to save sticker")
@@ -187,7 +180,7 @@ export default function HomeownerDetailPage() {
                 </div>
                 <div>
                   <h1 className="text-lg font-bold">Homeowner Detail</h1>
-                  <p className="text-sm text-muted-foreground">{homeowner?.propertyAddress}</p>
+                  <p className="text-sm text-muted-foreground">{headerAddress}</p>
                 </div>
               </div>
             </div>
@@ -206,7 +199,7 @@ export default function HomeownerDetailPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>{homeowner?.propertyAddress}</span>
+              <span>{headerAddress}</span>
               <Badge variant={homeowner?.isOwner ? "default" : "outline"}>{homeowner?.isOwner ? "Owner" : "Renter"}</Badge>
             </CardTitle>
           </CardHeader>
@@ -224,7 +217,6 @@ export default function HomeownerDetailPage() {
         <Tabs defaultValue="members">
           <TabsList>
             <TabsTrigger value="members"><UsersRound className="h-4 w-4" /> Members</TabsTrigger>
-            <TabsTrigger value="vehicles"><Car className="h-4 w-4" /> Vehicles</TabsTrigger>
             <TabsTrigger value="stickers"><Tag className="h-4 w-4" /> Stickers</TabsTrigger>
           </TabsList>
 
@@ -261,34 +253,7 @@ export default function HomeownerDetailPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="vehicles" className="mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="md:col-span-2">
-                <CardHeader><CardTitle>Vehicles</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  {vehicles.length === 0 ? <p className="text-sm text-muted-foreground">No vehicles yet</p> : null}
-                  {vehicles.map(v => (
-                    <div key={v.id} className="border rounded-md p-3">
-                      <div className="font-medium">{v.plateNo}</div>
-                      <div className="text-sm text-muted-foreground">{[v.make, v.model, v.color].filter(Boolean).join(" • ") || "—"}</div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader><CardTitle>Add/Update Vehicle</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-2"><Label>Plate No</Label><Input value={vehicleForm.plateNo} onChange={(e) => setVehicleForm(f => ({...f, plateNo: e.target.value}))} /></div>
-                  <div className="space-y-2"><Label>Make</Label><Input value={vehicleForm.make} onChange={(e) => setVehicleForm(f => ({...f, make: e.target.value}))} /></div>
-                  <div className="space-y-2"><Label>Model</Label><Input value={vehicleForm.model} onChange={(e) => setVehicleForm(f => ({...f, model: e.target.value}))} /></div>
-                  <div className="space-y-2"><Label>Color</Label><Input value={vehicleForm.color} onChange={(e) => setVehicleForm(f => ({...f, color: e.target.value}))} /></div>
-                  <Button onClick={onUpsertVehicle} disabled={savingVehicle || !vehicleForm.plateNo.trim()}>
-                    {savingVehicle ? "Saving..." : "Save Vehicle"}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+          {/* Vehicles tab removed; vehicles are shown within stickers list via join. */}
 
           <TabsContent value="stickers" className="mt-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -298,23 +263,83 @@ export default function HomeownerDetailPage() {
                   {stickers.length === 0 ? <p className="text-sm text-muted-foreground">No stickers yet</p> : null}
                   {stickers.map(s => (
                     <div key={s.id} className="border rounded-md p-3">
-                      <div className="font-medium">{s.code} <Badge variant="outline" className="ml-2">{s.status}</Badge></div>
-                      <div className="text-sm text-muted-foreground">{s.issuedAt}{s.expiresAt ? ` → ${s.expiresAt}` : ""}</div>
-                      {s.notes ? <div className="text-sm text-muted-foreground mt-1">{s.notes}</div> : null}
+                      <div className="font-medium flex items-center justify-between">
+                        <span>{s.code}</span>
+                        <Badge variant="outline" className="ml-2">{s.status}</Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        {s.vehiclePlateNo ? <span>{s.vehiclePlateNo}</span> : null}
+                        {s.vehicleMake || s.vehicleModel || s.vehicleColor ? (
+                          <span className="ml-2">{[s.vehicleMake, s.vehicleModel, s.vehicleColor].filter(Boolean).join(" • ")}</span>
+                        ) : null}
+                        {s.vehicleCategory ? <span className="ml-2">{s.vehicleCategory}</span> : null}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Paid/Released: {s.issuedAt}
+                      </div>
+                      {typeof s.amountPaid === "number" ? (
+                        <div className="text-xs text-muted-foreground mt-1">Amount: ₱{s.amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      ) : null}
+                      {s.notes ? <div className="text-xs text-muted-foreground mt-1">Notes: {s.notes}</div> : null}
                     </div>
                   ))}
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader><CardTitle>Issue/Update Sticker</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Add Sticker</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="space-y-2"><Label>Code</Label><Input value={stickerForm.code} onChange={(e) => setStickerForm(f => ({...f, code: e.target.value}))} /></div>
-                  <div className="space-y-2"><Label>Vehicle Plate (optional)</Label><Input value={stickerForm.vehiclePlateNo} onChange={(e) => setStickerForm(f => ({...f, vehiclePlateNo: e.target.value}))} /></div>
-                  <div className="space-y-2"><Label>Issued At</Label><Input type="date" value={stickerForm.issuedAt} onChange={(e) => setStickerForm(f => ({...f, issuedAt: e.target.value}))} /></div>
-                  <div className="space-y-2"><Label>Expires At</Label><Input type="date" value={stickerForm.expiresAt} onChange={(e) => setStickerForm(f => ({...f, expiresAt: e.target.value}))} /></div>
-                  <div className="space-y-2"><Label>Notes</Label><Input value={stickerForm.notes} onChange={(e) => setStickerForm(f => ({...f, notes: e.target.value}))} /></div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Sticker No</Label>
+                      <Input placeholder="Sticker No" value={stickerForm.code} onChange={(e) => setStickerForm(f => ({...f, code: e.target.value}))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Plate No</Label>
+                      <Input placeholder="Plate No" value={stickerForm.vehiclePlateNo} onChange={(e) => setStickerForm(f => ({...f, vehiclePlateNo: e.target.value}))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Maker</Label>
+                      <Input placeholder="Maker" value={stickerForm.make} onChange={(e) => setStickerForm(f => ({...f, make: e.target.value}))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Model</Label>
+                      <Input placeholder="Model" value={stickerForm.model} onChange={(e) => setStickerForm(f => ({...f, model: e.target.value}))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Amount Paid</Label>
+                      <Input type="number" inputMode="decimal" step="0.01" placeholder="Amount Paid" value={stickerForm.amountPaid} onChange={(e) => setStickerForm(f => ({...f, amountPaid: e.target.value}))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Date Issued</Label>
+                      <Input type="date" value={stickerForm.issuedAt} onChange={(e) => setStickerForm(f => ({...f, issuedAt: e.target.value}))} />
+                      <button type="button" onClick={setIssuedToday} className="text-xs text-muted-foreground underline hover:text-foreground">
+                        Set today
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Select value={stickerForm.category} onValueChange={(v) => setStickerForm(f => ({...f, category: v}))}>
+                        <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Sedan">Sedan</SelectItem>
+                          <SelectItem value="Van">Van</SelectItem>
+                          <SelectItem value="SUV">SUV</SelectItem>
+                          <SelectItem value="Truck">Truck</SelectItem>
+                          <SelectItem value="Motorcycle">Motorcycle</SelectItem>
+                          <SelectItem value="Electric">Electric</SelectItem>
+                          <SelectItem value="ELF">ELF</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Notes</Label>
+                      <Input placeholder="Notes" value={stickerForm.notes} onChange={(e) => setStickerForm(f => ({...f, notes: e.target.value}))} />
+                    </div>
+                  </div>
                   <Button onClick={onUpsertSticker} disabled={savingSticker || !stickerForm.code.trim()}>
-                    {savingSticker ? "Saving..." : "Save Sticker"}
+                    {savingSticker ? "Saving..." : "Add Sticker"}
                   </Button>
                 </CardContent>
               </Card>
