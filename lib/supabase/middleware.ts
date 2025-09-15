@@ -40,6 +40,26 @@ export async function updateSession(request: NextRequest) {
   const url = request.nextUrl
   const path = url.pathname
 
+  // Department portal routes (password-gated, custom auth)
+  const isDeptRoute = path.startsWith("/dept") || path.startsWith("/api/dept")
+  if (isDeptRoute) {
+    const isDeptPublic = path === "/dept/login" || path.startsWith("/api/dept/session") || path.startsWith("/api/dept/departments")
+    if (!isDeptPublic) {
+      const hasCookie = request.cookies.get("dept_session")?.value
+      if (!hasCookie) {
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[mw] dept route missing cookie -> redirect to /dept/login", { path })
+        }
+        const dest = new URL(request.url)
+        dest.pathname = "/dept/login"
+        dest.search = ""
+        return NextResponse.redirect(dest)
+      }
+    }
+    // Allow dept routes regardless of Supabase auth
+    return supabaseResponse
+  }
+
   // Publicly accessible routes (minimal)
   const isPublic =
     path === "/" ||

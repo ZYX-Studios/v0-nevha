@@ -84,6 +84,14 @@ export interface Issue {
   priority: "low" | "normal" | "high" | "urgent"
   status: "open" | "in_progress" | "resolved" | "closed"
   location?: string
+  // Reporter address fields (optional, may be present in admin APIs)
+  reporterBlock?: string | null
+  reporterLot?: string | null
+  reporterPhase?: string | null
+  reporterStreet?: string | null
+  // Reporter identity fields (optional, may be present in admin APIs)
+  reporterFullName?: string | null
+  reporterEmail?: string | null
   assignedTo?: string
   resolutionNotes?: string
   resolvedAt?: string

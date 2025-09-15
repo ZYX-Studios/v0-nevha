@@ -213,8 +213,18 @@ function IssuesManagementContent() {
     })
   }
 
-  const getReporterName = (_reporterId?: string) => {
-    return "Anonymous"
+  const getReporterLabel = (i: Issue) => {
+    return i.reporterFullName || i.reporterEmail || "Anonymous"
+  }
+
+  const getAddress = (i: Issue) => {
+    const parts: string[] = []
+    if (i.reporterPhase) parts.push(`Phase ${i.reporterPhase}`)
+    if (i.reporterBlock) parts.push(`Block ${i.reporterBlock}`)
+    if (i.reporterLot) parts.push(`Lot ${i.reporterLot}`)
+    if (i.reporterStreet) parts.push(`Street ${i.reporterStreet}`)
+    if (i.location) parts.push(i.location)
+    return parts.join(" • ")
   }
 
   return (
@@ -326,14 +336,8 @@ function IssuesManagementContent() {
                       <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                         <div className="flex items-center space-x-1">
                           <User className="h-3 w-3" />
-                          <span>{getReporterName(issue.reporterId)}</span>
+                          <span title={issue.reporterEmail || undefined}>{getReporterLabel(issue)}</span>
                         </div>
-                        {issue.location && (
-                          <div className="flex items-center space-x-1">
-                            <MapPin className="h-3 w-3" />
-                            <span>{issue.location}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -396,7 +400,14 @@ function IssuesManagementContent() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-foreground mb-4">{issue.description}</p>
+                  <p className="text-foreground mb-2">{issue.description}</p>
+                  {getAddress(issue) && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <MapPin className="h-4 w-4" />
+                      <span className="text-muted-foreground">Address:</span>
+                      <span className="text-foreground">{getAddress(issue)}</span>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))

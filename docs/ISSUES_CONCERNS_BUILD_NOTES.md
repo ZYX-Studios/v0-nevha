@@ -123,6 +123,35 @@ This document captures the current state of our public Issues/Concerns flow and 
 
 ---
 
+## G.1) Department Portal (E2)
+
+Purpose: lightweight password-gated portal for non-admin department staff to update issues assigned to their department.
+
+- DB Additions
+  - `departments.portal_password_hash text`, `departments.portal_password_updated_at timestamptz`
+  - `issue_status_updates.author_department_id uuid references departments(id)`, `issue_status_updates.source text in ('admin_portal','dept_portal','email_link','slack')`
+  - Index: `issue_departments_department_id_idx` for faster filtering
+
+- API (scoped by dept cookie)
+  - `POST /api/admin/departments/[id]/portal-password` — set/reset per-dept portal password (admin only)
+  - `GET /api/dept/departments` — list active departments (login screen)
+  - `POST /api/dept/session/login|logout`, `GET /api/dept/me`
+  - `GET /api/dept/issues` — list issues linked via `issue_departments` to the dept
+  - `GET /api/dept/issues/[id]` — detail view, dept-scoped
+  - `GET|POST /api/dept/issues/[id]/updates` — status timeline and update action; updates set `author_label`, `author_department_id`, `source='dept_portal'`
+
+- UI
+  - `/dept/login` — select department, enter password, provide display name (used as `author_label`)
+  - `/dept/issues` — list with status filter
+  - `/dept/issues/[id]` — details, timeline, and two actions: Add Update (In Progress), Mark Resolved/Reopen
+
+- Security
+  - Cookie: `dept_session` signed with `DEPT_PORTAL_SECRET`, httpOnly/secure/sameSite=strict, TTL 7 days
+  - Password rotation invalidates existing sessions via `portal_password_updated_at`
+  - Rate limiting for login is recommended (pending)
+
+---
+
 ## H) Security & Validation
 
 - RLS
