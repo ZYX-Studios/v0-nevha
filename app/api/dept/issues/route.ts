@@ -17,20 +17,21 @@ function mapPriority(dbPriority: string | null): "low" | "normal" | "high" | "ur
   }
 }
 
-function mapStatus(dbStatus: string | null): "open" | "in_progress" | "resolved" | "closed" {
+function mapStatus(dbStatus: string | null): "not_started" | "in_progress" | "on_hold" | "resolved" | "closed" {
   switch ((dbStatus || "").toUpperCase()) {
     case "NEW":
     case "TRIAGED":
-    case "NEEDS_INFO":
-      return "open"
+      return "not_started"
     case "IN_PROGRESS":
       return "in_progress"
+    case "NEEDS_INFO":
+      return "on_hold"
     case "RESOLVED":
       return "resolved"
     case "CLOSED":
       return "closed"
     default:
-      return "open"
+      return "not_started"
   }
 }
 

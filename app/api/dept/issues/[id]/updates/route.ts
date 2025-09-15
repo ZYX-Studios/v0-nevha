@@ -4,29 +4,34 @@ import { getDeptContext } from "@/lib/dept/auth"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 
 const PostSchema = z.object({
-  status: z.enum(["open", "in_progress", "resolved", "closed"]).optional(),
+  status: z.enum(["not_started", "in_progress", "on_hold", "resolved", "closed"]).optional(),
   notes: z.string().optional().nullable(),
   author_label: z.string().min(1),
 })
 
-function uiToDbStatus(ui: "open" | "in_progress" | "resolved" | "closed"): "NEW" | "TRIAGED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED" {
+function uiToDbStatus(ui: "not_started" | "in_progress" | "on_hold" | "resolved" | "closed"): "NEW" | "TRIAGED" | "IN_PROGRESS" | "NEEDS_INFO" | "RESOLVED" | "CLOSED" {
   switch (ui) {
+    case "not_started":
+      return "TRIAGED"
     case "in_progress":
       return "IN_PROGRESS"
+    case "on_hold":
+      return "NEEDS_INFO"
     case "resolved":
       return "RESOLVED"
     case "closed":
       return "CLOSED"
-    case "open":
     default:
       return "TRIAGED"
   }
 }
 
-function dbToUiStatus(db: string | null): "open" | "in_progress" | "resolved" | "closed" {
+function dbToUiStatus(db: string | null): "not_started" | "in_progress" | "on_hold" | "resolved" | "closed" {
   switch ((db || "").toUpperCase()) {
     case "IN_PROGRESS":
       return "in_progress"
+    case "NEEDS_INFO":
+      return "on_hold"
     case "RESOLVED":
       return "resolved"
     case "CLOSED":
@@ -34,7 +39,7 @@ function dbToUiStatus(db: string | null): "open" | "in_progress" | "resolved" | 
     case "NEW":
     case "TRIAGED":
     default:
-      return "open"
+      return "not_started"
   }
 }
 

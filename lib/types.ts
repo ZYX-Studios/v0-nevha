@@ -82,7 +82,7 @@ export interface Issue {
   description: string
   category: string
   priority: "low" | "normal" | "high" | "urgent"
-  status: "open" | "in_progress" | "resolved" | "closed"
+  status: "not_started" | "in_progress" | "on_hold" | "resolved" | "closed"
   location?: string
   // Reporter address fields (optional, may be present in admin APIs)
   reporterBlock?: string | null

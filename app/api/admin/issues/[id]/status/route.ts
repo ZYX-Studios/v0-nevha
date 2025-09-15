@@ -3,19 +3,22 @@ import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 
 const PatchSchema = z.object({
-  status: z.enum(["open", "in_progress", "resolved", "closed"]),
+  status: z.enum(["not_started", "in_progress", "on_hold", "resolved", "closed"]),
   notes: z.string().optional().nullable(),
 })
 
-function uiToDbStatus(ui: "open" | "in_progress" | "resolved" | "closed"): "NEW" | "TRIAGED" | "IN_PROGRESS" | "NEEDS_INFO" | "RESOLVED" | "CLOSED" {
+function uiToDbStatus(ui: "not_started" | "in_progress" | "on_hold" | "resolved" | "closed"): "NEW" | "TRIAGED" | "IN_PROGRESS" | "NEEDS_INFO" | "RESOLVED" | "CLOSED" {
   switch (ui) {
+    case "not_started":
+      return "TRIAGED"
     case "in_progress":
       return "IN_PROGRESS"
+    case "on_hold":
+      return "NEEDS_INFO"
     case "resolved":
       return "RESOLVED"
     case "closed":
       return "CLOSED"
-    case "open":
     default:
       return "TRIAGED"
   }

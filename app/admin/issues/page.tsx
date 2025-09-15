@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,10 +17,22 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog"
 import type { Issue } from "@/lib/types"
 import { ArrowLeft, Search, Edit, CheckCircle, Clock, AlertCircle, Calendar, MapPin, User } from "lucide-react"
 import { toast } from "sonner"
+
+type IssuesStats = {
+  total: number
+  openCount: number
+  statusCounts: Record<string, number>
+  priorityCounts: Record<string, number>
+  createdLast7Days: number
+  resolvedLast7Days: number
+  avgResolutionDays: number | null
+  perDepartment: { departmentId: string; departmentName: string; count: number }[]
+}
 
 function IssuesManagementContent() {
   const router = useRouter()
@@ -33,6 +45,8 @@ function IssuesManagementContent() {
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
   const [resolutionNotes, setResolutionNotes] = useState("")
   // Resolution notes are handled within status updates; detailed view available per-issue
+  const [stats, setStats] = useState<IssuesStats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -53,6 +67,89 @@ function IssuesManagementContent() {
     }
   }, [])
 
+  // Load dashboard stats
+  useEffect(() => {
+    let cancelled = false
+    async function loadStats() {
+      try {
+        setStatsLoading(true)
+        const res = await fetch("/api/admin/issues/stats", { cache: "no-store" })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json?.error || "Failed to load stats")
+        if (!cancelled) setStats(json as IssuesStats)
+      } catch {
+        if (!cancelled) setStats(null)
+      } finally {
+        if (!cancelled) setStatsLoading(false)
+      }
+    }
+    loadStats()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Reload issues on-demand (keeps dashboard counts in sync even if something else updated the DB)
+  const reloadIssues = async () => {
+    try {
+      const res = await fetch("/api/admin/issues", { cache: "no-store" })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || "Failed to load issues")
+      const items = Array.isArray(json.items) ? (json.items as Issue[]) : []
+      setIssues(items)
+    } catch {
+      // keep previous issues if refresh fails
+    }
+  }
+
+  // Reload stats on-demand (e.g., after updates)
+  const reloadStats = async () => {
+    try {
+      setStatsLoading(true)
+      const res = await fetch("/api/admin/issues/stats", { cache: "no-store" })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to load stats")
+      setStats(json as IssuesStats)
+    } catch {
+      setStats(null)
+    } finally {
+      setStatsLoading(false)
+    }
+  }
+
+  // Map backend statusCounts (DB enums) to UI status buckets
+  const uiStatusCounts = useMemo(() => {
+    const raw = stats?.statusCounts || {}
+    // Normalize keys defensively (uppercase) to avoid casing or snake-case issues
+    const sc: Record<string, number> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      sc[(k || "").toUpperCase()] = Number(v) || 0
+    }
+    return {
+      not_started: (sc.NEW || 0) + (sc.TRIAGED || 0),
+      in_progress: sc.IN_PROGRESS || 0,
+      on_hold: sc.NEEDS_INFO || 0,
+      resolved: sc.RESOLVED || 0,
+      closed: sc.CLOSED || 0,
+    }
+  }, [stats])
+
+  // Derive UI status counts directly from the loaded issues so dashboard updates instantly
+  const uiCountsFromIssues = useMemo(() => {
+    const counts = {
+      not_started: 0,
+      in_progress: 0,
+      on_hold: 0,
+      resolved: 0,
+      closed: 0,
+    }
+    for (const i of issues) {
+      const k = (i.status || "not_started") as keyof typeof counts
+      if (k in counts) counts[k] += 1
+    }
+    return counts
+  }, [issues])
+
   // Add update without specifying status -> API defaults to in_progress
   const handleAddUpdate = async (issueId: string) => {
     try {
@@ -69,6 +166,8 @@ function IssuesManagementContent() {
       setIssues((prev) => prev.map((it) => (it.id === issueId ? { ...it, status: "in_progress" as any } : it)))
       setSelectedIssue(null)
       setResolutionNotes("")
+      await reloadIssues()
+      await reloadStats()
     } catch (e) {
       const msg = (e as any)?.message || e
       toast.error(String(msg))
@@ -92,6 +191,31 @@ function IssuesManagementContent() {
       setIssues((prev) => prev.map((it) => (it.id === issue.id ? { ...it, status: targetStatus as any } : it)))
       setSelectedIssue(null)
       setResolutionNotes("")
+      await reloadIssues()
+      await reloadStats()
+    } catch (e) {
+      toast.error((e as any)?.message || "Failed to update")
+    }
+  }
+
+  // Toggle On Hold <-> In Progress
+  const handleToggleHold = async (issue: Issue) => {
+    try {
+      const targetStatus = issue.status === "on_hold" ? "in_progress" : "on_hold"
+      const payload: any = { status: targetStatus }
+      if (resolutionNotes.trim()) payload.notes = resolutionNotes.trim()
+      const res = await fetch(`/api/admin/issues/${issue.id}/updates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to update status")
+      toast.success(targetStatus === "on_hold" ? "Put on hold" : "Resumed (In Progress)")
+      setIssues((prev) => prev.map((it) => (it.id === issue.id ? { ...it, status: targetStatus as any } : it)))
+      setSelectedIssue(null)
+      setResolutionNotes("")
+      await reloadStats()
     } catch (e) {
       toast.error((e as any)?.message || "Failed to update")
     }
@@ -251,6 +375,127 @@ function IssuesManagementContent() {
       </header>
 
       <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Dashboard Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Total Issues</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{statsLoading ? "…" : stats?.total ?? 0}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Open Issues</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{uiCountsFromIssues.not_started + uiCountsFromIssues.in_progress + uiCountsFromIssues.on_hold}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Created (7d)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{statsLoading ? "…" : stats?.createdLast7Days ?? 0}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Resolved (7d)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{statsLoading ? "…" : stats?.resolvedLast7Days ?? 0}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card className="md:col-span-1">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Avg Resolution Time</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">
+                {statsLoading ? "…" : stats?.avgResolutionDays != null ? `${stats.avgResolutionDays}d` : "—"}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Average days from creation to first RESOLVED update.</p>
+            </CardContent>
+          </Card>
+          <Card className="md:col-span-1">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Status Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {issues.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No issues yet.</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {[
+                    { k: "not_started", label: "Not Started", value: uiCountsFromIssues.not_started },
+                    { k: "in_progress", label: "In Progress", value: uiCountsFromIssues.in_progress },
+                    { k: "on_hold", label: "On Hold", value: uiCountsFromIssues.on_hold },
+                    { k: "resolved", label: "Resolved", value: uiCountsFromIssues.resolved },
+                    { k: "closed", label: "Closed", value: uiCountsFromIssues.closed },
+                  ].map((s) => (
+                    <div key={s.k} className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{s.label}</span>
+                      <span className="font-medium">{s.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="md:col-span-1">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Priority Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {statsLoading || !stats ? (
+                <div className="text-sm text-muted-foreground">Loading…</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {[
+                    { k: "P1", label: "Urgent" },
+                    { k: "P2", label: "High" },
+                    { k: "P3", label: "Normal" },
+                    { k: "P4", label: "Low" },
+                  ].map((p) => (
+                    <div key={p.k} className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{p.label}</span>
+                      <span className="font-medium">{stats.priorityCounts?.[p.k] ?? 0}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">Issues by Department</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {statsLoading || !stats ? (
+              <div className="text-sm text-muted-foreground">Loading…</div>
+            ) : stats.perDepartment && stats.perDepartment.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                {stats.perDepartment.map((d) => (
+                  <div key={d.departmentId} className="flex items-center justify-between">
+                    <span className="text-muted-foreground">{d.departmentName}</span>
+                    <span className="font-medium">{d.count}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">No department links found.</div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Filters */}
         <Card className="mb-6">
           <CardContent className="p-4">
@@ -272,8 +517,9 @@ function IssuesManagementContent() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="not_started">Not Started</SelectItem>
                   <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
                   <SelectItem value="resolved">Resolved</SelectItem>
                   <SelectItem value="closed">Closed</SelectItem>
                 </SelectContent>
@@ -352,7 +598,7 @@ function IssuesManagementContent() {
                             Update Status
                           </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="sm:max-w-[560px] w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-4 md:p-6">
                           <DialogHeader>
                             <DialogTitle>Update Issue Status</DialogTitle>
                             <DialogDescription>
@@ -360,9 +606,9 @@ function IssuesManagementContent() {
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4">
-                            <div>
-                              <h4 className="font-medium mb-2">{selectedIssue?.title}</h4>
-                              <p className="text-sm text-muted-foreground">{selectedIssue?.description}</p>
+                            <div className="space-y-1">
+                              <h4 className="font-medium">{selectedIssue?.title}</h4>
+                              <p className="text-sm text-muted-foreground break-words">{selectedIssue?.description}</p>
                             </div>
                             {/* No status picker: Add Update => In Progress; or Toggle Resolved/Reopen */}
                             {/* Notes entry (optional) */}
@@ -373,16 +619,22 @@ function IssuesManagementContent() {
                                 value={resolutionNotes}
                                 onChange={(e) => setResolutionNotes(e.target.value)}
                                 rows={3}
+                                className="resize-y min-h-[96px]"
                               />
                             </div>
-                            <div className="flex gap-2">
-                              <Button variant="outline" onClick={() => setSelectedIssue(null)} className="flex-1">
-                                Cancel
-                              </Button>
-                              <Button onClick={() => handleAddUpdate(issue.id)} className="flex-1" variant="secondary">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                              <DialogClose asChild>
+                                <Button variant="outline" onClick={() => setSelectedIssue(null)} className="w-full">
+                                  Cancel
+                                </Button>
+                              </DialogClose>
+                              <Button onClick={() => handleAddUpdate(issue.id)} className="w-full" variant="secondary">
                                 Add Update (In Progress)
                               </Button>
-                              <Button onClick={() => handleToggleResolve(issue)} className="flex-1">
+                              <Button onClick={() => handleToggleHold(issue)} className="w-full" variant="outline">
+                                {issue.status === "on_hold" ? "Resume (In Progress)" : "Put On Hold"}
+                              </Button>
+                              <Button onClick={() => handleToggleResolve(issue)} className="w-full">
                                 {issue.status === "resolved" ? "Reopen" : "Mark Resolved"}
                               </Button>
                             </div>

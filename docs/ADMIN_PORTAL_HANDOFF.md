@@ -2,7 +2,7 @@
 
 Status: In Progress
 Owner: Engineering
-Last Updated: 2025-09-14
+Last Updated: 2025-09-15
 
 ## 1) Decisions and Scope
 
@@ -271,5 +271,66 @@ This section summarizes the concrete changes shipped to the Admin Homeowners lis
 - Global Stickers list page and batch print are still planned features per Section 6.
 - When PRD `stickers` is fully adopted, consider removing the legacy fallback and cleaning up code paths.
 
+
+## 14) Handoff – 2025-09-15 Vehicle Plate Lookup in Homeowners Search
+
+### A. Summary
+
+- Implemented a plate-number lookup integrated into the `Homeowners` search experience.
+- Removed the temporary plate search form from the `/admin` dashboard header; kept the Logout button.
+- Preserved the existing homeowners text search behavior; plate lookup is a non-invasive fallback in the UI.
+
+### B. API Endpoints
+
+- `GET /api/admin/vehicles/lookup?plate=`
+  - Case-insensitive partial match on `vehicles.plate_no`.
+  - Returns the first matching `vehicle` and the linked `homeowner` (if any).
+  - Minimal payload, admin-gated by middleware.
+
+- `GET /api/admin/homeowners`
+  - Search remains text-only across common fields (address, names, email, notes).
+  - No join to `vehicles` in this endpoint to avoid complexity and regressions.
+
+### C. UI/UX Behavior
+
+- Page: `app/admin/homeowners/page.tsx`
+  - Search placeholder updated to: “Search by name, address, notes, or plate number...”.
+  - On Enter key or Search button:
+    1) Calls `GET /api/admin/homeowners?q=...`.
+    2) If zero homeowners are returned and the query is not empty, calls `GET /api/admin/vehicles/lookup?plate=...`.
+    3) If a linked homeowner is found:
+       - Search button flow: navigates to `/admin/homeowners/[id]`.
+       - Debounced typing flow: fetches `/api/admin/homeowners/[id]` and displays that single homeowner in the list (no navigation).
+  - Dashboard header (`/admin/page.tsx`): plate search form removed; Logout button retained in the header.
+
+### D. How to Test
+
+1) Homeowners text search
+   - Type a name or address; verify filtered results in the table.
+
+2) Plate number via typing (debounced)
+   - Type a plate value (e.g., `ABC123`). If no homeowner matches the normal search but a vehicle is linked, the list will display the matching homeowner row without navigating.
+
+3) Plate number via Search button
+   - Enter the same plate and click `Search`. If a linked homeowner is found, the page will navigate to `/admin/homeowners/[id]`.
+
+4) No linked homeowner
+   - When a vehicle match exists without a linked homeowner, the fallback does not change the list (and the Search button does not navigate). Consider future UX messaging if needed.
+
+### E. Design Decisions
+
+- Kept the homeowners endpoint simple and stable; added plate logic as a UI fallback to reduce risk and preserve performance.
+- Vehicles lookup returns a single (first) match. Future improvements may include exact-match-first or a multi-select when multiple candidates exist.
+- The header-level plate search was removed to unify the search experience within the Homeowners module.
+
+### F. Security & Middleware
+
+- `/api/admin/*` endpoints remain protected by middleware. The plate lookup is only accessible to authenticated admins.
+
+### G. Future Enhancements
+
+- Add “exact match first” strategy for plate fallback.
+- Optionally present a selector when multiple vehicle matches exist.
+- Add a small inline message or toast when a vehicle is found without a linked homeowner.
 
 This document is the single source of truth for the Admin Portal work. Update it as phases complete and as decisions evolve.

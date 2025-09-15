@@ -16,7 +16,7 @@ interface IssueDetailItem {
   description: string
   category: string
   priority: "low" | "normal" | "high" | "urgent"
-  status: "open" | "in_progress" | "resolved" | "closed"
+  status: "not_started" | "in_progress" | "on_hold" | "resolved" | "closed"
   location: string | null
   assignedTo: string | null
   createdAt: string
@@ -34,7 +34,7 @@ interface IssueDetailItem {
 
 interface StatusUpdateItem {
   id: string
-  status: "open" | "in_progress" | "resolved" | "closed"
+  status: "not_started" | "in_progress" | "on_hold" | "resolved" | "closed"
   notes: string | null
   authorLabel: string | null
   createdAt: string
@@ -120,8 +120,8 @@ export default function DeptIssueDetailPage({ params }: { params: { id: string }
   }
 
   const createdStr = useMemo(() => (item?.createdAt ? new Date(item.createdAt).toLocaleString() : ""), [item])
-  const currentStatus = useMemo<"open" | "in_progress" | "resolved" | "closed">(
-    () => (updates.length > 0 ? updates[0].status : (item?.status || "open")),
+  const currentStatus = useMemo<"not_started" | "in_progress" | "on_hold" | "resolved" | "closed">(
+    () => (updates.length > 0 ? updates[0].status : (item?.status || "not_started")),
     [updates, item],
   )
   const address = useMemo(() => {
@@ -169,6 +169,34 @@ export default function DeptIssueDetailPage({ params }: { params: { id: string }
       await load()
     } catch (e) {
       toast.error((e as any)?.message || "Failed to add update")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Toggle On Hold <-> In Progress
+  async function toggleHold() {
+    if (!item) return
+    const author = ensureDisplayName()
+    if (!author) return
+    setSaving(true)
+    try {
+      const targetStatus: "in_progress" | "on_hold" = currentStatus === "on_hold" ? "in_progress" : "on_hold"
+      const payload: any = { status: targetStatus, author_label: author }
+      if (notes.trim()) payload.notes = notes.trim()
+      const res = await fetch(`/api/dept/issues/${item.id}/updates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to update status")
+      toast.success(targetStatus === "on_hold" ? "Put on hold" : "Resumed (In Progress)")
+      setUpdates((prev) => [{ id: "optimistic", status: targetStatus, notes: notes.trim() || null, authorLabel: author, createdAt: new Date().toISOString() }, ...prev])
+      setNotes("")
+      await load()
+    } catch (e) {
+      toast.error((e as any)?.message || "Failed to update status")
     } finally {
       setSaving(false)
     }
@@ -305,6 +333,9 @@ export default function DeptIssueDetailPage({ params }: { params: { id: string }
                   />
                   <div className="flex gap-2 mt-3">
                     <Button variant="secondary" disabled={saving} onClick={addUpdate}>Add Update (In Progress)</Button>
+                    <Button variant="outline" disabled={saving} onClick={toggleHold}>
+                      {currentStatus === "on_hold" ? "Resume (In Progress)" : "Put On Hold"}
+                    </Button>
                     <Button disabled={saving} onClick={toggleResolve}>{currentStatus === "resolved" ? "Reopen" : "Mark Resolved"}</Button>
                   </div>
                 </CardContent>
