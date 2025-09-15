@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, RefreshCw, Plus, Save, Link2, Trash2, Mail, KeyRound } from "lucide-react"
+import { ArrowLeft, Plus, Link2, Trash2, Mail, KeyRound, Eye, EyeOff } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 function DeleteDepartmentSection({
@@ -59,16 +59,7 @@ function DeleteDepartmentSection({
   )
 }
 
-const CANONICAL_CATEGORIES = [
-  "Maintenance",
-  "Peace and Order",
-  "Sports",
-  "Social Media",
-  "Grievance",
-  "Finance",
-  "Membership",
-  "Livelihood",
-]
+// Categories reference removed; departments are the single source of truth for "Issue Related To".
 
 interface DepartmentRow {
   id: string
@@ -84,14 +75,7 @@ export default function DepartmentsAdminPage() {
   const [error, setError] = useState<string>("")
   const [message, setMessage] = useState<string>("")
 
-  // Local editor state keyed by id
-  const [edits, setEdits] = useState<Record<string, Partial<DepartmentRow>>>({})
-
-  const lowerNames = useMemo(() => new Set(items.map((i) => i.name.toLowerCase())), [items])
-  const missing = useMemo(
-    () => CANONICAL_CATEGORIES.filter((c) => !lowerNames.has(c.toLowerCase())),
-    [lowerNames],
-  )
+  // Departments are the only source of truth; no static categories or "missing" list needed.
 
   useEffect(() => {
     async function load() {
@@ -111,35 +95,7 @@ export default function DepartmentsAdminPage() {
     load()
   }, [])
 
-  const updateEdit = (id: string, patch: Partial<DepartmentRow>) =>
-    setEdits((p) => ({ ...p, [id]: { ...p[id], ...patch } }))
-
-  const applyPatch = (row: DepartmentRow): DepartmentRow => ({ ...row, ...edits[row.id] })
-
-  async function handleSave(row: DepartmentRow) {
-    setError("")
-    setMessage("")
-    const merged = applyPatch(row)
-    try {
-      const res = await fetch("/api/admin/departments", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: merged.id,
-          name: merged.name,
-          email: merged.email || null,
-          is_active: merged.is_active,
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json?.error || "Failed to save department")
-      setItems((list) => list.map((it) => (it.id === row.id ? json.item : it)))
-      setEdits((p) => ({ ...p, [row.id]: {} }))
-      setMessage("Department saved")
-    } catch (e: any) {
-      setError(e?.message || "Failed to save department")
-    }
-  }
+  // Removed inline editing helpers; editing is done in the Manage modal
 
   async function handleAdd(name: string, email: string) {
     setError("")
@@ -163,40 +119,26 @@ export default function DepartmentsAdminPage() {
     }
   }
 
-  async function handleSync() {
-    setError("")
-    setMessage("")
-    setLoading(true)
-    try {
-      const res = await fetch("/api/admin/departments/sync", { method: "POST" })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json?.error || "Sync failed")
-      // Reload list after sync
-      const res2 = await fetch("/api/admin/departments", { cache: "no-store" })
-      const json2 = await res2.json()
-      if (!res2.ok) throw new Error(json2?.error || "Reload failed")
-      setItems(json2.items || [])
-      setMessage("Synced departments with categories")
-    } catch (e: any) {
-      setError(e?.message || "Failed to sync departments")
-    } finally {
-      setLoading(false)
-    }
-  }
+  // (Sync removed) Departments list is authoritative; keep UI simple
 
   // Manage modal state
   const [manageOpen, setManageOpen] = useState(false)
   const [manageDept, setManageDept] = useState<DepartmentRow | null>(null)
+  const [manageName, setManageName] = useState("")
   const [manageEmail, setManageEmail] = useState("")
   const [managePwd, setManagePwd] = useState("")
+  const [manageActive, setManageActive] = useState<boolean>(true)
+  const [managePwdVisible, setManagePwdVisible] = useState(false)
   const [linkRefCode, setLinkRefCode] = useState("")
   type IssueLinkItem = { id: string; ref_code: string; title: string; status: string | null; priority: string | null; createdAt: string }
   const [linkedIssues, setLinkedIssues] = useState<IssueLinkItem[]>([])
 
   function openManage(row: DepartmentRow) {
     setManageDept(row)
+    setManageName(row.name || "")
     setManageEmail(row.email || "")
     setManagePwd("")
+    setManageActive(!!row.is_active)
     setLinkRefCode("")
     setManageOpen(true)
     void loadLinkedIssues(row.id)
@@ -221,7 +163,12 @@ export default function DepartmentsAdminPage() {
       const res = await fetch("/api/admin/departments", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: manageDept.id, email: manageEmail.trim() || null }),
+        body: JSON.stringify({
+          id: manageDept.id,
+          name: manageName.trim(),
+          email: manageEmail.trim() || null,
+          is_active: manageActive,
+        }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || "Failed to update department")
@@ -291,9 +238,18 @@ export default function DepartmentsAdminPage() {
     }
   }
 
-  // Bulk default portal password
+  // Bulk portal password modal + handler
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const [bulkPwd, setBulkPwd] = useState("")
+  const [bulkPwdVisible, setBulkPwdVisible] = useState(false)
+  const [bulkScopeActiveOnly, setBulkScopeActiveOnly] = useState(false)
   const [bulkBusy, setBulkBusy] = useState(false)
-  async function handleBulkDefault() {
+  async function handleBulkApply() {
+    const pwd = bulkPwd.trim()
+    if (!pwd) {
+      setError("Enter a portal password")
+      return
+    }
     setError("")
     setMessage("")
     setBulkBusy(true)
@@ -301,11 +257,13 @@ export default function DepartmentsAdminPage() {
       const res = await fetch("/api/admin/departments/portal-password/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ new_password: "nevha2025", scope: "all" }),
+        body: JSON.stringify({ new_password: pwd, scope: bulkScopeActiveOnly ? "active" : "all" }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json?.error || "Bulk set failed")
-      setMessage(`Default portal password set for ${json.updated ?? 0} departments`)
+      setMessage(`Portal password set for ${json.updated ?? 0} ${bulkScopeActiveOnly ? "active " : ""}departments`)
+      setBulkOpen(false)
+      setBulkPwd("")
     } catch (e: any) {
       setError(e?.message || "Bulk set failed")
     } finally {
@@ -333,8 +291,8 @@ export default function DepartmentsAdminPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={handleBulkDefault} disabled={loading || bulkBusy} variant="secondary">
-                Set Default Portal Password
+              <Button onClick={() => setBulkOpen(true)} disabled={loading} variant="secondary">
+                Set Portal Password (Bulk)
               </Button>
             </div>
           </div>
@@ -345,22 +303,7 @@ export default function DepartmentsAdminPage() {
         {error && <div className="mb-2 text-sm text-destructive">{error}</div>}
         {message && <div className="mb-4 text-sm text-green-600">{message}</div>}
 
-        {/* Missing categories notice */}
-        {missing.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Missing Departments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-2">These categories exist in the public form but not in departments:</p>
-              <ul className="list-disc list-inside text-sm">
-                {missing.map((m) => (
-                  <li key={m}>{m}</li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
+        {/* Missing categories notice removed: departments drive public form options */}
 
         {/* Add new department */}
         <Card className="mb-6">
@@ -387,7 +330,7 @@ export default function DepartmentsAdminPage() {
           </CardContent>
         </Card>
 
-        {/* Departments list */}
+        {/* Departments list (display-only) */}
         <Card>
           <CardHeader>
             <CardTitle>Departments</CardTitle>
@@ -396,37 +339,31 @@ export default function DepartmentsAdminPage() {
             {loading ? (
               <div className="py-10 text-center text-muted-foreground text-sm">Loading…</div>
             ) : items.length === 0 ? (
-              <div className="py-10 text-center text-muted-foreground text-sm">No departments yet. Use Sync or Add to create.</div>
+              <div className="py-10 text-center text-muted-foreground text-sm">No departments yet. Use Add to create.</div>
             ) : (
               <div className="space-y-4">
-                {items.map((row) => {
-                  const m = applyPatch(row)
-                  return (
-                    <div key={row.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end border rounded-md p-4">
-                      <div className="md:col-span-4">
-                        <Label>Name</Label>
-                        <Input value={m.name} onChange={(e) => updateEdit(row.id, { name: e.target.value })} />
-                      </div>
-                      <div className="md:col-span-5">
-                        <Label>Email</Label>
-                        <Input type="email" value={m.email || ""} onChange={(e) => updateEdit(row.id, { email: e.target.value })} />
-                      </div>
-                      <div className="md:col-span-1 flex items-center gap-2">
-                        <Checkbox id={`active-${row.id}`} checked={!!m.is_active} onCheckedChange={(v) => updateEdit(row.id, { is_active: Boolean(v) })} />
-                        <Label htmlFor={`active-${row.id}`}>Active</Label>
-                      </div>
-                      <div className="md:col-span-2 grid grid-cols-1 gap-2">
-                        <Button onClick={() => handleSave(row)} className="w-full flex items-center gap-2">
-                          <Save className="h-4 w-4" />
-                          Save
-                        </Button>
-                        <Button variant="outline" onClick={() => openManage(row)} className="w-full flex items-center gap-2">
-                          Manage
-                        </Button>
-                      </div>
+                {items.map((row) => (
+                  <div key={row.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end border rounded-md p-4">
+                    <div className="md:col-span-4">
+                      <Label>Name</Label>
+                      <div className="mt-1 text-sm">{row.name}</div>
                     </div>
-                  )
-                })}
+                    <div className="md:col-span-5">
+                      <Label>Email</Label>
+                      <div className="mt-1 text-sm">{row.email || "—"}</div>
+                    </div>
+                    <div className="md:col-span-1 flex items-center">
+                      <span className={row.is_active ? "text-xs px-2 py-1 rounded bg-green-100 text-green-700" : "text-xs px-2 py-1 rounded bg-muted text-muted-foreground"}>
+                        {row.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                    <div className="md:col-span-2 grid grid-cols-1 gap-2">
+                      <Button variant="outline" onClick={() => openManage(row)} className="w-full flex items-center gap-2">
+                        Manage
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
@@ -444,13 +381,39 @@ export default function DepartmentsAdminPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                  <Label>Name</Label>
+                  <Input value={manageName} onChange={(e) => setManageName(e.target.value)} placeholder="Department name" />
+                </div>
+                <div>
                   <Label className="flex items-center gap-2"><Mail className="h-4 w-4" /> Email</Label>
                   <Input type="email" value={manageEmail} onChange={(e) => setManageEmail(e.target.value)} placeholder="dept@example.com" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="manage-active" checked={manageActive} onCheckedChange={(v) => setManageActive(Boolean(v))} />
+                  <Label htmlFor="manage-active">Active</Label>
                 </div>
                 <div>
                   <Label className="flex items-center gap-2"><KeyRound className="h-4 w-4" /> Department Password</Label>
                   <div className="flex gap-2">
-                    <Input type="password" value={managePwd} onChange={(e) => setManagePwd(e.target.value)} placeholder="Set new password" />
+                    <div className="relative flex-1">
+                      <Input
+                        type={managePwdVisible ? "text" : "password"}
+                        className="pr-10"
+                        value={managePwd}
+                        onChange={(e) => setManagePwd(e.target.value)}
+                        placeholder="Set new password"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute inset-y-0 right-0 h-full"
+                        onClick={() => setManagePwdVisible((s) => !s)}
+                        aria-label={managePwdVisible ? "Hide password" : "Show password"}
+                      >
+                        {managePwdVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
                     <Button variant="secondary" onClick={handleManageSetPassword}>Set</Button>
                   </div>
                 </div>
@@ -506,15 +469,47 @@ export default function DepartmentsAdminPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Reference */}
-        <div className="text-xs text-muted-foreground mt-6">
-          <p><strong>Note:</strong> The public report form uses the categories below as "Issue Related To". Department names should match exactly (case-insensitive):</p>
-          <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2">
-            {CANONICAL_CATEGORIES.map((c) => (
-              <div key={c} className="px-2 py-1 rounded-md bg-muted text-foreground/80 text-center">{c}</div>
-            ))}
-          </div>
-        </div>
+        {/* Bulk Set Password Modal */}
+        <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Set Portal Password (Bulk)</DialogTitle>
+              <DialogDescription>Apply a new portal password to all departments or only active ones.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>New Password</Label>
+                <div className="relative">
+                  <Input
+                    type={bulkPwdVisible ? "text" : "password"}
+                    className="pr-10"
+                    value={bulkPwd}
+                    onChange={(e) => setBulkPwd(e.target.value)}
+                    placeholder="Enter new password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute inset-y-0 right-0 h-full"
+                    onClick={() => setBulkPwdVisible((s) => !s)}
+                    aria-label={bulkPwdVisible ? "Hide password" : "Show password"}
+                  >
+                    {bulkPwdVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="bulk-active-only" checked={bulkScopeActiveOnly} onCheckedChange={(v) => setBulkScopeActiveOnly(Boolean(v))} />
+                <Label htmlFor="bulk-active-only">Apply to active departments only</Label>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkBusy}>Cancel</Button>
+                <Button onClick={handleBulkApply} disabled={bulkBusy}>{bulkBusy ? "Applying..." : "Apply"}</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

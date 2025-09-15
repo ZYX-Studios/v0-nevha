@@ -117,12 +117,15 @@ function HomeownersContent() {
         throw new Error("Access denied. Please sign in as an admin and try again.")
       }
       if (!res.ok) throw new Error(json?.error || "Failed to load homeowners")
-      setItems(json.items || [])
+      const fetched: Homeowner[] = (json.items || []) as Homeowner[]
+      setItems(fetched)
       setTotal(typeof json.total === "number" ? json.total : 0)
       if (typeof json.page === "number") setPage(json.page)
       if (typeof json.pageSize === "number") setPageSize(json.pageSize)
+      return fetched
     } catch (e: any) {
       setError(e?.message || "Failed to load homeowners")
+      return [] as Homeowner[]
     } finally {
       setLoading(false)
     }
@@ -139,7 +142,23 @@ function HomeownersContent() {
       if (page !== 1) {
         setPage(1)
       } else {
-        fetchItems(q)
+        ;(async () => {
+          const results = await fetchItems(q)
+          if ((results?.length ?? 0) === 0 && q.trim()) {
+            try {
+              const res = await fetch(`/api/admin/vehicles/lookup?plate=${encodeURIComponent(q.trim())}`, { cache: "no-store" })
+              const j = await res.json().catch(() => ({}))
+              if (res.ok && j?.homeowner?.id) {
+                const r2 = await fetch(`/api/admin/homeowners/${j.homeowner.id}`, { cache: "no-store" })
+                const j2 = await r2.json().catch(() => ({}))
+                if (r2.ok && j2?.item) {
+                  setItems([j2.item as Homeowner])
+                  setTotal(1)
+                }
+              }
+            } catch {}
+          }
+        })()
       }
     }, 400)
     return () => clearTimeout(handle)
@@ -415,18 +434,48 @@ function HomeownersContent() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search by name, address, or notes..."
+                      placeholder="Search by name, address, notes, or plate number..."
                       value={q}
                       onChange={(e) => setQ(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") fetchItems(q)
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          ;(async () => {
+                            const results = await fetchItems(q)
+                            if ((results?.length ?? 0) === 0 && q.trim()) {
+                              try {
+                                const res = await fetch(`/api/admin/vehicles/lookup?plate=${encodeURIComponent(q.trim())}`, { cache: "no-store" })
+                                const j = await res.json().catch(() => ({}))
+                                if (res.ok && j?.homeowner?.id) {
+                                  router.push(`/admin/homeowners/${j.homeowner.id}`)
+                                }
+                              } catch {}
+                            }
+                          })()
+                        }
                       }}
                       className="pl-10"
                     />
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => fetchItems(q)} disabled={loading}>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      const results = await fetchItems(q)
+                      if ((results?.length ?? 0) === 0 && q.trim()) {
+                        try {
+                          const res = await fetch(`/api/admin/vehicles/lookup?plate=${encodeURIComponent(q.trim())}`, { cache: "no-store" })
+                          const j = await res.json().catch(() => ({}))
+                          if (res.ok && j?.homeowner?.id) {
+                            router.push(`/admin/homeowners/${j.homeowner.id}`)
+                            return
+                          }
+                        } catch {}
+                      }
+                    }}
+                    disabled={loading}
+                  >
                     {loading ? "Searching..." : "Search"}
                   </Button>
                   <Button variant="ghost" onClick={handleResetFilters}>

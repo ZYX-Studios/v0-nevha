@@ -12,16 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowLeft, AlertCircle, CheckCircle, User, Phone, Mail, MapPin } from "lucide-react"
 
-const ISSUE_CATEGORIES = [
-  "Maintenance",
-  "Peace and Order",
-  "Sports",
-  "Social Media",
-  "Grievance",
-  "Finance",
-  "Membership",
-  "Livelihood",
-]
+// Categories now come from live departments via /api/departments; we append an "Others" option client-side
 
 type FormState = {
   // Core required fields
@@ -51,6 +42,7 @@ export default function ReportPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [successRef, setSuccessRef] = useState<string | null>(null)
+  const [deptOptions, setDeptOptions] = useState<string[]>([])
   const [form, setForm] = useState<FormState>({
     description: "",
     category: "",
@@ -108,6 +100,29 @@ export default function ReportPage() {
     window.addEventListener("online", onlineHandler)
     flushQueue()
     return () => window.removeEventListener("online", onlineHandler)
+  }, [])
+
+  // Load active departments for the "Issue Related To" options
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await fetch("/api/departments", { cache: "no-store" })
+        const json = await res.json().catch(() => ({}))
+        if (!mounted) return
+        if (res.ok && Array.isArray(json.items)) {
+          const names = json.items.map((i: any) => String(i.name || "")).filter(Boolean)
+          setDeptOptions(names)
+        } else {
+          setDeptOptions([])
+        }
+      } catch {
+        setDeptOptions([])
+      }
+    })()
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const update = (field: keyof FormState, value: string | boolean) => setForm((p) => ({ ...p, [field]: value }))
@@ -375,11 +390,14 @@ export default function ReportPage() {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ISSUE_CATEGORIES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
+                      {deptOptions.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
                         </SelectItem>
                       ))}
+                      <SelectItem key="Others" value="Others">
+                        Others
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

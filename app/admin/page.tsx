@@ -13,7 +13,7 @@ import type { Announcement, Issue } from "@/lib/types"
 import { Home, Users, MessageSquare, AlertCircle, Car, Plus, ArrowLeft, CheckCircle, Clock } from "lucide-react"
 
 function AdminDashboardContent() {
-  const { session } = useAuth()
+  const { session, logout } = useAuth()
   const router = useRouter()
   const [stats, setStats] = useState({
     totalHomeowners: 0,
@@ -23,6 +23,7 @@ function AdminDashboardContent() {
     recentIssues: [] as Issue[],
     recentAnnouncements: [] as Announcement[],
   })
+  
 
   useEffect(() => {
     // Calculate statistics
@@ -89,7 +90,7 @@ function AdminDashboardContent() {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
@@ -109,6 +110,18 @@ function AdminDashboardContent() {
                   <p className="text-sm text-muted-foreground">Community Management Portal</p>
                 </div>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  await logout()
+                  router.push("/auth")
+                }}
+              >
+                Logout
+              </Button>
             </div>
           </div>
         </div>

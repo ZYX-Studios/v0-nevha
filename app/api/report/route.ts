@@ -79,13 +79,28 @@ export async function POST(req: Request) {
       })
 
       if (!error) {
-        // Attempt to email the mapped department (category -> departments.name)
+        // Attempt to link issue to department (category -> departments.name), skipping when "Others"
         try {
           const { data: depts } = await supabase
             .from("departments")
             .select("id,name,email,is_active")
             .eq("is_active", true)
           const dept = (depts || []).find((d: any) => String(d.name || "").toLowerCase() === category.toLowerCase())
+
+          if (dept && category.toLowerCase() !== "others") {
+            const { data: issueRow } = await supabase
+              .from("issues")
+              .select("id")
+              .eq("ref_code", ref_code)
+              .maybeSingle()
+            if (issueRow?.id) {
+              await supabase
+                .from("issue_departments")
+                .upsert({ issue_id: issueRow.id as string, department_id: dept.id as string }, { onConflict: "issue_id,department_id" })
+            }
+          }
+
+          // Attempt to email the mapped department
           if (dept?.email) {
             const html = `
               <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.5;">
@@ -111,7 +126,7 @@ export async function POST(req: Request) {
           }
         } catch (e) {
           // Non-fatal: logging only
-          console.warn("Failed to send department email:", (e as any)?.message || e)
+          console.warn("Post-insert side effects failed:", (e as any)?.message || e)
         }
 
         return NextResponse.json({ ref_code }, { status: 201 })

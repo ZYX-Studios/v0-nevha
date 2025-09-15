@@ -1,6 +1,6 @@
 // Service Worker for PWA offline functionality
 
-const CACHE_NAME = "hoa-pwa-v1"
+const CACHE_NAME = "hoa-pwa-v2"
 const STATIC_CACHE_URLS = [
   "/",
   "/dashboard",
@@ -56,35 +56,30 @@ self.addEventListener("activate", (event) => {
 // Fetch event - serve from cache when offline
 self.addEventListener("fetch", (event) => {
   // Skip non-GET requests
-  if (event.request.method !== "GET") {
-    return
-  }
+  if (event.request.method !== "GET") return
+
+  const url = new URL(event.request.url)
 
   // Skip external requests
-  if (!event.request.url.startsWith(self.location.origin)) {
-    return
-  }
+  if (url.origin !== self.location.origin) return
+
+  // IMPORTANT: Do NOT cache API responses to avoid stale data
+  if (url.pathname.startsWith("/api/")) return
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Return cached version if available
       if (cachedResponse) {
         console.log("[SW] Serving from cache:", event.request.url)
         return cachedResponse
       }
 
-      // Otherwise, fetch from network
       return fetch(event.request)
         .then((response) => {
-          // Don't cache non-successful responses
           if (!response || response.status !== 200 || response.type !== "basic") {
             return response
           }
 
-          // Clone the response
           const responseToCache = response.clone()
-
-          // Cache the response for future use
           caches.open(CACHE_NAME).then((cache) => {
             console.log("[SW] Caching new resource:", event.request.url)
             cache.put(event.request, responseToCache)
@@ -93,13 +88,9 @@ self.addEventListener("fetch", (event) => {
           return response
         })
         .catch(() => {
-          // If network fails and we don't have a cached version,
-          // return a custom offline page for navigation requests
           if (event.request.mode === "navigate") {
             return caches.match("/") || new Response("Offline - Please check your connection")
           }
-
-          // For other requests, just fail
           return new Response("Offline")
         })
     }),

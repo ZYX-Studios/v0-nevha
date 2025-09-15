@@ -4,18 +4,18 @@ import { createClient } from "@/lib/supabase/server"
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url)
-    const ref = url.searchParams.get("ref")
+    const email = (url.searchParams.get("email") || "").trim()
 
-    if (!ref) {
+    if (!email) {
       return NextResponse.json(
-        { error: "Missing ref query parameter" },
+        { error: "Missing email query parameter" },
         { status: 400, headers: { "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate" } },
       )
     }
 
     const supabase = await createClient()
 
-    const { data, error } = await supabase.rpc("get_issue_status", { ref })
+    const { data, error } = await supabase.rpc("get_issues_by_email", { email })
 
     if (error) {
       return NextResponse.json(
@@ -24,17 +24,10 @@ export async function GET(req: Request) {
       )
     }
 
-    const item = Array.isArray(data) ? data[0] : data
-
-    if (!item) {
-      return NextResponse.json(
-        { error: "Not found" },
-        { status: 404, headers: { "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate" } },
-      )
-    }
+    const items = Array.isArray(data) ? data : []
 
     return NextResponse.json(
-      { item },
+      { items },
       { status: 200, headers: { "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate" } },
     )
   } catch (e: any) {

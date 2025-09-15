@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server"
-import { createAdminClient } from "@/lib/supabase/server-admin"
-
-// Ensure this route is always dynamic and never statically cached by Next.js
-export const dynamic = "force-dynamic"
-export const revalidate = 0
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET() {
   try {
-    const supabase = createAdminClient()
+    const supabase = await createClient()
     const { data, error } = await supabase
       .from("departments")
       .select("id,name,is_active")
@@ -19,8 +15,10 @@ export async function GET() {
         { error: error.message },
         { status: 400, headers: { "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate" } },
       )
+
+    const items = (data || []).map((d: any) => ({ id: d.id as string, name: String(d.name || "") }))
     return NextResponse.json(
-      { items: (data || []).map((d) => ({ id: d.id, name: d.name })) },
+      { items },
       { status: 200, headers: { "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate" } },
     )
   } catch (e: any) {

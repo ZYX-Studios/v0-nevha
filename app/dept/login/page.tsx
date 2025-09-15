@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,7 @@ export default function DeptLoginPage() {
   const [password, setPassword] = useState("")
   const [displayName, setDisplayName] = useState("")
   const [loading, setLoading] = useState(false)
+  const [showPwd, setShowPwd] = useState(false)
 
   useEffect(() => {
     // Prefill saved display name
@@ -86,7 +88,25 @@ export default function DeptLoginPage() {
             </div>
             <div className="space-y-2">
               <Label>Department Password</Label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <div className="relative">
+                <Input
+                  type={showPwd ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="absolute inset-y-0 right-0 h-full"
+                  onClick={() => setShowPwd((s) => !s)}
+                  aria-label={showPwd ? "Hide password" : "Show password"}
+                >
+                  {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Your name (for updates)</Label>

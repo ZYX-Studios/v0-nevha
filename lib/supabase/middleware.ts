@@ -60,14 +60,23 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Publicly accessible routes (minimal)
+  // Publicly accessible routes
   const isPublic =
     path === "/" ||
+    // Auth
     path.startsWith("/auth") ||
     path.startsWith("/api/auth/sync") ||
+    // Public reporting and status lookup
+    path.startsWith("/report") || // e.g., /report
+    path.startsWith("/status") || // e.g., /status/REF-XXXX
+    path.startsWith("/api/report") ||
+    path.startsWith("/api/status") ||
+    path.startsWith("/api/departments") || // used by public report form for department options
+    // Admin bootstrap endpoints kept public intentionally
     path.startsWith("/api/admin/create-user") ||
     path.startsWith("/api/admin/reset-password") ||
     path.startsWith("/api/admin/bootstrap") ||
+    // PWA assets
     path === "/manifest.json" ||
     path === "/sw.js"
 
