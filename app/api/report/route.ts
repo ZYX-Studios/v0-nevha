@@ -100,8 +100,13 @@ export async function POST(req: Request) {
             }
           }
 
-          // Attempt to email the mapped department
+          // Attempt to email the mapped department (support multiple recipients via comma/semicolon-separated list)
           if (dept?.email) {
+            const recipients = String(dept.email)
+              .split(/[;,]/)
+              .map((s) => s.trim())
+              .filter((s) => !!s)
+            const uniqueRecipients = Array.from(new Set(recipients))
             const html = `
               <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.5;">
                 <h2 style="margin:0 0 8px;">New Issue Reported</h2>
@@ -118,11 +123,14 @@ export async function POST(req: Request) {
                 <p style="margin:12px 0 0;">Open in Admin: <a href="${process.env.NEXT_PUBLIC_SITE_URL || ""}/admin/issues" target="_blank" rel="noopener noreferrer">Issues</a></p>
               </div>
             `
-            await sendEmail({
-              to: dept.email,
-              subject: `New Issue Reported: ${title} (${ref_code})`,
-              html,
-            })
+            if (uniqueRecipients.length > 0) {
+              await sendEmail({
+                to: uniqueRecipients,
+                subject: `New Issue Reported: ${title} (${ref_code})`,
+                html,
+                replyTo: reporter_email || undefined,
+              })
+            }
           }
         } catch (e) {
           // Non-fatal: logging only

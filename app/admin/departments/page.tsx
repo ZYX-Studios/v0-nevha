@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Plus, Link2, Trash2, Mail, KeyRound, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Plus, Mail, KeyRound, Eye, EyeOff } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 function DeleteDepartmentSection({
@@ -103,10 +103,15 @@ export default function DepartmentsAdminPage() {
     const trimmedName = name.trim()
     if (!trimmedName) return
     try {
+      const normalizedEmail = ((email || "")
+        .split(/[;,]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(", ")) || null
       const res = await fetch("/api/admin/departments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName, email: email?.trim() || null, is_active: true }),
+        body: JSON.stringify({ name: trimmedName, email: normalizedEmail, is_active: true }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || "Failed to create department")
@@ -129,9 +134,7 @@ export default function DepartmentsAdminPage() {
   const [managePwd, setManagePwd] = useState("")
   const [manageActive, setManageActive] = useState<boolean>(true)
   const [managePwdVisible, setManagePwdVisible] = useState(false)
-  const [linkRefCode, setLinkRefCode] = useState("")
-  type IssueLinkItem = { id: string; ref_code: string; title: string; status: string | null; priority: string | null; createdAt: string }
-  const [linkedIssues, setLinkedIssues] = useState<IssueLinkItem[]>([])
+  // Linked issues UI removed for simplicity
 
   function openManage(row: DepartmentRow) {
     setManageDept(row)
@@ -139,20 +142,7 @@ export default function DepartmentsAdminPage() {
     setManageEmail(row.email || "")
     setManagePwd("")
     setManageActive(!!row.is_active)
-    setLinkRefCode("")
     setManageOpen(true)
-    void loadLinkedIssues(row.id)
-  }
-
-  async function loadLinkedIssues(deptId: string) {
-    try {
-      const res = await fetch(`/api/admin/departments/${deptId}/issues`, { cache: "no-store" })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json?.error || "Failed to load linked issues")
-      setLinkedIssues(Array.isArray(json.items) ? json.items : [])
-    } catch (e: any) {
-      setError(e?.message || "Failed to load linked issues")
-    }
   }
 
   async function handleManageSave() {
@@ -160,13 +150,18 @@ export default function DepartmentsAdminPage() {
     setError("")
     setMessage("")
     try {
+      const normalizedEmail = ((manageEmail || "")
+        .split(/[;,]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(", ")) || null
       const res = await fetch("/api/admin/departments", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: manageDept.id,
           name: manageName.trim(),
-          email: manageEmail.trim() || null,
+          email: normalizedEmail,
           is_active: manageActive,
         }),
       })
@@ -203,40 +198,6 @@ export default function DepartmentsAdminPage() {
     }
   }
 
-  async function handleLinkIssue() {
-    if (!manageDept) return
-    const ref = linkRefCode.trim()
-    if (!ref) return
-    setError("")
-    setMessage("")
-    try {
-      const res = await fetch(`/api/admin/departments/${manageDept.id}/issues`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ref_code: ref }),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json?.error || "Failed to link issue")
-      setLinkRefCode("")
-      await loadLinkedIssues(manageDept.id)
-    } catch (e: any) {
-      setError(e?.message || "Failed to link issue")
-    }
-  }
-
-  async function handleUnlinkIssue(ref: string) {
-    if (!manageDept) return
-    setError("")
-    setMessage("")
-    try {
-      const res = await fetch(`/api/admin/departments/${manageDept.id}/issues?ref_code=${encodeURIComponent(ref)}`, { method: "DELETE" })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json?.error || "Failed to unlink issue")
-      await loadLinkedIssues(manageDept.id)
-    } catch (e: any) {
-      setError(e?.message || "Failed to unlink issue")
-    }
-  }
 
   // Bulk portal password modal + handler
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -317,8 +278,9 @@ export default function DepartmentsAdminPage() {
                 <Input id="new-name" placeholder="e.g. Maintenance" value={newName} onChange={(e) => setNewName(e.target.value)} />
               </div>
               <div>
-                <Label htmlFor="new-email">Email</Label>
-                <Input id="new-email" type="email" placeholder="dept@example.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+                <Label htmlFor="new-email">Email(s)</Label>
+                <Input id="new-email" type="text" placeholder="email1@example.com, email2@example.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+                <p className="text-xs text-muted-foreground mt-1">Multiple emails allowed, separate with commas.</p>
               </div>
               <div>
                 <Button onClick={() => handleAdd(newName, newEmail)} className="w-full flex items-center gap-2">
@@ -349,7 +311,7 @@ export default function DepartmentsAdminPage() {
                       <div className="mt-1 text-sm">{row.name}</div>
                     </div>
                     <div className="md:col-span-5">
-                      <Label>Email</Label>
+                      <Label>Email(s)</Label>
                       <div className="mt-1 text-sm">{row.email || "—"}</div>
                     </div>
                     <div className="md:col-span-1 flex items-center">
@@ -385,8 +347,9 @@ export default function DepartmentsAdminPage() {
                   <Input value={manageName} onChange={(e) => setManageName(e.target.value)} placeholder="Department name" />
                 </div>
                 <div>
-                  <Label className="flex items-center gap-2"><Mail className="h-4 w-4" /> Email</Label>
-                  <Input type="email" value={manageEmail} onChange={(e) => setManageEmail(e.target.value)} placeholder="dept@example.com" />
+                  <Label className="flex items-center gap-2"><Mail className="h-4 w-4" /> Email(s)</Label>
+                  <Input type="text" value={manageEmail} onChange={(e) => setManageEmail(e.target.value)} placeholder="email1@example.com, email2@example.com" />
+                  <p className="text-xs text-muted-foreground mt-1">Multiple emails allowed, separate with commas.</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox id="manage-active" checked={manageActive} onCheckedChange={(v) => setManageActive(Boolean(v))} />
@@ -423,32 +386,6 @@ export default function DepartmentsAdminPage() {
                 <Button onClick={handleManageSave}>Save Changes</Button>
               </div>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">Linked Issues</h3>
-                  <div className="flex items-center gap-2">
-                    <Input placeholder="Ref code (e.g., NVH-25-ABC123)" value={linkRefCode} onChange={(e) => setLinkRefCode(e.target.value)} />
-                    <Button variant="secondary" onClick={handleLinkIssue} className="flex items-center gap-2">
-                      <Link2 className="h-4 w-4" /> Link
-                    </Button>
-                  </div>
-                </div>
-                <div className="rounded-md border divide-y">
-                  {linkedIssues.length === 0 ? (
-                    <div className="p-3 text-sm text-muted-foreground">No linked issues.</div>
-                  ) : (
-                    linkedIssues.map((it) => (
-                      <div key={it.id} className="p-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="font-medium truncate">{it.title}</div>
-                          <div className="text-xs text-muted-foreground truncate">{it.ref_code} • {it.status || ""} • {new Date(it.createdAt).toLocaleString()}</div>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => handleUnlinkIssue(it.ref_code)} className="flex items-center gap-2">
-                          <Trash2 className="h-4 w-4" /> Unlink
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </div>
                 {/* Danger zone */}
                 <div className="pt-2 border-t">
                   <h3 className="font-medium text-red-600 mb-2">Danger Zone</h3>

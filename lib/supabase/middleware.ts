@@ -79,6 +79,8 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/api/admin/create-user") ||
     path.startsWith("/api/admin/reset-password") ||
     path.startsWith("/api/admin/bootstrap") ||
+    // Email testing endpoint (key-gated)
+    path.startsWith("/api/admin/test-email") ||
     // PWA assets
     path === "/manifest.json" ||
     path === "/sw.js"
