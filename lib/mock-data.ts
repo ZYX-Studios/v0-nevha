@@ -147,7 +147,7 @@ export const mockIssues: Issue[] = [
     description: "The streetlight near building A is flickering and needs repair.",
     category: "Maintenance",
     priority: "normal",
-    status: "open",
+    status: "not_started",
     location: "Near Building A entrance",
     createdAt: "2024-03-05T14:30:00Z",
     updatedAt: "2024-03-05T14:30:00Z",

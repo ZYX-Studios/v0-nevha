@@ -16,7 +16,7 @@ interface IssueItem {
   description: string
   category: string
   priority: "low" | "normal" | "high" | "urgent"
-  status: "open" | "in_progress" | "resolved" | "closed"
+  status: "not_started" | "in_progress" | "on_hold" | "resolved" | "closed"
   location: string | null
   reporterBlock: string | null
   reporterLot: string | null
@@ -32,7 +32,7 @@ export default function DeptIssuesPage() {
   const router = useRouter()
   const [dept, setDept] = useState<{ id: string; name: string } | null>(null)
   const [issues, setIssues] = useState<IssueItem[]>([])
-  const [statusFilter, setStatusFilter] = useState("open")
+  const [statusFilter, setStatusFilter] = useState("not_started")
   const [loading, setLoading] = useState(true)
 
   const loadMe = async () => {
@@ -141,8 +141,9 @@ export default function DeptIssuesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="not_started">Not Started</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="on_hold">On Hold</SelectItem>
               <SelectItem value="resolved">Resolved</SelectItem>
               <SelectItem value="closed">Closed</SelectItem>
             </SelectContent>

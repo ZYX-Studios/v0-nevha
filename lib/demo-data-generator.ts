@@ -139,7 +139,7 @@ export class DemoDataGenerator {
       },
     ]
 
-    const statuses: Issue["status"][] = ["open", "in_progress", "resolved", "closed"]
+    const statuses: Issue["status"][] = ["not_started", "in_progress", "resolved", "closed"]
 
     return Array.from({ length: count }, (_, index) => {
       const template = issueTemplates[index % issueTemplates.length]
@@ -165,7 +165,7 @@ export class DemoDataGenerator {
         priority: template.priority,
         status,
         location: template.location,
-        assignedTo: status !== "open" ? "demo-staff-1" : undefined,
+        assignedTo: status !== "not_started" ? "demo-staff-1" : undefined,
         resolutionNotes,
         resolvedAt,
         createdAt: createdDate.toISOString(),

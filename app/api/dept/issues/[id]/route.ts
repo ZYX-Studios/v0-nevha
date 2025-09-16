@@ -2,6 +2,30 @@ import { NextResponse } from "next/server"
 import { getDeptContext } from "@/lib/dept/auth"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 
+// Explicit row type for issues to help Supabase typings
+type IssueDbRow = {
+  id: string
+  ref_code: string
+  title: string
+  description: string
+  category: string
+  priority: string | null
+  status: string | null
+  created_at: string
+  updated_at: string
+  resolved_at: string | null
+  resolution_notes: string | null
+  location_text: string | null
+  assigned_to: string | null
+  reporter_full_name: string | null
+  reporter_email: string | null
+  reporter_phone: string | null
+  reporter_block: string | null
+  reporter_lot: string | null
+  reporter_phase: string | null
+  reporter_street: string | null
+}
+
 function mapPriority(dbPriority: string | null): "low" | "normal" | "high" | "urgent" {
   switch ((dbPriority || "").toUpperCase()) {
     case "P1": return "urgent"
@@ -51,37 +75,15 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     if (linkErr) return NextResponse.json({ error: linkErr.message }, { status: 400 })
     if (!Array.isArray(link) || link.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    const { data: row, error } = await supabase
+    const { data, error } = await supabase
       .from("issues")
-      .select(
-        [
-          "id",
-          "ref_code",
-          "title",
-          "description",
-          "category",
-          "priority",
-          "status",
-          "created_at",
-          "updated_at",
-          "resolved_at",
-          "resolution_notes",
-          "location_text",
-          "assigned_to",
-          "reporter_full_name",
-          "reporter_email",
-          "reporter_phone",
-          "reporter_block",
-          "reporter_lot",
-          "reporter_phase",
-          "reporter_street",
-        ].join(", ")
-      )
+      .select("*")
       .eq("id", id)
       .maybeSingle()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-    if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    const row = data as IssueDbRow
 
     const item = {
       id: row.id as string,

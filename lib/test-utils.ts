@@ -79,7 +79,7 @@ export class TestDataFactory {
       description: "This is a test issue for development purposes.",
       category: "Maintenance",
       priority: "normal",
-      status: "open",
+      status: "not_started",
       location: "Test Location",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -126,7 +126,7 @@ export const mockApiResponses = {
 
   issues: {
     list: [
-      TestDataFactory.createIssue({ title: "Broken Light", status: "open", priority: "high" }),
+      TestDataFactory.createIssue({ title: "Broken Light", status: "not_started", priority: "high" }),
       TestDataFactory.createIssue({ title: "Noise Complaint", status: "in_progress", priority: "normal" }),
       TestDataFactory.createIssue({ title: "Landscaping", status: "resolved", priority: "low" }),
     ],
