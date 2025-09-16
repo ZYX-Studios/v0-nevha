@@ -71,6 +71,9 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/status") || // e.g., /status/REF-XXXX
     path.startsWith("/api/report") ||
     path.startsWith("/api/status") ||
+    // Public announcements (homepage section and dedicated page)
+    path.startsWith("/announcements") ||
+    path.startsWith("/api/announcements") ||
     path.startsWith("/api/departments") || // used by public report form for department options
     // Admin bootstrap endpoints kept public intentionally
     path.startsWith("/api/admin/create-user") ||

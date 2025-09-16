@@ -32,6 +32,15 @@ type IssuesStats = {
   resolvedLast7Days: number
   avgResolutionDays: number | null
   perDepartment: { departmentId: string; departmentName: string; count: number }[]
+  // Optional UI-oriented fields from the API (graceful fallback if absent)
+  uiStatusCounts?: {
+    not_started: number
+    in_progress: number
+    on_hold: number
+    resolved: number
+    closed: number
+  }
+  uiOpenCount?: number
 }
 
 function IssuesManagementContent() {
@@ -117,8 +126,18 @@ function IssuesManagementContent() {
     }
   }
 
-  // Map backend statusCounts (DB enums) to UI status buckets
+  // Map backend statusCounts (DB enums) to UI status buckets, prefer API-provided uiStatusCounts
   const uiStatusCounts = useMemo(() => {
+    const fromApi = (stats as any)?.uiStatusCounts
+    if (fromApi && typeof fromApi === "object") {
+      return fromApi as {
+        not_started: number
+        in_progress: number
+        on_hold: number
+        resolved: number
+        closed: number
+      }
+    }
     const raw = stats?.statusCounts || {}
     // Normalize keys defensively (uppercase) to avoid casing or snake-case issues
     const sc: Record<string, number> = {}
@@ -149,6 +168,14 @@ function IssuesManagementContent() {
     }
     return counts
   }, [issues])
+
+  // Unified open count: prefer live issues; fallback to API uiOpenCount; then derive from uiStatusCounts
+  const openUICount = useMemo(() => {
+    const local = uiCountsFromIssues.not_started + uiCountsFromIssues.in_progress + uiCountsFromIssues.on_hold
+    if (issues.length > 0) return local
+    if (typeof stats?.uiOpenCount === "number") return stats.uiOpenCount
+    return uiStatusCounts.not_started + uiStatusCounts.in_progress + uiStatusCounts.on_hold
+  }, [issues, uiCountsFromIssues, stats, uiStatusCounts])
 
   // Add update without specifying status -> API defaults to in_progress
   const handleAddUpdate = async (issueId: string) => {
@@ -390,7 +417,7 @@ function IssuesManagementContent() {
               <CardTitle className="text-sm text-muted-foreground">Open Issues</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{uiCountsFromIssues.not_started + uiCountsFromIssues.in_progress + uiCountsFromIssues.on_hold}</div>
+              <div className="text-3xl font-bold">{openUICount}</div>
             </CardContent>
           </Card>
           <Card>
@@ -429,7 +456,24 @@ function IssuesManagementContent() {
             </CardHeader>
             <CardContent>
               {issues.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No issues yet.</div>
+                stats?.uiStatusCounts ? (
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {[
+                      { k: "not_started", label: "Not Started", value: uiStatusCounts.not_started },
+                      { k: "in_progress", label: "In Progress", value: uiStatusCounts.in_progress },
+                      { k: "on_hold", label: "On Hold", value: uiStatusCounts.on_hold },
+                      { k: "resolved", label: "Resolved", value: uiStatusCounts.resolved },
+                      { k: "closed", label: "Closed", value: uiStatusCounts.closed },
+                    ].map((s) => (
+                      <div key={s.k} className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{s.label}</span>
+                        <span className="font-medium">{s.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Loading…</div>
+                )
               ) : (
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   {[

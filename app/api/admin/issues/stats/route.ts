@@ -117,6 +117,16 @@ export async function GET() {
       }
     }
 
+    // UI-oriented counts derived from DB enums
+    const uiStatusCounts = {
+      not_started: (statusCounts["NEW"] || 0) + (statusCounts["TRIAGED"] || 0),
+      in_progress: statusCounts["IN_PROGRESS"] || 0,
+      on_hold: statusCounts["NEEDS_INFO"] || 0,
+      resolved: statusCounts["RESOLVED"] || 0,
+      closed: statusCounts["CLOSED"] || 0,
+    }
+    const uiOpenCount = uiStatusCounts.not_started + uiStatusCounts.in_progress + uiStatusCounts.on_hold
+
     return NextResponse.json({
       total,
       openCount,
@@ -126,6 +136,8 @@ export async function GET() {
       resolvedLast7Days,
       avgResolutionDays,
       perDepartment,
+      uiStatusCounts,
+      uiOpenCount,
     })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Failed to compute issue stats" }, { status: 500 })

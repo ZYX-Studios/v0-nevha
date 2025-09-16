@@ -164,7 +164,7 @@ export default function HomePage() {
                           
                           <div className="flex items-center justify-center text-sm text-gray-400 mb-4">
                             <Clock className="w-4 h-4 mr-2" />
-                            {new Date(announcements[currentSlide].created_at).toLocaleDateString()}
+                            {new Date(announcements[currentSlide].publishDate || announcements[currentSlide].createdAt).toLocaleDateString()}
                           </div>
                           
                           {announcements[currentSlide].priority === "high" && (
@@ -175,6 +175,16 @@ export default function HomePage() {
                         </motion.div>
                       )}
                     </AnimatePresence>
+                  </div>
+
+                  {/* View all announcements CTA */}
+                  <div className="px-6 pb-6 flex justify-center">
+                    <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:bg-transparent">
+                      <Link href="/announcements" className="inline-flex items-center gap-2">
+                        View all announcements
+                        <ChevronRight className="w-4 h-4" />
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               ) : (

@@ -20,6 +20,25 @@ export default function StatusIndexPage() {
   const [results, setResults] = useState<any[]>([])
   const [hasSearched, setHasSearched] = useState(false)
 
+  function dbToUiStatus(db: string | null): "not_started" | "in_progress" | "resolved" | "closed" | "on_hold" {
+    switch ((db || "").toUpperCase()) {
+      case "IN_PROGRESS":
+        return "in_progress"
+      case "RESOLVED":
+        return "resolved"
+      case "CLOSED":
+        return "closed"
+      case "NEEDS_INFO":
+      case "NEED_INFO":
+        return "on_hold"
+      case "NEW":
+      case "OPEN":
+      case "TRIAGED":
+      default:
+        return "not_started"
+    }
+  }
+
   const handleRefSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
@@ -159,7 +178,8 @@ export default function StatusIndexPage() {
                 <div className="divide-y divide-gray-800">
                   {results.map((item) => {
                     const created = item.created_at ? new Date(item.created_at).toLocaleString() : ""
-                    const status = String(item.status || "").toLowerCase().replace("_", " ")
+                    const ui = dbToUiStatus(String(item.status || ""))
+                    const status = ui.replace(/_/g, " ")
                     return (
                       <div key={item.ref_code} className="py-3 flex items-start gap-3">
                         <div className="flex-1 min-w-0">

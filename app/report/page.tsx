@@ -245,15 +245,24 @@ export default function ReportPage() {
       </div>
       <header className="border-b border-gray-700/30 bg-gray-900/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/")} className="text-gray-300 hover:text-white hover:bg-gray-800"> 
-              <ArrowLeft className="h-4 w-4" />
-              <span className="ml-2">Back</span>
-            </Button>
-            <div>
-              <h1 className="text-lg font-bold text-white">Report a Concern</h1>
-              <p className="text-sm text-gray-400">Share details to help us resolve it quickly</p>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={() => router.push("/")} className="text-gray-300 hover:text-white hover:bg-gray-800">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="ml-2">Back</span>
+              </Button>
+              <div>
+                <h1 className="text-lg font-bold text-white">Report a Concern</h1>
+                <p className="text-sm text-gray-400">Share details to help us resolve it quickly</p>
+              </div>
             </div>
+            <Button
+              size="sm"
+              onClick={() => router.push("/status")}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              Check Status
+            </Button>
           </div>
         </div>
       </header>
@@ -451,6 +460,17 @@ export default function ReportPage() {
                 </Button>
                 <Button type="submit" disabled={isSubmitting} className="w-full sm:flex-1 shadow-md hover:shadow-lg bg-orange-500 hover:bg-orange-600 text-white">
                   {isSubmitting ? "Submitting..." : "Submit"}
+                </Button>
+              </div>
+              <div className="mt-1 flex justify-center sm:justify-end animate-fade-in-up">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/status")}
+                  className="text-muted-foreground hover:bg-transparent"
+                >
+                  Check Status
                 </Button>
               </div>
             </form>
