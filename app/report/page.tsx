@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowLeft, AlertCircle, CheckCircle, User, Phone, Mail, MapPin } from "lucide-react"
+import { BottomNav } from "@/components/ui/bottom-nav"
 
 // Categories now come from live departments via /api/departments; we append an "Others" option client-side
 
@@ -173,39 +175,39 @@ export default function ReportPage() {
   if (successRef) {
     const isPending = successRef === "PENDING-OFFLINE"
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black flex items-center justify-center p-4">
-        <Card className="w-full max-w-md border-0 shadow-2xl animate-scale-in bg-gray-900/95 backdrop-blur-xl border border-gray-700/30">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4 font-inter">
+        <Card className="w-full max-w-md border-0 shadow-md bg-white overflow-hidden border border-gray-100">
           <CardContent className="text-center py-8">
-            <div className="bg-green-500/20 rounded-full p-3 w-fit mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-green-400" />
+            <div className="bg-green-100 rounded-full p-3 w-fit mx-auto mb-4">
+              <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
-            <h2 className="text-xl font-semibold mb-2 text-white">
+            <h2 className="text-xl font-semibold mb-2 text-gray-900">
               {isPending ? "Report Queued for Upload" : "Report Submitted Successfully"}
             </h2>
-            <p className="text-gray-400 mb-6">
+            <p className="text-gray-600 mb-6 text-sm">
               {isPending
                 ? "You were offline. We queued your report and will upload it once you go online."
                 : "Your report has been submitted. Use the reference code below to check status."}
             </p>
             {!isPending && (
               <div className="mb-6">
-                <div className="font-mono text-lg font-semibold text-white">{successRef}</div>
-                <div className="mt-2 flex gap-2 justify-center">
+                <div className="font-mono text-lg font-semibold text-gray-900 bg-gray-50 p-3 rounded-lg border">{successRef}</div>
+                <div className="mt-3 flex gap-2 justify-center">
                   <Button
                     variant="outline"
                     onClick={() => navigator.clipboard.writeText(successRef)}
-                    className="px-3 border-gray-600 text-gray-300 hover:bg-gray-800"
+                    className="px-3 border-gray-200 text-gray-600 hover:bg-gray-50"
                   >
                     Copy Code
                   </Button>
-                  <Button onClick={() => router.push(`/status/${encodeURIComponent(successRef)}`)} className="px-3 bg-orange-500 hover:bg-orange-600 text-white">
+                  <Button onClick={() => router.push(`/status/${encodeURIComponent(successRef)}`)} className="px-3 bg-blue-600 hover:bg-blue-700 text-white">
                     View Status
                   </Button>
                 </div>
               </div>
             )}
-            <div className="space-y-2">
-              <Button onClick={() => router.push("/")} className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+            <div className="space-y-3">
+              <Button onClick={() => router.push("/")} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                 Back to Home
               </Button>
               <Button
@@ -227,7 +229,7 @@ export default function ReportPage() {
                     priority: "P3",
                   })
                 }}
-                className="w-full border-gray-600 text-gray-300 hover:bg-gray-800"
+                className="w-full border-gray-200 text-gray-600 hover:bg-gray-50"
               >
                 Report Another Issue
               </Button>
@@ -239,58 +241,73 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black">
-      <div className="pointer-events-none absolute inset-0 -z-10 [mask-image:radial-gradient(60%_50%_at_50%_10%,#000_40%,transparent_100%)]">
-        <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-orange-500/10 blur-3xl"></div>
-      </div>
-      <header className="border-b border-gray-700/30 bg-gray-900/80 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => router.push("/")} className="text-gray-300 hover:text-white hover:bg-gray-800">
-                <ArrowLeft className="h-4 w-4" />
-                <span className="ml-2">Back</span>
-              </Button>
-              <div>
-                <h1 className="text-lg font-bold text-white">Report a Concern</h1>
-                <p className="text-sm text-gray-400">Share details to help us resolve it quickly</p>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 font-inter">
+      {/* Safe Area Top */}
+      <div className="h-safe-area-inset-top bg-transparent" />
+      
+      {/* Header */}
+      <header className="px-4 py-4 bg-white/95 backdrop-blur-xl border-b border-blue-100 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Image
+              src="/NEVHA logo.svg"
+              alt="NEVHA Logo"
+              width={40}
+              height={40}
+              className="w-10 h-10"
+            />
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">NEVHA</h1>
+              <p className="text-xs text-blue-600 font-medium">Northfields Executive Village</p>
             </div>
-            <Button
-              size="sm"
-              onClick={() => router.push("/status")}
-              className="bg-orange-500 hover:bg-orange-600 text-white"
-            >
-              Check Status
-            </Button>
           </div>
+          <Button
+            size="sm"
+            onClick={() => router.push("/status")}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2"
+          >
+            Check Status
+          </Button>
         </div>
       </header>
 
-      <div className="container mx-auto px-3 md:px-4 py-6 md:py-8 max-w-2xl">
-        <div className="rounded-2xl p-[1.5px] bg-gradient-to-b from-orange-500/30 via-orange-500/10 to-transparent">
-        <Card className="rounded-2xl border border-gray-700/30 shadow-2xl bg-gray-900/95 supports-[backdrop-filter]:backdrop-blur-xl animate-fade-in-up">
-          <CardHeader className="pb-0 sm:pb-2 animate-fade-in-up">
-            <CardTitle className="text-white">Issue Details</CardTitle>
-            <CardDescription className="text-gray-400">
+      {/* Main Content */}
+      <div className="px-4 py-4">
+        {/* Page Header */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-3">
+            <Button variant="ghost" size="sm" onClick={() => router.push("/")} className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Report a Concern</h2>
+              <p className="text-sm text-gray-600">Share details to help us resolve it quickly</p>
+            </div>
+          </div>
+        </div>
+
+        <Card className="rounded-xl border-0 shadow-md bg-white overflow-hidden border border-gray-100 max-w-2xl mx-auto">
+          <CardHeader>
+            <CardTitle className="text-gray-900 text-base">Issue Details</CardTitle>
+            <CardDescription className="text-gray-600 text-sm">
               Please provide as much detail as possible. You don't need to sign in to submit.
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-4 sm:pt-6">
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 animate-fade-in-up">
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="border-red-200 bg-red-50">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
+                  <AlertDescription className="text-red-700">{error}</AlertDescription>
                 </Alert>
               )}
 
-              <div className="pt-1 animate-fade-in-up">
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Your Details</p>
+              <div className="pt-1">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Your Details</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reporter_full_name" className="text-gray-300">Full Name</Label>
+                <Label htmlFor="reporter_full_name" className="text-gray-700 text-sm">Full Name</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -299,13 +316,13 @@ export default function ReportPage() {
                     value={form.reporter_full_name}
                     onChange={(e) => update("reporter_full_name", e.target.value)}
                     disabled={isSubmitting}
-                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400 pl-9"
+                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-9 focus:border-blue-300 focus:ring-blue-200"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reporter_phone" className="text-gray-300">Contact Number</Label>
+                <Label htmlFor="reporter_phone" className="text-gray-700 text-sm">Contact Number</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -314,50 +331,47 @@ export default function ReportPage() {
                     value={form.reporter_phone}
                     onChange={(e) => update("reporter_phone", e.target.value)}
                     disabled={isSubmitting}
-                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400 pl-9"
+                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-9 focus:border-blue-300 focus:ring-blue-200"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fade-in-up">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="reporter_block" className="text-gray-300">Block</Label>
+                  <Label htmlFor="reporter_block" className="text-gray-700 text-sm">Block</Label>
                   <Input
                     id="reporter_block"
                     placeholder="Block"
                     value={form.reporter_block}
                     onChange={(e) => update("reporter_block", e.target.value)}
                     disabled={isSubmitting}
-                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
+                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:ring-blue-200"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reporter_lot" className="text-gray-300">Lot</Label>
+                  <Label htmlFor="reporter_lot" className="text-gray-700 text-sm">Lot</Label>
                   <Input
                     id="reporter_lot"
-                    placeholder="Lot Number"
+                    placeholder="Lot"
                     value={form.reporter_lot}
                     onChange={(e) => update("reporter_lot", e.target.value)}
                     disabled={isSubmitting}
-                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
+                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:ring-blue-200"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reporter_phase" className="text-gray-300">Phase</Label>
+                  <Label htmlFor="reporter_phase" className="text-gray-700 text-sm">Phase</Label>
                   <Input
                     id="reporter_phase"
                     placeholder="Phase"
                     value={form.reporter_phase}
                     onChange={(e) => update("reporter_phase", e.target.value)}
                     disabled={isSubmitting}
-                    className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
+                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:ring-blue-200"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in-up">
                 <div className="space-y-2">
-                  <Label htmlFor="reporter_street" className="text-gray-300">Street</Label>
+                  <Label htmlFor="reporter_street" className="text-gray-700 text-sm">Street</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
@@ -366,57 +380,53 @@ export default function ReportPage() {
                       value={form.reporter_street}
                       onChange={(e) => update("reporter_street", e.target.value)}
                       disabled={isSubmitting}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400 pl-9"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reporter_email" className="text-gray-300">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="reporter_email"
-                      type="email"
-                      placeholder="Email"
-                      value={form.reporter_email}
-                      onChange={(e) => update("reporter_email", e.target.value)}
-                      disabled={isSubmitting}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400 pl-9"
+                      className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-9 focus:border-blue-300 focus:ring-blue-200"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="pt-2 animate-fade-in-up">
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Concern Details</p>
+              <div className="space-y-2">
+                <Label htmlFor="reporter_email" className="text-gray-700 text-sm">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="reporter_email"
+                    type="email"
+                    placeholder="Email"
+                    value={form.reporter_email}
+                    onChange={(e) => update("reporter_email", e.target.value)}
+                    disabled={isSubmitting}
+                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-9 focus:border-blue-300 focus:ring-blue-200"
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in-up">
-                <div className="space-y-2">
-                  <Label htmlFor="category" className="text-gray-300">Issue Related To *</Label>
-                  <Select value={form.category} onValueChange={(v) => update("category", v)} disabled={isSubmitting}>
-                    <SelectTrigger className="bg-gray-800/50 border-gray-600 text-white">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {deptOptions.map((name) => (
-                        <SelectItem key={name} value={name}>
-                          {name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem key="Others" value="Others">
-                        Others
+              <div className="pt-2">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Concern Details</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category" className="text-gray-700 text-sm">Issue Related To *</Label>
+                <Select value={form.category} onValueChange={(v) => update("category", v)} disabled={isSubmitting}>
+                  <SelectTrigger className="bg-white border-gray-200 text-gray-900 focus:border-blue-300 focus:ring-blue-200">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {deptOptions.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
                       </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {/* Priority hidden in UI; default P3 kept for backend triage */}
+                    ))}
+                    <SelectItem key="Others" value="Others">
+                      Others
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Location fields represented above as block/lot/phase/street */}
-
-              <div className="space-y-2 animate-fade-in-up">
-                <Label htmlFor="description" className="text-gray-300">Describe Your Concern *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-gray-700 text-sm">Describe Your Concern *</Label>
                 <Textarea
                   id="description"
                   placeholder="Provide details (when it started, frequency, any context)."
@@ -424,12 +434,12 @@ export default function ReportPage() {
                   onChange={(e) => update("description", e.target.value)}
                   disabled={isSubmitting}
                   rows={5}
-                  className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
+                  className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:ring-blue-200"
                 />
               </div>
 
-              <div className="space-y-2 animate-fade-in-up">
-                <Label htmlFor="suggested_solution" className="text-gray-300">Do you have any solution to suggest?</Label>
+              <div className="space-y-2">
+                <Label htmlFor="suggested_solution" className="text-gray-700 text-sm">Do you have any solution to suggest?</Label>
                 <Textarea
                   id="suggested_solution"
                   placeholder="Your suggestion"
@@ -437,47 +447,39 @@ export default function ReportPage() {
                   onChange={(e) => update("suggested_solution", e.target.value)}
                   disabled={isSubmitting}
                   rows={3}
-                  className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-400"
+                  className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:ring-blue-200"
                 />
               </div>
 
-              <div className="flex items-start gap-3 rounded-md border border-gray-600 p-3 bg-gray-800/20 animate-fade-in-up">
+              <div className="flex items-start gap-4 rounded-lg border-2 border-blue-200 p-4 bg-blue-50">
                 <Checkbox
                   id="acknowledged"
                   checked={form.acknowledged}
                   onCheckedChange={(v) => update("acknowledged", Boolean(v))}
                   disabled={isSubmitting}
+                  className="mt-0.5 h-5 w-5 border-2 border-blue-400 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                 />
-                <Label htmlFor="acknowledged" className="text-sm text-gray-400 leading-relaxed">
-                  I understand that this is not an Emergency hotline and I shouldn’t expect immediate response. The
+                <Label htmlFor="acknowledged" className="text-sm text-gray-800 leading-relaxed font-medium cursor-pointer">
+                  I understand that this is not an Emergency hotline and I shouldn't expect immediate response. The
                   concern I am raising is to further improve the community of Northfields.
                 </Label>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 animate-fade-in-up">
-                <Button type="button" variant="outline" onClick={() => router.push("/")} disabled={isSubmitting} className="w-full sm:flex-1 border-gray-600 text-gray-300 hover:bg-gray-800">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button type="button" variant="outline" onClick={() => router.push("/")} disabled={isSubmitting} className="w-full sm:flex-1 border-gray-200 text-gray-600 hover:bg-gray-50">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting} className="w-full sm:flex-1 shadow-md hover:shadow-lg bg-orange-500 hover:bg-orange-600 text-white">
+                <Button type="submit" disabled={isSubmitting} className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white">
                   {isSubmitting ? "Submitting..." : "Submit"}
-                </Button>
-              </div>
-              <div className="mt-1 flex justify-center sm:justify-end animate-fade-in-up">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push("/status")}
-                  className="text-muted-foreground hover:bg-transparent"
-                >
-                  Check Status
                 </Button>
               </div>
             </form>
           </CardContent>
         </Card>
       </div>
-      </div>
+
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   )
 }

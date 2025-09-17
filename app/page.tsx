@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -13,9 +14,13 @@ import {
   FileText, 
   ChevronLeft, 
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  Users,
+  MapPin,
+  Shield
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { BottomNav } from "@/components/ui/bottom-nav"
 import { useState, useEffect } from "react"
 
 export default function HomePage() {
@@ -49,7 +54,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black font-inter">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 font-inter">
       {/* Safe Area Top */}
       <div className="h-safe-area-inset-top bg-transparent" />
       
@@ -58,57 +63,100 @@ export default function HomePage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="px-6 py-6 bg-gray-900/80 backdrop-blur-xl border-b border-gray-700/30"
+        className="px-4 py-4 bg-white/95 backdrop-blur-xl border-b border-blue-100 shadow-sm"
       >
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-white">
-              Northfields
-            </h1>
-            <p className="text-sm text-gray-400">
-              Executive Village HOA
-            </p>
+          <div className="flex items-center space-x-3">
+            <Image
+              src="/NEVHA logo.svg"
+              alt="NEVHA Logo"
+              width={40}
+              height={40}
+              className="w-10 h-10"
+            />
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">NEVHA</h1>
+              <p className="text-xs text-blue-600 font-medium">Northfields Executive Village</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="hidden sm:flex items-center space-x-1 text-xs text-gray-500">
+              <MapPin className="w-3 h-3" />
+              <span>Portal</span>
+            </div>
+            <Link 
+              href="/admin" 
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200 opacity-60 hover:opacity-100"
+            >
+              Admin
+            </Link>
           </div>
         </div>
       </motion.header>
 
-      {/* Hero Announcements Section */}
-      <div className="px-6 py-8">
+      {/* Main Content */}
+      <div className="px-4 py-4">
+        {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
+          className="mb-4"
         >
-          <Card className="rounded-2xl border-0 shadow-2xl bg-gray-900/95 backdrop-blur-xl overflow-hidden border border-gray-700/30">
+          <Card className="rounded-xl border-0 shadow-md bg-gradient-to-r from-blue-600 to-blue-700 overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between text-white">
+                <div>
+                  <h2 className="text-xl font-bold mb-1">Welcome Home!</h2>
+                  <p className="text-blue-100 text-sm">Stay connected with your NEVHA community</p>
+                </div>
+                <Users className="w-8 h-8 text-blue-200" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Community Announcements */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+        >
+          <div className="mb-3">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Community Updates</h3>
+            <p className="text-sm text-gray-600">Latest neighborhood news</p>
+          </div>
+          
+          <Card className="rounded-xl border-0 shadow-md bg-white overflow-hidden border border-gray-100">
             <CardContent className="p-0">
               {loading ? (
-                <div className="flex items-center justify-center h-80 px-6">
+                <div className="flex items-center justify-center h-48 px-4">
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   >
-                    <RefreshCw className="w-8 h-8 text-gray-400" />
+                    <RefreshCw className="w-6 h-6 text-blue-500" />
                   </motion.div>
                 </div>
               ) : announcements.length > 0 ? (
                 <div className="relative">
                   {/* Navigation Controls */}
-                  <div className="flex items-center justify-between p-6 pb-4">
+                  <div className="flex items-center justify-between p-4 pb-3">
                     <motion.button
                       whileTap={{ scale: 0.95 }}
                       onClick={prevSlide}
-                      className="w-11 h-11 rounded-full bg-gray-700/80 flex items-center justify-center hover:bg-gray-600/80 transition-all shadow-sm border border-gray-600/50"
+                      className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-all shadow-sm border border-blue-200"
                     >
-                      <ChevronLeft className="w-5 h-5 text-gray-300" />
+                      <ChevronLeft className="w-4 h-4 text-blue-600" />
                     </motion.button>
                     
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-1">
                       {announcements.map((_, idx) => (
                         <motion.div
                           key={idx}
                           animate={{
                             scale: idx === currentSlide ? 1.2 : 1,
-                            backgroundColor: idx === currentSlide ? "#FF6B35" : "#4B5563"
+                            backgroundColor: idx === currentSlide ? "#2563eb" : "#cbd5e1"
                           }}
                           transition={{ duration: 0.3 }}
                           className="w-2 h-2 rounded-full"
@@ -119,14 +167,14 @@ export default function HomePage() {
                     <motion.button
                       whileTap={{ scale: 0.95 }}
                       onClick={nextSlide}
-                      className="w-11 h-11 rounded-full bg-gray-700/80 flex items-center justify-center hover:bg-gray-600/80 transition-all shadow-sm border border-gray-600/50"
+                      className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-all shadow-sm border border-blue-200"
                     >
-                      <ChevronRight className="w-5 h-5 text-gray-300" />
+                      <ChevronRight className="w-4 h-4 text-blue-600" />
                     </motion.button>
                   </div>
 
                   {/* Announcement Content */}
-                  <div className="px-6 pb-8 min-h-[280px] flex items-center">
+                  <div className="px-4 pb-4 min-h-[180px] flex items-center">
                     <AnimatePresence mode="wait">
                       {announcements[currentSlide] && (
                         <motion.div
@@ -141,34 +189,34 @@ export default function HomePage() {
                             initial={{ scale: 0.8 }}
                             animate={{ scale: 1 }}
                             transition={{ duration: 0.5, delay: 0.1 }}
-                            className={`w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg ${
+                            className={`w-14 h-14 rounded-xl mx-auto mb-4 flex items-center justify-center shadow-md ${
                               announcements[currentSlide].priority === "high"
                                 ? "bg-gradient-to-br from-red-500 to-red-600"
                                 : "bg-gradient-to-br from-blue-500 to-blue-600"
                             }`}
                           >
                             {announcements[currentSlide].priority === "high" ? (
-                              <AlertTriangle className="w-10 h-10 text-white" />
+                              <AlertTriangle className="w-7 h-7 text-white" />
                             ) : (
-                              <MessageSquare className="w-10 h-10 text-white" />
+                              <MessageSquare className="w-7 h-7 text-white" />
                             )}
                           </motion.div>
                           
-                          <h2 className="text-xl font-semibold text-white mb-4 leading-tight px-4">
+                          <h2 className="text-lg font-bold text-gray-900 mb-2 leading-tight px-2">
                             {announcements[currentSlide].title}
                           </h2>
                           
-                          <p className="text-base text-gray-300 leading-relaxed mb-6 px-4">
+                          <p className="text-sm text-gray-700 leading-relaxed mb-3 px-2">
                             {announcements[currentSlide].content}
                           </p>
                           
-                          <div className="flex items-center justify-center text-sm text-gray-400 mb-4">
-                            <Clock className="w-4 h-4 mr-2" />
+                          <div className="flex items-center justify-center text-xs text-gray-500 mb-3">
+                            <Clock className="w-3 h-3 mr-1" />
                             {new Date(announcements[currentSlide].publishDate || announcements[currentSlide].createdAt).toLocaleDateString()}
                           </div>
                           
                           {announcements[currentSlide].priority === "high" && (
-                            <Badge className="bg-gradient-to-r from-red-500 to-red-600 text-white border-0 px-4 py-2 text-xs font-semibold rounded-full shadow-lg">
+                            <Badge className="bg-gradient-to-r from-red-500 to-red-600 text-white border-0 px-3 py-1 text-xs font-semibold rounded-full shadow-md">
                               HIGH PRIORITY
                             </Badge>
                           )}
@@ -178,27 +226,27 @@ export default function HomePage() {
                   </div>
 
                   {/* View all announcements CTA */}
-                  <div className="px-6 pb-6 flex justify-center">
-                    <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:bg-transparent">
-                      <Link href="/announcements" className="inline-flex items-center gap-2">
-                        View all announcements
-                        <ChevronRight className="w-4 h-4" />
+                  <div className="px-4 pb-4 flex justify-center">
+                    <Button asChild variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50 font-medium text-sm">
+                      <Link href="/announcements" className="inline-flex items-center gap-1">
+                        View all
+                        <ChevronRight className="w-3 h-3" />
                       </Link>
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-20 px-6">
+                <div className="text-center py-12 px-4">
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.5 }}
                   >
-                    <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-white mb-2">
+                    <MessageSquare className="w-12 h-12 text-blue-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">
                       Stay Connected
                     </h3>
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-gray-600 text-sm">
                       Community announcements will appear here
                     </p>
                   </motion.div>
@@ -215,103 +263,77 @@ export default function HomePage() {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="mt-6"
         >
-          <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-gray-700/30 shadow-2xl overflow-hidden">
+          <div className="mb-3">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Quick Actions</h3>
+            <p className="text-sm text-gray-600">Essential services</p>
+          </div>
+          
+          <div className="grid gap-3">
             <Link href="/report">
               <motion.div
-                whileTap={{ scale: 0.99 }}
-                className="flex items-center justify-between p-4 hover:bg-gray-800/50 transition-all border-b border-gray-700/30"
+                whileTap={{ scale: 0.98 }}
+                className="bg-white rounded-xl border border-gray-100 shadow-md hover:shadow-lg transition-all p-4 hover:bg-gray-50"
               >
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center shadow-sm">
-                    <FileText className="w-4 h-4 text-white" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-bold text-gray-900">Report a Concern</h4>
+                      <p className="text-xs text-gray-600">Submit maintenance requests</p>
+                    </div>
                   </div>
-                  <span className="text-base font-medium text-white">Report a Concern</span>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
               </motion.div>
             </Link>
 
             <Link href="/emergency">
               <motion.div
-                whileTap={{ scale: 0.99 }}
-                className="flex items-center justify-between p-4 hover:bg-gray-800/50 transition-all border-b border-gray-700/30"
+                whileTap={{ scale: 0.98 }}
+                className="bg-white rounded-xl border border-gray-100 shadow-md hover:shadow-lg transition-all p-4 hover:bg-red-50"
               >
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center shadow-sm">
-                    <Phone className="w-4 h-4 text-white" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-md">
+                      <Phone className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-bold text-gray-900">Emergency Hotline</h4>
+                      <p className="text-xs text-gray-600">24/7 emergency contacts</p>
+                    </div>
                   </div>
-                  <span className="text-base font-medium text-white">Emergency Hotline</span>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
               </motion.div>
             </Link>
 
             <Link href="/applications">
               <motion.div
-                whileTap={{ scale: 0.99 }}
-                className="flex items-center justify-between p-4 hover:bg-gray-800/50 transition-all"
+                whileTap={{ scale: 0.98 }}
+                className="bg-white rounded-xl border border-gray-100 shadow-md hover:shadow-lg transition-all p-4 hover:bg-blue-50"
               >
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-sm">
-                    <FileText className="w-4 h-4 text-white" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
+                      <Shield className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-bold text-gray-900">Applications</h4>
+                      <p className="text-xs text-gray-600">Vehicle stickers & permits</p>
+                    </div>
                   </div>
-                  <span className="text-base font-medium text-white">Applications</span>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
               </motion.div>
             </Link>
           </div>
         </motion.div>
       </div>
 
-      {/* Bottom Navigation - Modern Dark Design */}
-      <motion.nav
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.6 }}
-        className="fixed bottom-4 left-4 right-4 bg-gray-900/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-700/30"
-      >
-        <div className="flex justify-around items-center py-4 px-2">
-          <Link href="/" className="flex flex-col items-center min-w-[60px] min-h-[60px] justify-center">
-            <motion.div
-              whileTap={{ scale: 0.95 }}
-              className="flex flex-col items-center"
-            >
-              <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center mb-2 shadow-lg">
-                <Home className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-white text-xs font-medium">Home</span>
-            </motion.div>
-          </Link>
-          
-          <Link href="/report" className="flex flex-col items-center min-w-[60px] min-h-[60px] justify-center">
-            <motion.div
-              whileTap={{ scale: 0.95 }}
-              className="flex flex-col items-center"
-            >
-              <div className="w-12 h-12 bg-gray-700/80 rounded-2xl flex items-center justify-center mb-2 border border-gray-600/50">
-                <FileText className="w-5 h-5 text-gray-300" />
-              </div>
-              <span className="text-gray-400 text-xs font-medium">Concern</span>
-            </motion.div>
-          </Link>
-          
-          <Link href="/emergency" className="flex flex-col items-center min-w-[60px] min-h-[60px] justify-center">
-            <motion.div
-              whileTap={{ scale: 0.95 }}
-              className="flex flex-col items-center"
-            >
-              <div className="w-12 h-12 bg-gray-700/80 rounded-2xl flex items-center justify-center mb-2 border border-gray-600/50">
-                <Phone className="w-5 h-5 text-gray-300" />
-              </div>
-              <span className="text-gray-400 text-xs font-medium">Hotline</span>
-            </motion.div>
-          </Link>
-        </div>
-      </motion.nav>
-
-      {/* Safe Area Bottom */}
-      <div className="h-24" />
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   )
 }
