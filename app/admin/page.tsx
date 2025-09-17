@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/use-auth"
-import { mockHomeowners, mockAnnouncements, mockIssues, mockCarStickers } from "@/lib/mock-data"
 import type { Announcement, Issue } from "@/lib/types"
 import { Home, Users, MessageSquare, AlertCircle, Car, Plus, ArrowLeft, CheckCircle, Clock } from "lucide-react"
 
@@ -23,33 +22,39 @@ function AdminDashboardContent() {
     recentIssues: [] as Issue[],
     recentAnnouncements: [] as Announcement[],
   })
-  
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Calculate statistics
-    const totalHomeowners = mockHomeowners.length
-    const activeIssues = mockIssues.filter((issue) => issue.status !== "resolved" && issue.status !== "closed").length
-    const publishedAnnouncements = mockAnnouncements.filter((a) => a.isPublished).length
-    const activeCarStickers = mockCarStickers.filter((s) => s.isActive).length
+    const fetchStats = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await fetch('/api/admin/stats', { cache: 'no-store' })
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard statistics')
+        }
+        
+        const data = await response.json()
+        
+        setStats({
+          totalHomeowners: data.stats.totalHomeowners,
+          activeIssues: data.stats.activeIssues,
+          publishedAnnouncements: data.stats.publishedAnnouncements,
+          activeCarStickers: data.stats.activeCarStickers,
+          recentIssues: data.recentItems.issues,
+          recentAnnouncements: data.recentItems.announcements,
+        })
+      } catch (err: any) {
+        console.error('Failed to fetch dashboard stats:', err)
+        setError(err.message || 'Failed to load dashboard statistics')
+      } finally {
+        setLoading(false)
+      }
+    }
 
-    // Get recent items
-    const recentIssues = mockIssues
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5)
-
-    const recentAnnouncements = mockAnnouncements
-      .filter((a) => a.isPublished)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 3)
-
-    setStats({
-      totalHomeowners,
-      activeIssues,
-      publishedAnnouncements,
-      activeCarStickers,
-      recentIssues,
-      recentAnnouncements,
-    })
+    fetchStats()
   }, [])
 
   const getStatusIcon = (status: string) => {
@@ -128,17 +133,28 @@ function AdminDashboardContent() {
       </header>
 
       <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Error Display */}
+        {error && (
+          <Card className="mb-6 border-destructive">
+            <CardContent className="p-4">
+              <p className="text-destructive text-sm">{error}</p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card 
             className="cursor-pointer hover:shadow-md transition-shadow duration-200"
-            onClick={() => router.push("/admin/homeowners")}
+            onClick={() => !loading && router.push("/admin/homeowners")}
           >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Homeowners</p>
-                  <p className="text-2xl font-bold">{stats.totalHomeowners}</p>
+                  <p className="text-2xl font-bold">
+                    {loading ? "..." : stats.totalHomeowners}
+                  </p>
                 </div>
                 <Users className="h-8 w-8 text-muted-foreground" />
               </div>
@@ -147,13 +163,15 @@ function AdminDashboardContent() {
 
           <Card 
             className="cursor-pointer hover:shadow-md transition-shadow duration-200"
-            onClick={() => router.push("/admin/issues")}
+            onClick={() => !loading && router.push("/admin/issues")}
           >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Active Issues</p>
-                  <p className="text-2xl font-bold">{stats.activeIssues}</p>
+                  <p className="text-2xl font-bold">
+                    {loading ? "..." : stats.activeIssues}
+                  </p>
                 </div>
                 <AlertCircle className="h-8 w-8 text-muted-foreground" />
               </div>
@@ -162,13 +180,15 @@ function AdminDashboardContent() {
 
           <Card 
             className="cursor-pointer hover:shadow-md transition-shadow duration-200"
-            onClick={() => router.push("/admin/announcements")}
+            onClick={() => !loading && router.push("/admin/announcements")}
           >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Announcements</p>
-                  <p className="text-2xl font-bold">{stats.publishedAnnouncements}</p>
+                  <p className="text-2xl font-bold">
+                    {loading ? "..." : stats.publishedAnnouncements}
+                  </p>
                 </div>
                 <MessageSquare className="h-8 w-8 text-muted-foreground" />
               </div>
@@ -177,13 +197,15 @@ function AdminDashboardContent() {
 
           <Card 
             className="cursor-pointer hover:shadow-md transition-shadow duration-200"
-            onClick={() => router.push("/admin/homeowners")}
+            onClick={() => !loading && router.push("/admin/homeowners")}
           >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Car Stickers</p>
-                  <p className="text-2xl font-bold">{stats.activeCarStickers}</p>
+                  <p className="text-2xl font-bold">
+                    {loading ? "..." : stats.activeCarStickers}
+                  </p>
                 </div>
                 <Car className="h-8 w-8 text-muted-foreground" />
               </div>
@@ -237,7 +259,9 @@ function AdminDashboardContent() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {stats.recentIssues.length === 0 ? (
+                {loading ? (
+                  <p className="text-center text-muted-foreground py-4">Loading recent issues...</p>
+                ) : stats.recentIssues.length === 0 ? (
                   <p className="text-center text-muted-foreground py-4">No recent issues</p>
                 ) : (
                   stats.recentIssues.map((issue) => (
@@ -282,7 +306,9 @@ function AdminDashboardContent() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {stats.recentAnnouncements.length === 0 ? (
+                {loading ? (
+                  <p className="text-center text-muted-foreground py-4">Loading recent announcements...</p>
+                ) : stats.recentAnnouncements.length === 0 ? (
                   <p className="text-center text-muted-foreground py-4">No recent announcements</p>
                 ) : (
                   stats.recentAnnouncements.map((announcement) => (
