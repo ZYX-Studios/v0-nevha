@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Homeowner, Member, Sticker } from "@/lib/types"
-import { ArrowLeft, Calendar, Home, Phone, User2, UsersRound, Tag, Mail, MapPin, CircleDollarSign, ExternalLink } from "lucide-react"
+import { ArrowLeft, Calendar, Home, Phone, User2, UsersRound, Tag, Mail, MapPin, CircleDollarSign, ExternalLink, DollarSign } from "lucide-react"
 
 export default function HomeownerDetailPage() {
   const router = useRouter()
@@ -24,6 +24,7 @@ export default function HomeownerDetailPage() {
 
   const [members, setMembers] = useState<Member[]>([])
   const [stickers, setStickers] = useState<Sticker[]>([])
+  const [duesStatus, setDuesStatus] = useState<any>(null)
 
   // Create form states
   const [memberForm, setMemberForm] = useState({ fullName: "", relation: "" })
@@ -41,29 +42,45 @@ export default function HomeownerDetailPage() {
   const [savingMember, setSavingMember] = useState(false)
   const [savingSticker, setSavingSticker] = useState(false)
 
+  const getDuesStatusBadge = () => {
+    if (!duesStatus) return null
+    
+    if (duesStatus.is_paid_in_full) {
+      return <Badge className="bg-green-100 text-green-800">Paid in Full</Badge>
+    } else if (duesStatus.amount_paid > 0) {
+      return <Badge className="bg-yellow-100 text-yellow-800">Partial Payment</Badge>
+    } else {
+      return <Badge className="bg-red-100 text-red-800">Unpaid</Badge>
+    }
+  }
+
   const refreshAll = async () => {
     if (!id) return
     setLoading(true)
     setError(null)
     try {
-      const [dRes, mRes, sRes] = await Promise.all([
+      const [dRes, mRes, sRes, duRes] = await Promise.all([
         fetch(`/api/admin/homeowners/${id}`, { cache: "no-store" }),
         fetch(`/api/admin/homeowners/${id}/members`, { cache: "no-store" }),
         fetch(`/api/admin/homeowners/${id}/stickers`, { cache: "no-store" }),
+        fetch(`/api/admin/homeowners/dues-status?homeowner_ids=${id}&year=${new Date().getFullYear()}`, { cache: "no-store" }),
       ])
       const dTxt = await dRes.text()
       const mTxt = await mRes.text()
       const sTxt = await sRes.text()
-      let dJson: any, mJson: any, sJson: any
+      const duTxt = await duRes.text()
+      let dJson: any, mJson: any, sJson: any, duJson: any
       try { dJson = dTxt ? JSON.parse(dTxt) : null } catch { throw new Error("Access denied. Please sign in as an admin and try again.") }
       try { mJson = mTxt ? JSON.parse(mTxt) : null } catch { throw new Error("Access denied. Please sign in as an admin and try again.") }
       try { sJson = sTxt ? JSON.parse(sTxt) : null } catch { throw new Error("Access denied. Please sign in as an admin and try again.") }
+      try { duJson = duTxt ? JSON.parse(duTxt) : null } catch { duJson = null }
       if (!dRes.ok) throw new Error(dJson?.error || "Failed to load homeowner")
       if (!mRes.ok) throw new Error(mJson?.error || "Failed to load members")
       if (!sRes.ok) throw new Error(sJson?.error || "Failed to load stickers")
       setHomeowner(dJson.item)
       setMembers(mJson.items || [])
       setStickers(sJson.items || [])
+      setDuesStatus(duJson?.dues_status?.[id] || null)
     } catch (e: any) {
       setError(e?.message || "Failed to load data")
     } finally {
@@ -249,6 +266,7 @@ export default function HomeownerDetailPage() {
               {typeof homeowner?.isOwner === "boolean" ? (
                 <Badge variant={homeowner.isOwner ? "default" : "outline"}>{homeowner.isOwner ? "Owner" : "Renter"}</Badge>
               ) : null}
+              {getDuesStatusBadge()}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
               {headerAddress}
@@ -285,6 +303,24 @@ export default function HomeownerDetailPage() {
               )}
               {typeof (homeowner as any)?.amountPaid === "number" && (
                 <div className="flex items-center gap-2"><CircleDollarSign className="h-4 w-4" /> Amount Paid: {formatCurrency((homeowner as any).amountPaid)}</div>
+              )}
+              {duesStatus && (
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" /> 
+                  HOA Dues {new Date().getFullYear()}: {formatCurrency(duesStatus.amount_paid)} / {formatCurrency(duesStatus.annual_amount)}
+                </div>
+              )}
+              {duesStatus && duesStatus.balance_due > 0 && (
+                <div className="flex items-center gap-2 text-red-600">
+                  <DollarSign className="h-4 w-4" /> 
+                  Balance Due: {formatCurrency(duesStatus.balance_due)}
+                </div>
+              )}
+              {duesStatus && duesStatus.payment_date && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" /> 
+                  Last Dues Payment: {formatDateLocal(duesStatus.payment_date)}
+                </div>
               )}
               {homeowner?.emergencyContactName && (
                 <div className="flex items-center gap-2"><User2 className="h-4 w-4" /> Emergency: {homeowner.emergencyContactName}</div>

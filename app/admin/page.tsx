@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/use-auth"
 import type { Announcement, Issue } from "@/lib/types"
-import { Home, Users, MessageSquare, AlertCircle, Car, Plus, ArrowLeft, CheckCircle, Clock } from "lucide-react"
+import { Home, Users, MessageSquare, AlertCircle, Car, Plus, ArrowLeft, CheckCircle, Clock, DollarSign } from "lucide-react"
 
 function AdminDashboardContent() {
   const { session, logout } = useAuth()
@@ -241,7 +241,7 @@ function AdminDashboardContent() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <Button onClick={() => router.push("/admin/announcements/new")} className="h-16 flex-col space-y-2">
             <Plus className="h-5 w-5" />
             <span className="text-sm">New Announcement</span>
@@ -254,6 +254,15 @@ function AdminDashboardContent() {
           >
             <Users className="h-5 w-5" />
             <span className="text-sm">Manage Homeowners</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => router.push("/admin/dues")}
+            className="h-16 flex-col space-y-2"
+          >
+            <DollarSign className="h-5 w-5" />
+            <span className="text-sm">HOA Dues</span>
           </Button>
 
           <Button
