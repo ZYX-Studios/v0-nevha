@@ -15,7 +15,7 @@ interface IssueItem {
   title: string
   description: string
   category: string
-  priority: "low" | "normal" | "high" | "urgent"
+  priority: "P1" | "P2" | "P3" | "P4"
   status: "not_started" | "in_progress" | "on_hold" | "resolved" | "closed"
   location: string | null
   reporterBlock: string | null
@@ -84,17 +84,6 @@ export default function DeptIssuesPage() {
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleString()
 
-  const getPriorityVariant = (priority: string): "default" | "secondary" | "destructive" | "outline" => {
-    switch (priority) {
-      case "urgent":
-        return "destructive"
-      case "high":
-        return "secondary"
-      default:
-        return "outline"
-    }
-  }
-
   const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case "resolved":
@@ -103,6 +92,38 @@ export default function DeptIssuesPage() {
         return "secondary"
       default:
         return "outline"
+    }
+  }
+
+  const getPriorityVariant = (priority: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch (priority) {
+      case "P1":
+        return "destructive"
+      case "P2":
+        return "secondary"
+      case "P3":
+        return "default"
+      case "P4":
+        return "outline"
+      default:
+        return "outline"
+    }
+  }
+
+  const handlePriorityChange = async (issueId: string, newPriority: string) => {
+    try {
+      const res = await fetch(`/api/dept/issues/${issueId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priority: newPriority }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to update priority")
+      toast.success("Priority updated successfully")
+      setIssues((prev) => prev.map((it) => (it.id === issueId ? { ...it, priority: newPriority as any } : it)))
+    } catch (e) {
+      const msg = (e as any)?.message || e
+      toast.error(`Failed to update priority: ${msg}`)
     }
   }
 
@@ -173,6 +194,9 @@ export default function DeptIssuesPage() {
                         </div>
                       </div>
                       <CardTitle className="text-lg">{i.title}</CardTitle>
+                      <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                        {i.description}
+                      </p>
                     </div>
                     <div>
                       <Button size="sm" onClick={() => router.push(`/dept/issues/${i.id}`)}>View</Button>

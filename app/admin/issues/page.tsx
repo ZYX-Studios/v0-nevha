@@ -201,6 +201,25 @@ function IssuesManagementContent() {
     }
   }
 
+  const handlePriorityChange = async (issueId: string, newPriority: string) => {
+    try {
+      const res = await fetch(`/api/admin/issues/${issueId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priority: newPriority }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to update priority")
+      toast.success("Priority updated successfully")
+      setIssues((prev) => prev.map((it) => (it.id === issueId ? { ...it, priority: newPriority as any } : it)))
+      await reloadIssues()
+      await reloadStats()
+    } catch (e) {
+      const msg = (e as any)?.message || e
+      toast.error(`Failed to update priority: ${msg}`)
+    }
+  }
+
   // Toggle between resolved and in_progress
   const handleToggleResolve = async (issue: Issue) => {
     try {
@@ -345,10 +364,14 @@ function IssuesManagementContent() {
 
   const getPriorityVariant = (priority: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (priority) {
-      case "urgent":
+      case "P1":
         return "destructive"
-      case "high":
+      case "P2":
         return "secondary"
+      case "P3":
+        return "default"
+      case "P4":
+        return "outline"
       default:
         return "outline"
     }
@@ -574,10 +597,10 @@ function IssuesManagementContent() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Priority</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="urgent">Urgent</SelectItem>
+                  <SelectItem value="P1">P1 (Critical)</SelectItem>
+                  <SelectItem value="P2">P2 (High)</SelectItem>
+                  <SelectItem value="P3">P3 (Medium)</SelectItem>
+                  <SelectItem value="P4">P4 (Low)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

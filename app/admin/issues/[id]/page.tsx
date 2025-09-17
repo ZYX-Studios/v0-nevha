@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Calendar, CheckCircle, Clock, AlertCircle, Tag, Mail, RefreshCw, MapPin } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 
 interface IssueDetailItem {
@@ -15,7 +16,7 @@ interface IssueDetailItem {
   title: string
   description: string
   category: string
-  priority: "low" | "normal" | "high" | "urgent"
+  priority: "P1" | "P2" | "P3" | "P4"
   status: "not_started" | "in_progress" | "on_hold" | "resolved" | "closed"
   location: string | null
   assignedTo: string | null
@@ -61,6 +62,21 @@ const statusVariant = (status: string): "default" | "secondary" | "destructive" 
     case "in_progress":
       return "secondary"
     case "closed":
+      return "outline"
+    default:
+      return "outline"
+  }
+}
+
+const getPriorityVariant = (priority: string): "default" | "secondary" | "destructive" | "outline" => {
+  switch (priority) {
+    case "P1":
+      return "destructive"
+    case "P2":
+      return "secondary"
+    case "P3":
+      return "default"
+    case "P4":
       return "outline"
     default:
       return "outline"
@@ -156,6 +172,24 @@ export default function IssueDetailPage({ params }: { params: { id: string } }) 
     }
   }
 
+  const handlePriorityChange = async (newPriority: string) => {
+    if (!item) return
+    try {
+      const res = await fetch(`/api/admin/issues/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priority: newPriority }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to update priority")
+      toast.success("Priority updated successfully")
+      setItem((prev) => (prev ? { ...prev, priority: newPriority as any } : prev))
+    } catch (e) {
+      const msg = (e as any)?.message || e
+      toast.error(`Failed to update priority: ${msg}`)
+    }
+  }
+
   async function toggleResolve() {
     if (!item) return
     setSaving(true)
@@ -244,7 +278,7 @@ export default function IssueDetailPage({ params }: { params: { id: string } }) 
                           {statusIcon(currentStatus)}
                           <span>{currentStatus.replace("_", " ")}</span>
                         </Badge>
-                        <Badge variant="outline" className="capitalize">{item.priority}</Badge>
+                        <Badge variant={getPriorityVariant(item.priority)} className="capitalize">{item.priority}</Badge>
                         <Badge variant="outline" className="capitalize" title="Category">
                           <Tag className="h-3 w-3 mr-1" /> {item.category}
                         </Badge>
@@ -313,6 +347,36 @@ export default function IssueDetailPage({ params }: { params: { id: string } }) 
             </div>
 
             <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Priority</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Current:</span>
+                      <Badge variant={getPriorityVariant(item.priority)} className="capitalize">
+                        {item.priority}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Change Priority:</label>
+                      <Select value={item.priority} onValueChange={handlePriorityChange}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="P1">P1 (Critical)</SelectItem>
+                          <SelectItem value="P2">P2 (High)</SelectItem>
+                          <SelectItem value="P3">P3 (Medium)</SelectItem>
+                          <SelectItem value="P4">P4 (Low)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">

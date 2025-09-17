@@ -26,13 +26,13 @@ type IssueDbRow = {
   reporter_street: string | null
 }
 
-function mapPriority(dbPriority: string | null): "low" | "normal" | "high" | "urgent" {
+function mapPriority(dbPriority: string | null): "P1" | "P2" | "P3" | "P4" {
   switch ((dbPriority || "").toUpperCase()) {
-    case "P1": return "urgent"
-    case "P2": return "high"
-    case "P3": return "normal"
-    case "P4": return "low"
-    default: return "normal"
+    case "P1": return "P1"
+    case "P2": return "P2"
+    case "P3": return "P3"
+    case "P4": return "P4"
+    default: return "P3"
   }
 }
 
@@ -109,6 +109,65 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     }
 
     return NextResponse.json({ item }, { status: 200 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })
+  }
+}
+
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const ctx = await getDeptContext()
+    if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+    const id = params.id
+    if (!id) return NextResponse.json({ error: "Missing issue id" }, { status: 400 })
+
+    const body = await req.json()
+    const { priority } = body
+
+    if (!priority) {
+      return NextResponse.json({ error: "Priority is required" }, { status: 400 })
+    }
+
+    // Validate priority
+    if (!["P1", "P2", "P3", "P4"].includes(priority)) {
+      return NextResponse.json({ error: "Invalid priority. Must be P1, P2, P3, or P4" }, { status: 400 })
+    }
+
+    const supabase = createAdminClient()
+
+    // Verify scoping by department
+    const { data: link, error: linkErr } = await supabase
+      .from("issue_departments")
+      .select("issue_id")
+      .eq("issue_id", id)
+      .eq("department_id", ctx.id)
+      .limit(1)
+
+    if (linkErr) return NextResponse.json({ error: linkErr.message }, { status: 400 })
+    if (!Array.isArray(link) || link.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+    const { data, error } = await supabase
+      .from("issues")
+      .update({ 
+        priority,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    return NextResponse.json({ 
+      message: "Priority updated successfully",
+      issue: {
+        id: data.id,
+        priority: data.priority
+      }
+    }, { status: 200 })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })
   }

@@ -121,3 +121,48 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })
   }
 }
+
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const id = params.id
+    if (!id) return NextResponse.json({ error: "Missing issue id" }, { status: 400 })
+
+    const body = await req.json()
+    const { priority } = body
+
+    if (!priority) {
+      return NextResponse.json({ error: "Priority is required" }, { status: 400 })
+    }
+
+    // Validate priority
+    if (!["P1", "P2", "P3", "P4"].includes(priority)) {
+      return NextResponse.json({ error: "Invalid priority. Must be P1, P2, P3, or P4" }, { status: 400 })
+    }
+
+    const supabase = createAdminClient()
+
+    const { data, error } = await supabase
+      .from("issues")
+      .update({ 
+        priority,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    return NextResponse.json({ 
+      message: "Priority updated successfully",
+      issue: {
+        id: data.id,
+        priority: data.priority
+      }
+    }, { status: 200 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })
+  }
+}

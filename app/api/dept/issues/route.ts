@@ -2,18 +2,18 @@ import { NextResponse } from "next/server"
 import { getDeptContext } from "@/lib/dept/auth"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 
-function mapPriority(dbPriority: string | null): "low" | "normal" | "high" | "urgent" {
+function mapPriority(dbPriority: string | null): "P1" | "P2" | "P3" | "P4" {
   switch ((dbPriority || "").toUpperCase()) {
     case "P1":
-      return "urgent"
+      return "P1"
     case "P2":
-      return "high"
+      return "P2"
     case "P3":
-      return "normal"
+      return "P3"
     case "P4":
-      return "low"
+      return "P4"
     default:
-      return "normal"
+      return "P3"
   }
 }
 
