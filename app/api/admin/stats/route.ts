@@ -32,6 +32,14 @@ export async function GET() {
       .eq("status", "ACTIVE")
     const activeCarStickers = activeStickersCount.count || 0
 
+    // Get admin users count
+    const adminUsersCount = await supabase
+      .from("users")
+      .select("*", { count: "exact", head: true })
+      .in("role", ["ADMIN", "STAFF"])
+      .eq("is_active", true)
+    const adminUsers = adminUsersCount.count || 0
+
     // Get recent issues (last 5)
     const recentIssuesRes = await supabase
       .from("issues")
@@ -93,6 +101,7 @@ export async function GET() {
         activeIssues,
         publishedAnnouncements,
         activeCarStickers,
+        adminUsers,
       },
       recentItems: {
         issues: recentIssues,

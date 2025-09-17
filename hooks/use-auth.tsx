@@ -211,17 +211,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     const supabase = createBrowserSupabase()
-    if (isDev) console.log("[auth] logout called")
-    await supabase.auth.signOut()
+    if (isDev) console.log("[auth] logout called - starting process")
+    
     try {
-      await fetch("/api/auth/sync", {
+      if (isDev) console.log("[auth] step 1: calling supabase.auth.signOut() with timeout")
+      
+      // Add timeout to prevent hanging
+      const signOutPromise = supabase.auth.signOut()
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('signOut timeout')), 5000)
+      )
+      
+      const { error } = await Promise.race([signOutPromise, timeoutPromise]) as any
+      if (isDev) console.log("[auth] step 1 completed - signOut result:", { error: error?.message })
+      
+    } catch (e: any) {
+      if (isDev) console.log("[auth] signOut failed or timed out:", e.message)
+      // Continue with logout process even if signOut fails
+    }
+    
+    try {
+      if (isDev) console.log("[auth] step 2: calling /api/auth/sync")
+      // Sync with server to clear cookies
+      const syncResponse = await fetch("/api/auth/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ access_token: null, refresh_token: null }),
         credentials: "include",
       })
-    } catch {}
+      if (isDev) console.log("[auth] step 2 completed - sync response:", { 
+        ok: syncResponse.ok, 
+        status: syncResponse.status 
+      })
+    } catch (e) {
+      if (isDev) console.log("[auth] sync failed:", e)
+      // Continue even if sync fails
+    }
+    
+    if (isDev) console.log("[auth] step 3: clearing local session state")
+    // Always clear local session state
     setSession({ isAuthenticated: false, user: null, isLoading: false })
+    if (isDev) console.log("[auth] step 3 completed - local session cleared")
+    if (isDev) console.log("[auth] logout function completed")
   }
 
   const register = async (input: { email: string; password: string; firstName: string; lastName: string; phone?: string }) => {

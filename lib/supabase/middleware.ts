@@ -94,6 +94,29 @@ export async function updateSession(request: NextRequest) {
     if (process.env.NODE_ENV !== "production") {
       console.log("[mw] public route", { path, isPublic, hasUser: !!user })
     }
+
+    // If the user is authenticated and visiting /auth, redirect them to a meaningful place
+    // EXCEPT when explicitly coming from a logout flow (?logout=1)
+    if (user && path.startsWith("/auth")) {
+      const fromLogout = url.searchParams.get("logout") === "1"
+      if (fromLogout) {
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[mw] allow /auth after logout param despite authenticated user (race tolerance)")
+        }
+        return supabaseResponse
+      }
+
+      const redirectParam = url.searchParams.get("redirect")
+      const isSafe = !!redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      const dest = new URL(request.url)
+      dest.pathname = isSafe ? redirectParam! : "/admin"
+      dest.search = ""
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[mw] redirect authenticated user away from /auth ->", dest.pathname)
+      }
+      return NextResponse.redirect(dest)
+    }
+
     return supabaseResponse
   }
 

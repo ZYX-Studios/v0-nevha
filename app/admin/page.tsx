@@ -19,6 +19,7 @@ function AdminDashboardContent() {
     activeIssues: 0,
     publishedAnnouncements: 0,
     activeCarStickers: 0,
+    adminUsers: 0,
     recentIssues: [] as Issue[],
     recentAnnouncements: [] as Announcement[],
   })
@@ -43,6 +44,7 @@ function AdminDashboardContent() {
           activeIssues: data.stats.activeIssues,
           publishedAnnouncements: data.stats.publishedAnnouncements,
           activeCarStickers: data.stats.activeCarStickers,
+          adminUsers: data.stats.adminUsers,
           recentIssues: data.recentItems.issues,
           recentAnnouncements: data.recentItems.announcements,
         })
@@ -120,9 +122,17 @@ function AdminDashboardContent() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={async () => {
-                  await logout()
-                  router.push("/auth")
+                onClick={() => {
+                  console.log("[admin] Starting logout process (non-blocking)...")
+                  // Fire-and-forget: do not await to avoid UI hang if signOut stalls
+                  try { void logout() } catch {}
+                  const dest = "/auth?logout=1"
+                  console.log("[admin] Redirecting immediately ->", dest)
+                  if (typeof window !== "undefined") {
+                    window.location.replace(dest)
+                  } else {
+                    router.replace(dest)
+                  }
                 }}
               >
                 Logout
@@ -143,7 +153,7 @@ function AdminDashboardContent() {
         )}
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <Card 
             className="cursor-pointer hover:shadow-md transition-shadow duration-200"
             onClick={() => !loading && router.push("/admin/homeowners")}
@@ -211,10 +221,27 @@ function AdminDashboardContent() {
               </div>
             </CardContent>
           </Card>
+
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+            onClick={() => !loading && router.push("/admin/users")}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Admin Users</p>
+                  <p className="text-2xl font-bold">
+                    {loading ? "..." : stats.adminUsers}
+                  </p>
+                </div>
+                <Users className="h-8 w-8 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <Button onClick={() => router.push("/admin/announcements/new")} className="h-16 flex-col space-y-2">
             <Plus className="h-5 w-5" />
             <span className="text-sm">New Announcement</span>
@@ -241,6 +268,15 @@ function AdminDashboardContent() {
           <Button variant="outline" onClick={() => router.push("/admin/issues")} className="h-16 flex-col space-y-2">
             <AlertCircle className="h-5 w-5" />
             <span className="text-sm">Manage Issues</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => router.push("/admin/users")}
+            className="h-16 flex-col space-y-2"
+          >
+            <Users className="h-5 w-5" />
+            <span className="text-sm">Manage Users</span>
           </Button>
 
           {/* Parking Management link removed as the route does not exist yet */}
