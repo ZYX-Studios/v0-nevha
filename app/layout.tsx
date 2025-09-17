@@ -10,7 +10,7 @@ import { Toaster } from "sonner"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Oakwood Commons HOA",
+  title: "Northfields Executive Village HOA",
   description: "Homeowners Association community management app",
   generator: "v0.app",
   manifest: "/manifest.json",
@@ -24,13 +24,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    siteName: "Oakwood Commons HOA",
-    title: "Oakwood Commons HOA",
+    siteName: "NEVHA.ORG",
+    title: "Northfields Executive Vilalge HOA",
     description: "Homeowners Association community management app",
   },
   twitter: {
     card: "summary",
-    title: "Oakwood Commons HOA",
+    title: "Northfields Executive Village HOA",
     description: "Homeowners Association community management app",
   },
 }

@@ -130,7 +130,10 @@ function AdminDashboardContent() {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+            onClick={() => router.push("/admin/homeowners")}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -142,7 +145,10 @@ function AdminDashboardContent() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+            onClick={() => router.push("/admin/issues")}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -154,7 +160,10 @@ function AdminDashboardContent() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+            onClick={() => router.push("/admin/announcements")}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -166,7 +175,10 @@ function AdminDashboardContent() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+            onClick={() => router.push("/admin/homeowners")}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
