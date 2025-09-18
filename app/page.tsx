@@ -75,7 +75,7 @@ export default function HomePage() {
               className="w-10 h-10"
             />
             <div>
-              <h1 className="text-lg font-bold text-gray-900">NEVHA</h1>
+              <h1 className="text-lg font-bold text-gray-900">Homeowners Assocation App</h1>
               <p className="text-xs text-blue-600 font-medium">Northfields Executive Village</p>
             </div>
           </div>

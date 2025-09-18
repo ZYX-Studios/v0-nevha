@@ -1,7 +1,7 @@
 {
-  "name": "Oakwood Commons HOA",
-  "short_name": "HOA App",
-  "description": "Homeowners Association community management app",
+  "name": "NEVHA App",
+  "short_name": "NEVHA App",
+  "description": "Northfields Executive Village Homeowners Association community management app",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -11,19 +11,19 @@
   "lang": "en-US",
   "icons": [
     {
-      "src": "/icon-192x192.jpg",
+      "src": "/nevha-icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "/icon-512x512.jpg",
+      "src": "/nevha-icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "/apple-touch-icon.jpg",
+      "src": "/nevha-apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png"
     }
@@ -50,7 +50,7 @@
       "url": "/dashboard",
       "icons": [
         {
-          "src": "/icon-192x192.jpg",
+          "src": "/nevha-icon-192x192.png",
           "sizes": "192x192"
         }
       ]
@@ -62,7 +62,7 @@
       "url": "/report",
       "icons": [
         {
-          "src": "/icon-192x192.jpg",
+          "src": "/nevha-icon-192x192.png",
           "sizes": "192x192"
         }
       ]
@@ -74,7 +74,7 @@
       "url": "/announcements",
       "icons": [
         {
-          "src": "/icon-192x192.jpg",
+          "src": "/nevha-icon-192x192.png",
           "sizes": "192x192"
         }
       ]
