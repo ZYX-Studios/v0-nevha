@@ -10,28 +10,42 @@ import { Toaster } from "sonner"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Northfields Executive Village HOA",
-  description: "Homeowners Association community management app",
+  title: "NEVHA App - Northfields Executive Village HOA",
+  description: "Official Northfields Executive Village Homeowners Association community management app. Report issues, view announcements, and stay connected with your community.",
   generator: "v0.app",
   manifest: "/manifest.json",
+  keywords: ["NEVHA", "Northfields Executive Village", "HOA", "Homeowners Association", "Community Management"],
+  authors: [{ name: "NEVHA" }],
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "HOA App",
+    title: "NEVHA App",
   },
   formatDetection: {
     telephone: false,
   },
   openGraph: {
     type: "website",
-    siteName: "NEVHA.ORG",
-    title: "Northfields Executive Vilalge HOA",
-    description: "Homeowners Association community management app",
+    siteName: "NEVHA App",
+    title: "NEVHA App - Northfields Executive Village HOA",
+    description: "Official Northfields Executive Village Homeowners Association community management app. Report issues, view announcements, and stay connected with your community.",
+    url: "https://nevha.vercel.app",
+    images: [
+      {
+        url: "/nevha-og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "NEVHA - Northfields Executive Village Homeowners Association",
+      },
+    ],
+    locale: "en_US",
   },
   twitter: {
-    card: "summary",
-    title: "Northfields Executive Village HOA",
-    description: "Homeowners Association community management app",
+    card: "summary_large_image",
+    title: "NEVHA App - Northfields Executive Village HOA",
+    description: "Official Northfields Executive Village Homeowners Association community management app. Report issues, view announcements, and stay connected with your community.",
+    images: ["/nevha-og-image.png"],
+    creator: "@NEVHA",
   },
 }
 
@@ -47,10 +61,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="apple-touch-icon" href="/apple-touch-icon.jpg" />
+        <link rel="apple-touch-icon" href="/nevha-apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="HOA App" />
+        <meta name="apple-mobile-web-app-title" content="NEVHA App" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
         <meta name="msapplication-TileColor" content="#1f2937" />
