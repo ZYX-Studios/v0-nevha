@@ -6,10 +6,12 @@ import type React from "react"
 
 import { InstallPrompt } from "./install-prompt"
 import { OfflineIndicator } from "./offline-indicator"
+import { UpdateNotification } from "./update-notification"
 
 export function PWAWrapper({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <UpdateNotification />
       <OfflineIndicator />
       {children}
       <InstallPrompt />

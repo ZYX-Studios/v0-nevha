@@ -75,6 +75,8 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/announcements") ||
     path.startsWith("/api/announcements") ||
     path.startsWith("/api/departments") || // used by public report form for department options
+    // Update helper to break users out of stale PWA cache
+    path.startsWith("/refresh") ||
     // Public emergency and applications pages
     path.startsWith("/emergency") ||
     path.startsWith("/applications") ||

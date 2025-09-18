@@ -1,19 +1,25 @@
 // Service Worker for PWA offline functionality
 
-const CACHE_NAME = "hoa-pwa-v2"
+const CACHE_VERSION = "v3.1" // Update this when deploying changes
+const CACHE_NAME = `nevha-pwa-${CACHE_VERSION}`
 const STATIC_CACHE_URLS = [
   "/",
-  "/dashboard",
   "/announcements",
   "/auth",
   "/manifest.json",
-  "/icon-192x192.jpg",
-  "/icon-512x512.jpg",
+  "/nevha-icon-192x192.png",
+  "/nevha-icon-512x512.png",
+  "/nevha-apple-touch-icon.png",
+  "/nevha-og-image.png"
 ]
+
+// Track if this is a new service worker version
+let isNewVersion = false
 
 // Install event - cache static resources
 self.addEventListener("install", (event) => {
-  console.log("[SW] Installing service worker")
+  console.log(`[SW] Installing service worker ${CACHE_VERSION}`)
+  isNewVersion = true
 
   event.waitUntil(
     caches
@@ -24,14 +30,15 @@ self.addEventListener("install", (event) => {
       })
       .then(() => {
         console.log("[SW] Static resources cached")
+        // Force immediate activation
         return self.skipWaiting()
       }),
   )
 })
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches and notify clients
 self.addEventListener("activate", (event) => {
-  console.log("[SW] Activating service worker")
+  console.log(`[SW] Activating service worker ${CACHE_VERSION}`)
 
   event.waitUntil(
     caches
@@ -48,12 +55,19 @@ self.addEventListener("activate", (event) => {
       })
       .then(() => {
         console.log("[SW] Service worker activated")
+        // Take control of all clients immediately
         return self.clients.claim()
+      })
+      .then(() => {
+        // Notify all clients about the update
+        if (isNewVersion) {
+          return notifyClientsOfUpdate()
+        }
       }),
   )
 })
 
-// Fetch event - serve from cache when offline
+// Fetch event - Network First strategy for HTML, Cache First for assets
 self.addEventListener("fetch", (event) => {
   // Skip non-GET requests
   if (event.request.method !== "GET") return
@@ -63,13 +77,35 @@ self.addEventListener("fetch", (event) => {
   // Skip external requests
   if (url.origin !== self.location.origin) return
 
-  // IMPORTANT: Do NOT cache API responses to avoid stale data
+  // NEVER cache API responses to avoid stale data
   if (url.pathname.startsWith("/api/")) return
 
+  // Network First strategy for HTML pages (to get latest content)
+  if (event.request.mode === "navigate" || event.request.headers.get("accept")?.includes("text/html")) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // Cache the new version
+          if (response.status === 200) {
+            const responseToCache = response.clone()
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache)
+            })
+          }
+          return response
+        })
+        .catch(() => {
+          // Fallback to cache if network fails
+          return caches.match(event.request) || caches.match("/")
+        })
+    )
+    return
+  }
+
+  // Cache First strategy for assets (images, CSS, JS)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        console.log("[SW] Serving from cache:", event.request.url)
         return cachedResponse
       }
 
@@ -81,16 +117,12 @@ self.addEventListener("fetch", (event) => {
 
           const responseToCache = response.clone()
           caches.open(CACHE_NAME).then((cache) => {
-            console.log("[SW] Caching new resource:", event.request.url)
             cache.put(event.request, responseToCache)
           })
 
           return response
         })
         .catch(() => {
-          if (event.request.mode === "navigate") {
-            return caches.match("/") || new Response("Offline - Please check your connection")
-          }
           return new Response("Offline")
         })
     }),
@@ -114,9 +146,9 @@ self.addEventListener("push", (event) => {
   console.log("[SW] Push notification received")
 
   const options = {
-    body: event.data ? event.data.text() : "New notification from HOA",
-    icon: "/icon-192x192.jpg",
-    badge: "/icon-192x192.jpg",
+    body: event.data ? event.data.text() : "New notification from NEVHA",
+    icon: "/nevha-icon-192x192.png",
+    badge: "/nevha-icon-192x192.png",
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -126,12 +158,12 @@ self.addEventListener("push", (event) => {
       {
         action: "explore",
         title: "View",
-        icon: "/icon-192x192.jpg",
+        icon: "/nevha-icon-192x192.png",
       },
       {
         action: "close",
         title: "Close",
-        icon: "/icon-192x192.jpg",
+        icon: "/nevha-icon-192x192.png",
       },
     ],
   }
@@ -165,3 +197,37 @@ async function syncOfflineData() {
     throw error
   }
 }
+
+// Notify all clients about app update
+async function notifyClientsOfUpdate() {
+  try {
+    const clients = await self.clients.matchAll()
+    console.log(`[SW] Notifying ${clients.length} clients about update`)
+    
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'APP_UPDATE_AVAILABLE',
+        version: CACHE_VERSION
+      })
+    })
+  } catch (error) {
+    console.error('[SW] Failed to notify clients:', error)
+  }
+}
+
+// Handle messages from clients
+self.addEventListener('message', (event) => {
+  console.log('[SW] Message received:', event.data)
+  
+  if (event.data && event.data.type === 'FORCE_REFRESH') {
+    // Clear all caches and force refresh
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => caches.delete(cacheName))
+      )
+    }).then(() => {
+      // Notify client to reload
+      event.ports[0]?.postMessage({ success: true })
+    })
+  }
+})

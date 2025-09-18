@@ -9,6 +9,9 @@ import { Suspense } from "react"
 import { Toaster } from "sonner"
 import "./globals.css"
 
+// Build-time SW version for cache-busting the service worker file
+const SW_VERSION = process.env.NEXT_PUBLIC_SW_VERSION || process.env.VERCEL_GIT_COMMIT_SHA || `${Date.now()}`
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://nevha.vercel.app'),
   title: "NEVHA App - Northfields Executive Village HOA",
@@ -73,17 +76,51 @@ export default function RootLayout({
           <script
             dangerouslySetInnerHTML={{
               __html: `
-                if ('serviceWorker' in navigator) {
-                  window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('/sw.js')
-                      .then(function(registration) {
-                        console.log('[PWA] Service Worker registered successfully:', registration.scope);
-                      })
-                      .catch(function(error) {
-                        console.log('[PWA] Service Worker registration failed:', error);
-                      });
-                  });
-                }
+                (function() {
+                  if ('serviceWorker' in navigator) {
+                    const swUrl = '/sw.js?v=${SW_VERSION}';
+                    window.addEventListener('load', function() {
+                      navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' })
+                        .then(function(registration) {
+                          console.log('[PWA] Service Worker registered:', registration.scope);
+                          // Force an update check on load
+                          if (registration.update) {
+                            registration.update();
+                          }
+
+                          // Listen for updates being found
+                          registration.onupdatefound = function () {
+                            const installingWorker = registration.installing;
+                            if (!installingWorker) return;
+                            installingWorker.onstatechange = function () {
+                              if (installingWorker.state === 'installed') {
+                                if (navigator.serviceWorker.controller) {
+                                  // A new update is available; SW will notify the app, too
+                                  console.log('[PWA] New content is available; will notify clients.');
+                                } else {
+                                  console.log('[PWA] Content cached for offline use.');
+                                }
+                              }
+                            };
+                          };
+                        })
+                        .catch(function(error) {
+                          console.log('[PWA] Service Worker registration failed:', error);
+                        });
+
+                      // Reload once when the new Service Worker takes control so users see the latest site
+                      (function() {
+                        var reloaded = false;
+                        navigator.serviceWorker.addEventListener('controllerchange', function() {
+                          if (reloaded) return;
+                          reloaded = true;
+                          console.log('[PWA] New service worker controlling the page, reloading...');
+                          window.location.reload();
+                        });
+                      })();
+                    });
+                  }
+                })();
               `,
             }}
           />
