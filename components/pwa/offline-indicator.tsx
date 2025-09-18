@@ -3,14 +3,13 @@
 "use client"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
 import { useOffline } from "@/hooks/use-offline"
-import { WifiOff, RefreshCw, AlertTriangle } from "lucide-react"
+import { WifiOff } from "lucide-react"
 
 export function OfflineIndicator() {
-  const { isOnline, isDataStale, isSyncing, syncData } = useOffline()
+  const { isOnline } = useOffline()
 
-  if (isOnline && !isDataStale) {
+  if (isOnline) {
     return null
   }
 
@@ -25,33 +24,6 @@ export function OfflineIndicator() {
         </Alert>
       )}
 
-      {isOnline && isDataStale && (
-        <Alert className="rounded-none border-x-0 border-t-0 bg-yellow-50 border-yellow-200">
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="flex items-center justify-between">
-            <span className="text-yellow-800">Your data may be outdated.</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={syncData}
-              disabled={isSyncing}
-              className="ml-2 h-6 text-xs bg-transparent"
-            >
-              {isSyncing ? (
-                <>
-                  <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
-                  Syncing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-1 h-3 w-3" />
-                  Refresh
-                </>
-              )}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
     </div>
   )
 }

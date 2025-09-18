@@ -75,6 +75,9 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/announcements") ||
     path.startsWith("/api/announcements") ||
     path.startsWith("/api/departments") || // used by public report form for department options
+    // Public emergency and applications pages
+    path.startsWith("/emergency") ||
+    path.startsWith("/applications") ||
     // Admin bootstrap endpoints kept public intentionally
     path.startsWith("/api/admin/create-user") ||
     path.startsWith("/api/admin/reset-password") ||
