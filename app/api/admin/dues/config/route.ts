@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createAdminClient();
     
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const year = searchParams.get('year');
     
     let query = supabase

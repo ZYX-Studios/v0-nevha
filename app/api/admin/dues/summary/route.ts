@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createAdminClient();
     
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString());
     
     // Get dues summary using our database function

@@ -10,6 +10,7 @@ import { Toaster } from "sonner"
 import "./globals.css"
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://nevha.vercel.app'),
   title: "NEVHA App - Northfields Executive Village HOA",
   description: "Official Northfields Executive Village Homeowners Association community management app. Report issues, view announcements, and stay connected with your community.",
   generator: "v0.app",
