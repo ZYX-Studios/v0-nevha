@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/resend"
+import { createHmac, timingSafeEqual } from "crypto"
 
 function generateRefCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -9,10 +10,48 @@ function generateRefCode(): string {
   return `REF-${body}`
 }
 
+// --- Verification helpers (must match app/api/residents/search/route.ts) ---
+function b64url(input: Buffer | string) {
+  const buf = Buffer.isBuffer(input) ? input : Buffer.from(input)
+  return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "")
+}
+function fromB64url(input: string) {
+  const pad = input.length % 4 === 0 ? "" : "=".repeat(4 - (input.length % 4))
+  const str = input.replace(/-/g, "+").replace(/_/g, "/") + pad
+  return Buffer.from(str, "base64")
+}
+function getSecret() {
+  const s = process.env.ADMIN_ACCESS_KEY || process.env.RESIDENT_VERIFICATION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!s) throw new Error("Missing ADMIN_ACCESS_KEY")
+  return s
+}
+function constantTimeEqStr(a: string, b: string) {
+  const enc = new TextEncoder()
+  const ab = enc.encode(a)
+  const bb = enc.encode(b)
+  return ab.length === bb.length && timingSafeEqual(ab, bb)
+}
+function verifyResidentToken(token: string): { t: string; id: string; n: string; iat: number; exp: number } {
+  if (!token || typeof token !== "string") throw new Error("missing")
+  const parts = token.split(".")
+  if (parts.length !== 4 || parts[0] !== "v1") throw new Error("format")
+  const [, h, p, sig] = parts
+  const unsigned = `${h}.${p}`
+  const mac = createHmac("sha256", getSecret()).update(unsigned).digest()
+  const expected = b64url(mac)
+  const ok = constantTimeEqStr(sig, expected)
+  if (!ok) throw new Error("bad_sig")
+  const payloadRaw = fromB64url(p).toString("utf8")
+  const payload = JSON.parse(payloadRaw)
+  if (!payload || typeof payload.exp !== "number" || Date.now() > payload.exp) throw new Error("expired")
+  return payload
+}
+
 export async function POST(req: Request) {
   try {
     const supabase = await createClient()
     const payload = await req.json().catch(() => ({}))
+    const verifiedToken = String(payload?.verified_resident_token || "").trim()
     const rawTitle = (payload?.title || "").trim()
     const description = (payload?.description || "").trim()
     const category = (payload?.category || "").trim()
@@ -34,6 +73,22 @@ export async function POST(req: Request) {
     }
     if (!acknowledged) {
       return NextResponse.json({ error: "Please acknowledge the terms before submitting." }, { status: 400 })
+    }
+
+    // Enforce verified resident token
+    if (!verifiedToken) {
+      return NextResponse.json({ error: "Resident verification required" }, { status: 403 })
+    }
+    let proof
+    try {
+      proof = verifyResidentToken(verifiedToken)
+    } catch (e) {
+      return NextResponse.json({ error: "Invalid or expired verification" }, { status: 403 })
+    }
+    const submittedName = (reporter_full_name || "").trim()
+    const tokenName = String(proof.n || "").trim()
+    if (!submittedName || submittedName.toLowerCase() !== tokenName.toLowerCase()) {
+      return NextResponse.json({ error: "Verified name does not match submission" }, { status: 403 })
     }
 
     const title = rawTitle || (category ? `${category} Concern` : "Community Concern")

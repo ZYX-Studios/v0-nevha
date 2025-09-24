@@ -71,6 +71,8 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/status") || // e.g., /status/REF-XXXX
     path.startsWith("/api/report") ||
     path.startsWith("/api/status") ||
+    // Public resident search (used by report page for name verification)
+    path.startsWith("/api/residents") ||
     // Public announcements (homepage section and dedicated page)
     path.startsWith("/announcements") ||
     path.startsWith("/api/announcements") ||

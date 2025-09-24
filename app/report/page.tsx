@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -37,7 +37,7 @@ type FormState = {
   priority: "P1" | "P2" | "P3" | "P4"
 }
 
-type PendingReport = FormState & { queuedAt: number }
+type PendingReport = (FormState & { verified_resident_token?: string }) & { queuedAt: number }
 
 export default function ReportPage() {
   const router = useRouter()
@@ -45,6 +45,12 @@ export default function ReportPage() {
   const [error, setError] = useState("")
   const [successRef, setSuccessRef] = useState<string | null>(null)
   const [deptOptions, setDeptOptions] = useState<string[]>([])
+  // Resident verification state
+  const [selectedResidentToken, setSelectedResidentToken] = useState<string | null>(null)
+  const [nameSuggestions, setNameSuggestions] = useState<{ name: string; token: string }[]>([])
+  const [isSearchingName, setIsSearchingName] = useState(false)
+  const nameSearchAbortRef = useRef<AbortController | null>(null)
+  const [verifyError, setVerifyError] = useState(false)
   const [form, setForm] = useState<FormState>({
     description: "",
     category: "",
@@ -78,6 +84,8 @@ export default function ReportPage() {
 
       const remaining: PendingReport[] = []
       for (const item of queue) {
+        // Skip legacy items without verification token to avoid stuck queue
+        if (!item.verified_resident_token) continue
         try {
           const res = await fetch("/api/report", {
             method: "POST",
@@ -85,6 +93,8 @@ export default function ReportPage() {
             body: JSON.stringify(item),
           })
           if (!res.ok) {
+            // If forbidden due to verification, drop the item permanently
+            if (res.status === 403) continue
             remaining.push(item)
           }
         } catch {
@@ -127,6 +137,41 @@ export default function ReportPage() {
     }
   }, [])
 
+  // Debounced resident name suggestions (subtle verification)
+  useEffect(() => {
+    const q = form.reporter_full_name.trim()
+    // Clear suggestions when verified or query is short
+    if (selectedResidentToken || q.length < 3) {
+      if (nameSuggestions.length) setNameSuggestions([])
+      return
+    }
+
+    setIsSearchingName(true)
+    const handle = setTimeout(async () => {
+      try {
+        // Abort prior request
+        if (nameSearchAbortRef.current) {
+          nameSearchAbortRef.current.abort()
+        }
+        const ctrl = new AbortController()
+        nameSearchAbortRef.current = ctrl
+        const res = await fetch(`/api/residents/search?q=${encodeURIComponent(q)}`, { signal: ctrl.signal, cache: "no-store" })
+        const json = await res.json().catch(() => ({ items: [] }))
+        if (Array.isArray(json.items)) {
+          setNameSuggestions(json.items as { name: string; token: string }[])
+        } else {
+          setNameSuggestions([])
+        }
+      } catch {
+        setNameSuggestions([])
+      } finally {
+        setIsSearchingName(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(handle)
+  }, [form.reporter_full_name, selectedResidentToken])
+
   const update = (field: keyof FormState, value: string | boolean) => setForm((p) => ({ ...p, [field]: value }))
 
   async function handleSubmit(e: React.FormEvent) {
@@ -142,6 +187,13 @@ export default function ReportPage() {
       return
     }
 
+    // Require verified resident selection
+    if (!selectedResidentToken) {
+      setVerifyError(true)
+      setError("Please select your name from the suggestions to verify residency before submitting.")
+      return
+    }
+
     setIsSubmitting(true)
     try {
       if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -149,7 +201,7 @@ export default function ReportPage() {
         const key = "hoa-report-queue"
         const raw = localStorage.getItem(key)
         const queue: PendingReport[] = raw ? JSON.parse(raw) : []
-        queue.push({ ...form, queuedAt: Date.now() })
+        queue.push({ ...form, verified_resident_token: selectedResidentToken, queuedAt: Date.now() })
         localStorage.setItem(key, JSON.stringify(queue))
         setSuccessRef("PENDING-OFFLINE")
         return
@@ -158,7 +210,7 @@ export default function ReportPage() {
       const res = await fetch("/api/report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, verified_resident_token: selectedResidentToken }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -228,6 +280,8 @@ export default function ReportPage() {
                     acknowledged: false,
                     priority: "P3",
                   })
+                  setSelectedResidentToken(null)
+                  setNameSuggestions([])
                 }}
                 className="w-full border-gray-200 text-gray-600 hover:bg-gray-50"
               >
@@ -314,11 +368,51 @@ export default function ReportPage() {
                     id="reporter_full_name"
                     placeholder="Full Name"
                     value={form.reporter_full_name}
-                    onChange={(e) => update("reporter_full_name", e.target.value)}
+                    onChange={(e) => {
+                      update("reporter_full_name", e.target.value)
+                      // If user edits the field, clear previous verification
+                      if (selectedResidentToken) setSelectedResidentToken(null)
+                      if (verifyError) setVerifyError(false)
+                    }}
                     disabled={isSubmitting}
-                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-9 focus:border-blue-300 focus:ring-blue-200"
+                    className={`bg-white text-gray-900 placeholder:text-gray-400 pl-9 focus:ring-2 ${selectedResidentToken ? "pr-9" : ""} ${verifyError ? "border-red-300 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-blue-300 focus:ring-blue-200"}`}
                   />
+                  {selectedResidentToken && (
+                    <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />
+                  )}
                 </div>
+                {!selectedResidentToken && (
+                  <div className="mt-2 text-[11px] sm:text-xs border border-yellow-200 bg-yellow-50 text-yellow-800 rounded px-3 py-2">
+                    Only registered homeowners can submit. Start typing your full name and select from the list to verify.
+                  </div>
+                )}
+                {verifyError && (
+                  <p className="mt-1 text-xs text-red-600">Please select your name from the suggestions to verify before submitting.</p>
+                )}
+                {/* Subtle suggestions list appears only while typing and not yet verified */}
+                {!selectedResidentToken && (nameSuggestions.length > 0 || isSearchingName) && (
+                  <div className="mt-2 border border-gray-200 rounded-md bg-white shadow-sm">
+                    {isSearchingName && (
+                      <div className="px-3 py-2 text-xs text-gray-500">Searching…</div>
+                    )}
+                    {nameSuggestions.map((s) => (
+                      <button
+                        type="button"
+                        key={s.token}
+                        onClick={() => {
+                          setSelectedResidentToken(s.token)
+                          update("reporter_full_name", s.name)
+                          setNameSuggestions([])
+                          if (verifyError) setVerifyError(false)
+                        }}
+                        className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Verified state is indicated by the check icon inside the input */}
               </div>
 
               <div className="space-y-2">
@@ -469,7 +563,7 @@ export default function ReportPage() {
                 <Button type="button" variant="outline" onClick={() => router.push("/")} disabled={isSubmitting} className="w-full sm:flex-1 border-gray-200 text-gray-600 hover:bg-gray-50">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting} className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white">
+                <Button type="submit" disabled={isSubmitting || !selectedResidentToken} className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white">
                   {isSubmitting ? "Submitting..." : "Submit"}
                 </Button>
               </div>
