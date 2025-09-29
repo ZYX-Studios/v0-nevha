@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server-admin';
 
+export const dynamic = 'force-dynamic';
 // GET /api/admin/dues/summary - Get dues collection summary
 export async function GET(request: NextRequest) {
   try {
