@@ -14,9 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/use-auth"
 import type { CreateAnnouncementData } from "@/lib/types"
-import { ArrowLeft, AlertCircle, CheckCircle } from "lucide-react"
+import { ArrowLeft, AlertCircle, CheckCircle, Calendar } from "lucide-react"
 
 function CreateAnnouncementContent() {
   const { session } = useAuth()
@@ -24,12 +25,10 @@ function CreateAnnouncementContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [error, setError] = useState("")
-  const [formData, setFormData] = useState<
-    CreateAnnouncementData & {
-      isPublished: boolean
-      schedulePublish: boolean
-    }
-  >({
+  const titleMax = 120
+  const contentMax = 2000
+
+  const initialForm: CreateAnnouncementData & { isPublished: boolean; schedulePublish: boolean } = {
     title: "",
     content: "",
     priority: "normal",
@@ -37,7 +36,14 @@ function CreateAnnouncementContent() {
     expiryDate: "",
     isPublished: false,
     schedulePublish: false,
-  })
+  }
+
+  const [formData, setFormData] = useState<
+    CreateAnnouncementData & {
+      isPublished: boolean
+      schedulePublish: boolean
+    }
+  >(initialForm)
 
   const handleChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -74,7 +80,8 @@ function CreateAnnouncementContent() {
         title: formData.title.trim(),
         content: formData.content.trim(),
         priority: formData.priority,
-        isPublished: formData.isPublished && !formData.schedulePublish,
+        // If scheduling, mark published with a future publishDate
+        isPublished: formData.schedulePublish ? true : formData.isPublished,
         publishDate: formData.schedulePublish ? formData.publishDate : undefined,
         expiryDate: formData.expiryDate || undefined,
       }
@@ -95,6 +102,46 @@ function CreateAnnouncementContent() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const getPriorityVariant = (priority: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch (priority) {
+      case "urgent":
+        return "destructive"
+      case "high":
+        return "secondary"
+      default:
+        return "outline"
+    }
+  }
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return ""
+    const d = new Date(dateString)
+    return d.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  const toLocalInputValue = (date: Date) => {
+    const pad = (n: number) => `${n}`.padStart(2, "0")
+    const yyyy = date.getFullYear()
+    const mm = pad(date.getMonth() + 1)
+    const dd = pad(date.getDate())
+    const hh = pad(date.getHours())
+    const mi = pad(date.getMinutes())
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
+  }
+
+  const setExpiryInDays = (days: number) => {
+    const base = formData.schedulePublish && formData.publishDate ? new Date(formData.publishDate) : new Date()
+    const d = new Date(base)
+    d.setDate(d.getDate() + days)
+    handleChange("expiryDate", toLocalInputValue(d))
   }
 
   if (isSubmitted) {
@@ -169,7 +216,9 @@ function CreateAnnouncementContent() {
                   value={formData.title}
                   onChange={(e) => handleChange("title", e.target.value)}
                   disabled={isSubmitting}
+                  maxLength={titleMax}
                 />
+                <div className="text-xs text-muted-foreground text-right">{formData.title.length} / {titleMax}</div>
               </div>
 
               <div className="space-y-2">
@@ -189,6 +238,7 @@ function CreateAnnouncementContent() {
                     <SelectItem value="urgent">Urgent</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">Urgent items appear highlighted on the public page.</p>
               </div>
 
               <div className="space-y-2">
@@ -200,7 +250,9 @@ function CreateAnnouncementContent() {
                   onChange={(e) => handleChange("content", e.target.value)}
                   disabled={isSubmitting}
                   rows={6}
+                  maxLength={contentMax}
                 />
+                <div className="text-xs text-muted-foreground text-right">{formData.content.length} / {contentMax}</div>
               </div>
 
               {/* Publishing Options */}
@@ -213,8 +265,9 @@ function CreateAnnouncementContent() {
                     checked={formData.isPublished}
                     onCheckedChange={(checked) => handleChange("isPublished", checked as boolean)}
                     disabled={isSubmitting || formData.schedulePublish}
+                    className="h-5 w-5 border-2 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
                   />
-                  <Label htmlFor="isPublished">Publish immediately</Label>
+                  <Label htmlFor="isPublished" className="font-medium">Publish immediately</Label>
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -228,8 +281,9 @@ function CreateAnnouncementContent() {
                       }
                     }}
                     disabled={isSubmitting}
+                    className="h-5 w-5 border-2 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
                   />
-                  <Label htmlFor="schedulePublish">Schedule for later</Label>
+                  <Label htmlFor="schedulePublish" className="font-medium">Schedule for later</Label>
                 </div>
 
                 {formData.schedulePublish && (
@@ -241,7 +295,7 @@ function CreateAnnouncementContent() {
                       value={formData.publishDate}
                       onChange={(e) => handleChange("publishDate", e.target.value)}
                       disabled={isSubmitting}
-                      min={new Date().toISOString().slice(0, 16)}
+                      min={toLocalInputValue(new Date())}
                     />
                   </div>
                 )}
@@ -254,15 +308,35 @@ function CreateAnnouncementContent() {
                     value={formData.expiryDate}
                     onChange={(e) => handleChange("expiryDate", e.target.value)}
                     disabled={isSubmitting}
-                    min={formData.publishDate || new Date().toISOString().slice(0, 16)}
+                    min={formData.publishDate || toLocalInputValue(new Date())}
                   />
                   <p className="text-xs text-muted-foreground">
                     The announcement will automatically be hidden after this date
                   </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button type="button" variant="secondary" size="sm" disabled={isSubmitting} onClick={() => setExpiryInDays(7)}>
+                      +7 days
+                    </Button>
+                    <Button type="button" variant="secondary" size="sm" disabled={isSubmitting} onClick={() => setExpiryInDays(14)}>
+                      +14 days
+                    </Button>
+                    <Button type="button" variant="secondary" size="sm" disabled={isSubmitting} onClick={() => setExpiryInDays(30)}>
+                      +30 days
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={isSubmitting}
+                      onClick={() => handleChange("expiryDate", "")}
+                    >
+                      Clear
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex gap-4 flex-wrap">
                 <Button
                   type="button"
                   variant="outline"
@@ -272,11 +346,52 @@ function CreateAnnouncementContent() {
                 >
                   Cancel
                 </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setFormData(initialForm)}
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
+                  Reset
+                </Button>
                 <Button type="submit" disabled={isSubmitting} className="flex-1">
                   {isSubmitting ? "Creating..." : "Create Announcement"}
                 </Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Live Preview */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Live Preview</CardTitle>
+            <CardDescription>How this will appear on the public announcements page</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-start justify-between">
+              <div className="space-y-2 flex-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant={getPriorityVariant(formData.priority)} className="capitalize">
+                    {formData.priority}
+                  </Badge>
+                  <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    <span>
+                      {formData.schedulePublish && formData.publishDate
+                        ? formatDate(formData.publishDate)
+                        : "Publishes immediately"}
+                    </span>
+                    {formData.expiryDate && <span> • Expires: {formatDate(formData.expiryDate)}</span>}
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold">{formData.title || "Untitled announcement"}</h3>
+              </div>
+            </div>
+            <div className="mt-2 text-muted-foreground whitespace-pre-wrap">
+              {formData.content || "Content preview will appear here as you type."}
+            </div>
           </CardContent>
         </Card>
       </div>
