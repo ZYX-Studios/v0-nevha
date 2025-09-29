@@ -56,7 +56,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     if (body.publishDate !== undefined) {
-      update.publish_date = body.publishDate ? new Date(body.publishDate).toISOString() : null
+      const iso = body.publishDate ? new Date(body.publishDate).toISOString() : null
+      update.publish_date = iso
+      // If scheduling for the future, clear published_at to avoid early visibility
+      if (iso) {
+        const now = new Date()
+        if (new Date(iso) > now) {
+          update.published_at = null
+        }
+      }
     }
 
     if (body.expiryDate !== undefined) {

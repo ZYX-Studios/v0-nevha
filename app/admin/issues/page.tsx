@@ -20,7 +20,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import type { Issue } from "@/lib/types"
-import { ArrowLeft, Search, Edit, CheckCircle, Clock, AlertCircle, Calendar, MapPin, User } from "lucide-react"
+import { ArrowLeft, Search, Edit, CheckCircle, Clock, AlertCircle, Calendar, MapPin, User, Download } from "lucide-react"
 import { toast } from "sonner"
 
 type IssuesStats = {
@@ -51,11 +51,16 @@ function IssuesManagementContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
+  const [departmentFilter, setDepartmentFilter] = useState("all")
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
   const [resolutionNotes, setResolutionNotes] = useState("")
   // Resolution notes are handled within status updates; detailed view available per-issue
   const [stats, setStats] = useState<IssuesStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(false)
+  const [departments, setDepartments] = useState<{id: string, name: string}[]>([])
+  // Sort state
+  const [sortBy, setSortBy] = useState<"createdAt" | "priority" | "status">("createdAt")
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
 
   useEffect(() => {
     let cancelled = false
@@ -71,6 +76,26 @@ function IssuesManagementContent() {
       }
     }
     load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Load departments for filter
+  useEffect(() => {
+    let cancelled = false
+    async function loadDepartments() {
+      try {
+        const res = await fetch("/api/departments", { cache: "no-store" })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error || "Failed to load departments")
+        const items = Array.isArray(json.items) ? json.items : []
+        if (!cancelled) setDepartments(items)
+      } catch {
+        if (!cancelled) setDepartments([])
+      }
+    }
+    loadDepartments()
     return () => {
       cancelled = true
     }
@@ -269,11 +294,11 @@ function IssuesManagementContent() {
 
   useEffect(() => {
     // Apply filters
-    let filtered = issues
+    let list = issues
 
     // Search filter
     if (searchTerm.trim()) {
-      filtered = filtered.filter(
+      list = list.filter(
         (issue) =>
           issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           issue.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -283,16 +308,136 @@ function IssuesManagementContent() {
 
     // Status filter
     if (statusFilter !== "all") {
-      filtered = filtered.filter((issue) => issue.status === statusFilter)
+      list = list.filter((issue) => issue.status === statusFilter)
     }
 
     // Priority filter
     if (priorityFilter !== "all") {
-      filtered = filtered.filter((issue) => issue.priority === priorityFilter)
+      list = list.filter((issue) => issue.priority === priorityFilter)
     }
 
-    setFilteredIssues(filtered)
-  }, [issues, searchTerm, statusFilter, priorityFilter])
+    // Department filter (by category matching department name, case-insensitive)
+    if (departmentFilter !== "all") {
+      const selectedDept = departments.find(d => d.id === departmentFilter)
+      if (selectedDept) {
+        list = list.filter((issue) => 
+          issue.category.toLowerCase() === selectedDept.name.toLowerCase()
+        )
+      }
+    }
+
+    // Sorting
+    const priOrder: Record<string, number> = { P1: 1, P2: 2, P3: 3, P4: 4 }
+    const stOrder: Record<string, number> = { not_started: 1, in_progress: 2, on_hold: 3, resolved: 4, closed: 5 }
+    const dir = sortDir === "asc" ? 1 : -1
+    const sorted = [...list].sort((a, b) => {
+      if (sortBy === "createdAt") {
+        const aa = new Date(a.createdAt).getTime()
+        const bb = new Date(b.createdAt).getTime()
+        return (aa - bb) * dir
+      }
+      if (sortBy === "priority") {
+        const aa = priOrder[a.priority] || 99
+        const bb = priOrder[b.priority] || 99
+        return (aa - bb) * dir
+      }
+      if (sortBy === "status") {
+        const aa = stOrder[a.status] || 99
+        const bb = stOrder[b.status] || 99
+        return (aa - bb) * dir
+      }
+      return 0
+    })
+
+    setFilteredIssues(sorted)
+  }, [issues, searchTerm, statusFilter, priorityFilter, departmentFilter, departments, sortBy, sortDir])
+
+  // Export helpers
+  function toCsvValue(v: any) {
+    const s = v == null ? "" : String(v)
+    // Escape quotes and wrap
+    const esc = s.replace(/"/g, '""')
+    return `"${esc}"`
+  }
+
+  function downloadCsv(filename: string, rows: string[]) {
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  function buildCsv(items: Issue[]) {
+    const header = [
+      "ref_code",
+      "title",
+      "description",
+      "category",
+      "priority",
+      "status",
+      "createdAt",
+      "updatedAt",
+      "resolvedAt",
+      "reporterFullName",
+      "reporterEmail",
+      "reporterPhase",
+      "reporterBlock",
+      "reporterLot",
+      "reporterStreet",
+      "location",
+      "assignedTo",
+    ]
+    const rows = [header.map(toCsvValue).join(",")]
+    for (const i of items) {
+      rows.push(
+        [
+          i.ref_code || "",
+          i.title,
+          i.description,
+          i.category,
+          i.priority,
+          i.status,
+          i.createdAt,
+          i.updatedAt,
+          i.resolvedAt || "",
+          i.reporterFullName || "",
+          i.reporterEmail || "",
+          i.reporterPhase || "",
+          i.reporterBlock || "",
+          i.reporterLot || "",
+          i.reporterStreet || "",
+          i.location || "",
+          i.assignedTo || "",
+        ].map(toCsvValue).join(","),
+      )
+    }
+    return rows
+  }
+
+  const handleExportCsv = () => {
+    const rows = buildCsv(filteredIssues)
+    const ts = new Date()
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const selectedDept = departments.find(d => d.id === departmentFilter)
+    const deptSuffix = selectedDept ? `-${selectedDept.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}` : ""
+    const filename = `issues-export${deptSuffix}-${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}.csv`
+    downloadCsv(filename, rows)
+  }
+
+  const handleQuickExportAll = () => {
+    // Export all issues by createdAt desc, ignoring current filters
+    const sortedAll = [...issues].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const rows = buildCsv(sortedAll)
+    const ts = new Date()
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const filename = `issues-quick-export-all-${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}.csv`
+    downloadCsv(filename, rows)
+  }
 
   const handleStatusChange = async (issueId: string, newStatus: string) => {
     try {
@@ -525,9 +670,9 @@ function IssuesManagementContent() {
               ) : (
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   {[
-                    { k: "P1", label: "Urgent" },
+                    { k: "P1", label: "Critical" },
                     { k: "P2", label: "High" },
-                    { k: "P3", label: "Normal" },
+                    { k: "P3", label: "Medium" },
                     { k: "P4", label: "Low" },
                   ].map((p) => (
                     <div key={p.k} className="flex items-center justify-between">
@@ -563,46 +708,168 @@ function IssuesManagementContent() {
           </CardContent>
         </Card>
 
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search issues..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+        {/* Search and Filters */}
+        <Card className="mb-6 border-0 shadow-lg bg-gradient-to-r from-white to-gray-50/50">
+          <CardContent className="p-6">
+            {/* Search Bar - Prominent and Large */}
+            <div className="mb-6">
+              <div className="relative max-w-2xl">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  placeholder="Search issues by title, description, category, or reference code..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-12 pr-4 py-3 text-base bg-white border-2 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg shadow-sm transition-all duration-200"
+                />
+              </div>
+            </div>
+
+            {/* Filters Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Department</label>
+                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                  <SelectTrigger className="bg-white border-gray-300 hover:border-gray-400 focus:border-blue-500 focus:ring-blue-500/20 transition-colors">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Status</label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="bg-white border-gray-300 hover:border-gray-400 focus:border-blue-500 focus:ring-blue-500/20 transition-colors">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="not_started">Not Started</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="on_hold">On Hold</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Priority</label>
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger className="bg-white border-gray-300 hover:border-gray-400 focus:border-blue-500 focus:ring-blue-500/20 transition-colors">
+                    <SelectValue placeholder="All Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priority</SelectItem>
+                    <SelectItem value="P1">P1 (Critical)</SelectItem>
+                    <SelectItem value="P2">P2 (High)</SelectItem>
+                    <SelectItem value="P3">P3 (Medium)</SelectItem>
+                    <SelectItem value="P4">P4 (Low)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Sort By</label>
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                  <SelectTrigger className="bg-white border-gray-300 hover:border-gray-400 focus:border-blue-500 focus:ring-blue-500/20 transition-colors">
+                    <SelectValue placeholder="Sort By" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="createdAt">Created Date</SelectItem>
+                    <SelectItem value="priority">Priority</SelectItem>
+                    <SelectItem value="status">Status</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Order</label>
+                <Select value={sortDir} onValueChange={(v) => setSortDir(v as any)}>
+                  <SelectTrigger className="bg-white border-gray-300 hover:border-gray-400 focus:border-blue-500 focus:ring-blue-500/20 transition-colors">
+                    <SelectValue placeholder="Order" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="desc">Newest First</SelectItem>
+                    <SelectItem value="asc">Oldest First</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Actions</label>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleExportCsv} 
+                    className="flex-1 bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                    size="sm"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Export
+                  </Button>
                 </div>
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-40">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="not_started">Not Started</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="on_hold">On Hold</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-full md:w-40">
-                  <SelectValue placeholder="Priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Priority</SelectItem>
-                  <SelectItem value="P1">P1 (Critical)</SelectItem>
-                  <SelectItem value="P2">P2 (High)</SelectItem>
-                  <SelectItem value="P3">P3 (Medium)</SelectItem>
-                  <SelectItem value="P4">P4 (Low)</SelectItem>
-                </SelectContent>
-              </Select>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
+              <Button 
+                variant="secondary" 
+                onClick={handleQuickExportAll} 
+                className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
+                size="sm"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Quick Export (All Issues)
+              </Button>
+              
+              {/* Active Filters Display */}
+              {(searchTerm || statusFilter !== "all" || priorityFilter !== "all" || departmentFilter !== "all") && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span className="font-medium">Active filters:</span>
+                  {searchTerm && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md">
+                      Search: "{searchTerm}"
+                    </span>
+                  )}
+                  {departmentFilter !== "all" && (
+                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded-md">
+                      Dept: {departments.find(d => d.id === departmentFilter)?.name}
+                    </span>
+                  )}
+                  {statusFilter !== "all" && (
+                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md">
+                      Status: {statusFilter.replace("_", " ")}
+                    </span>
+                  )}
+                  {priorityFilter !== "all" && (
+                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-md">
+                      Priority: {priorityFilter}
+                    </span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm("")
+                      setStatusFilter("all")
+                      setPriorityFilter("all")
+                      setDepartmentFilter("all")
+                    }}
+                    className="text-gray-500 hover:text-gray-700 px-2 py-1 h-auto"
+                  >
+                    Clear all
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -617,7 +884,7 @@ function IssuesManagementContent() {
                 </div>
                 <h3 className="text-lg font-semibold mb-2">No issues found</h3>
                 <p className="text-muted-foreground">
-                  {searchTerm || statusFilter !== "all" || priorityFilter !== "all"
+                  {searchTerm || statusFilter !== "all" || priorityFilter !== "all" || departmentFilter !== "all"
                     ? "Try adjusting your search or filters."
                     : "No issues have been reported yet."}
                 </p>

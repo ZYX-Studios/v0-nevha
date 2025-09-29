@@ -93,28 +93,57 @@ export async function GET() {
       }
     }
 
-    // Counts per department (linked via issue_departments)
+    // Counts per department with fallback mapping by category -> departments.name
+    // 1) Count explicit links in issue_departments
     const deptLinks = await supabase
       .from("issue_departments")
-      .select("department_id")
-    const perDepartment: Array<{ departmentId: string; departmentName: string; count: number }> = []
+      .select("issue_id, department_id")
+    const counts = new Map<string, number>()
+    const linkedIssueIds = new Set<string>()
     if (deptLinks.data) {
-      const counts = new Map<string, number>()
       for (const row of deptLinks.data) {
-        const id = row.department_id as string | null
-        if (!id) continue
-        counts.set(id, (counts.get(id) || 0) + 1)
+        const depId = row.department_id as string | null
+        const issueId = row.issue_id as string | null
+        if (issueId) linkedIssueIds.add(issueId)
+        if (!depId) continue
+        counts.set(depId, (counts.get(depId) || 0) + 1)
       }
-      const deptIds = Array.from(counts.keys())
-      if (deptIds.length > 0) {
-        const depts = await supabase.from("departments").select("id, name").in("id", deptIds)
-        const nameMap = new Map<string, string>()
-        for (const d of depts.data || []) nameMap.set(d.id as string, (d.name as string) || "")
-        for (const id of deptIds) {
-          perDepartment.push({ departmentId: id, departmentName: nameMap.get(id) || "(Unknown)", count: counts.get(id) || 0 })
-        }
-        perDepartment.sort((a, b) => b.count - a.count)
+    }
+
+    // 2) Fallback: for issues without explicit links, map category to department name (case-insensitive)
+    const { data: allDepts } = await supabase
+      .from("departments")
+      .select("id, name, is_active")
+    const nameToId = new Map<string, string>()
+    for (const d of allDepts || []) {
+      const nm = String(d.name || "").trim().toLowerCase()
+      if (nm) nameToId.set(nm, d.id as string)
+    }
+
+    const { data: allIssues } = await supabase
+      .from("issues")
+      .select("id, category")
+    for (const i of allIssues || []) {
+      const iid = i.id as string
+      if (linkedIssueIds.has(iid)) continue // already accounted via explicit link
+      const cat = String(i.category || "").trim()
+      if (!cat || cat.toLowerCase() === "others") continue
+      const depId = nameToId.get(cat.toLowerCase())
+      if (!depId) continue
+      counts.set(depId, (counts.get(depId) || 0) + 1)
+    }
+
+    // 3) Build response array with department names
+    const perDepartment: Array<{ departmentId: string; departmentName: string; count: number }> = []
+    if (counts.size > 0) {
+      const depIds = Array.from(counts.keys())
+      const depts = await supabase.from("departments").select("id, name").in("id", depIds)
+      const nameMap = new Map<string, string>()
+      for (const d of depts.data || []) nameMap.set(d.id as string, (d.name as string) || "")
+      for (const id of depIds) {
+        perDepartment.push({ departmentId: id, departmentName: nameMap.get(id) || "(Unknown)", count: counts.get(id) || 0 })
       }
+      perDepartment.sort((a, b) => b.count - a.count)
     }
 
     // UI-oriented counts derived from DB enums

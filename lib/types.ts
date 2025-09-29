@@ -81,7 +81,8 @@ export interface Issue {
   title: string
   description: string
   category: string
-  priority: "low" | "normal" | "high" | "urgent"
+  ref_code?: string
+  priority: "P1" | "P2" | "P3" | "P4"
   status: "not_started" | "in_progress" | "on_hold" | "resolved" | "closed"
   location?: string
   // Reporter address fields (optional, may be present in admin APIs)
@@ -118,7 +119,7 @@ export interface CreateIssueData {
   title: string
   description: string
   category: string
-  priority: "low" | "normal" | "high" | "urgent"
+  priority: "P1" | "P2" | "P3" | "P4"
   location?: string
 }
 

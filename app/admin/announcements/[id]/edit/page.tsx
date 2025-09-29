@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import type { Announcement } from "@/lib/types"
-import { ArrowLeft, AlertCircle, Calendar, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, AlertCircle, Calendar, Save, Trash2, CheckCircle } from "lucide-react"
 
 function isoToLocalInput(iso?: string | null) {
   if (!iso) return ""
@@ -72,6 +72,7 @@ export default function EditAnnouncementPage() {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   const titleMax = 120
   const contentMax = 2000
@@ -156,7 +157,8 @@ export default function EditAnnouncementPage() {
         title: formData.title.trim(),
         content: formData.content.trim(),
         priority: formData.priority,
-        isPublished: formData.schedulePublish ? false : formData.isPublished,
+        // If scheduling, mark published with a future publishDate
+        isPublished: formData.schedulePublish ? true : formData.isPublished,
         publishDate: formData.schedulePublish ? formData.publishDate : null,
         expiryDate: formData.expiryDate ? formData.expiryDate : null,
       }
@@ -176,6 +178,8 @@ export default function EditAnnouncementPage() {
         publishDate: isoToLocalInput(item.publishDate),
         expiryDate: isoToLocalInput(item.expiryDate),
       }))
+      setSuccess("Changes saved")
+      setTimeout(() => setSuccess(null), 3000)
     } catch (e: any) {
       setError(e?.message || "Failed to save announcement")
     } finally {
@@ -278,6 +282,12 @@ export default function EditAnnouncementPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSave} className="space-y-6">
+              {success && (
+                <Alert>
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-600">{success}</AlertDescription>
+                </Alert>
+              )}
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
