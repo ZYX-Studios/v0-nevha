@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { mockAnnouncements } from "@/lib/mock-data"
 import type { Announcement } from "@/lib/types"
 import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, EyeOff, Calendar } from "lucide-react"
 
@@ -21,56 +20,72 @@ function AnnouncementsManagementContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Sort announcements by creation date (newest first)
-    const sorted = [...mockAnnouncements].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )
-    setAnnouncements(sorted)
-  }, [])
-
-  useEffect(() => {
-    // Apply filters
-    let filtered = announcements
-
-    // Search filter
-    if (searchTerm.trim()) {
-      filtered = filtered.filter(
-        (announcement) =>
-          announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          announcement.content.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
+    let aborted = false
+    async function load() {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const params = new URLSearchParams()
+        if (searchTerm.trim()) params.set("search", searchTerm.trim())
+        if (statusFilter !== "all") params.set("status", statusFilter)
+        if (priorityFilter !== "all") params.set("priority", priorityFilter)
+        const qs = params.toString()
+        const res = await fetch(`/api/admin/announcements${qs ? `?${qs}` : ""}`, { cache: "no-store" })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error || "Failed to load announcements")
+        const items = (json?.items || []) as Announcement[]
+        if (!aborted) {
+          setAnnouncements(items)
+          setFilteredAnnouncements(items)
+        }
+      } catch (e: any) {
+        if (!aborted) {
+          setError(e?.message || "Failed to load announcements")
+          setAnnouncements([])
+          setFilteredAnnouncements([])
+        }
+      } finally {
+        if (!aborted) setIsLoading(false)
+      }
     }
+    load()
+    return () => {
+      aborted = true
+    }
+  }, [searchTerm, statusFilter, priorityFilter])
 
-    // Status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((announcement) => {
-        if (statusFilter === "published") return announcement.isPublished
-        if (statusFilter === "draft") return !announcement.isPublished
-        return true
+  const handleTogglePublish = async (id: string) => {
+    try {
+      const current = announcements.find((a) => a.id === id)?.isPublished ?? false
+      const res = await fetch(`/api/admin/announcements/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublished: !current }),
       })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || "Failed to update publish status")
+      const updated = json.item as Announcement
+      setAnnouncements((prev) => prev.map((a) => (a.id === id ? updated : a)))
+      setFilteredAnnouncements((prev) => prev.map((a) => (a.id === id ? updated : a)))
+    } catch (e: any) {
+      alert(e?.message || "Failed to update publish status")
     }
-
-    // Priority filter
-    if (priorityFilter !== "all") {
-      filtered = filtered.filter((announcement) => announcement.priority === priorityFilter)
-    }
-
-    setFilteredAnnouncements(filtered)
-  }, [announcements, searchTerm, statusFilter, priorityFilter])
-
-  const handleTogglePublish = (id: string) => {
-    setAnnouncements((prev) =>
-      prev.map((announcement) =>
-        announcement.id === id ? { ...announcement, isPublished: !announcement.isPublished } : announcement,
-      ),
-    )
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this announcement?")) {
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this announcement?")) return
+    try {
+      const res = await fetch(`/api/admin/announcements/${id}`, { method: "DELETE" })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to delete announcement")
       setAnnouncements((prev) => prev.filter((announcement) => announcement.id !== id))
+      setFilteredAnnouncements((prev) => prev.filter((announcement) => announcement.id !== id))
+    } catch (e: any) {
+      alert(e?.message || "Failed to delete announcement")
     }
   }
 
@@ -165,6 +180,18 @@ function AnnouncementsManagementContent() {
         </Card>
 
         {/* Announcements List */}
+        {error && (
+          <Card className="mb-4">
+            <CardContent className="py-4 text-sm text-destructive">
+              {error}
+            </CardContent>
+          </Card>
+        )}
+        {isLoading ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">Loading announcements…</CardContent>
+          </Card>
+        ) : (
         <div className="space-y-4">
           {filteredAnnouncements.length === 0 ? (
             <Card>
@@ -241,6 +268,7 @@ function AnnouncementsManagementContent() {
             ))
           )}
         </div>
+        )}
       </div>
     </div>
   )

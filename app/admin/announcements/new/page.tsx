@@ -16,7 +16,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useAuth } from "@/hooks/use-auth"
 import type { CreateAnnouncementData } from "@/lib/types"
-import { mockAnnouncements } from "@/lib/mock-data"
 import { ArrowLeft, AlertCircle, CheckCircle } from "lucide-react"
 
 function CreateAnnouncementContent() {
@@ -71,33 +70,28 @@ function CreateAnnouncementContent() {
     setIsSubmitting(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Create new announcement
-      const newAnnouncement = {
-        id: Math.random().toString(36).substr(2, 9),
+      const payload = {
         title: formData.title.trim(),
         content: formData.content.trim(),
-        authorId: session.user?.id,
         priority: formData.priority,
         isPublished: formData.isPublished && !formData.schedulePublish,
-        publishDate: formData.schedulePublish
-          ? formData.publishDate
-          : formData.isPublished
-            ? new Date().toISOString()
-            : undefined,
+        publishDate: formData.schedulePublish ? formData.publishDate : undefined,
         expiryDate: formData.expiryDate || undefined,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       }
 
-      // Add to mock data (in real app, this would be handled by the API)
-      mockAnnouncements.unshift(newAnnouncement)
+      const res = await fetch("/api/admin/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.error || "Failed to create announcement")
+      }
 
       setIsSubmitted(true)
-    } catch (err) {
-      setError("Failed to create announcement. Please try again.")
+    } catch (err: any) {
+      setError(err?.message || "Failed to create announcement. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
