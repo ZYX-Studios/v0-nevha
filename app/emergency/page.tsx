@@ -10,46 +10,153 @@ import { BottomNav } from "@/components/ui/bottom-nav"
 export default function EmergencyPage() {
   const emergencyContacts = [
     {
-      title: "Police Emergency",
-      number: "911",
-      description: "For immediate police assistance",
-      icon: Shield,
+      title: "All Emergencies (911)",
+      numbers: ["911"],
+      description: "National emergency hotline",
+      icon: AlertTriangle,
       color: "bg-red-500",
       urgent: true
     },
     {
-      title: "Fire Emergency", 
-      number: "911",
+      title: "Bulacan Rescue",
+      numbers: ["911", "(044) 791 0566"],
+      description: "Provincial rescue and emergency",
+      icon: AlertTriangle,
+      color: "bg-red-500",
+      urgent: true
+    },
+    {
+      title: "City Fire Station (Malolos)", 
+      numbers: ["0995 1860 370", "(044) 791-6129"],
       description: "Fire department emergency response",
       icon: AlertTriangle,
       color: "bg-red-500",
       urgent: true
     },
     {
-      title: "Medical Emergency",
-      number: "911", 
-      description: "Ambulance and medical emergency",
-      icon: Phone,
+      title: "City Police Station (Malolos)",
+      numbers: ["(044) 796-2483"],
+      description: "Police emergency and assistance",
+      icon: Shield,
       color: "bg-red-500",
       urgent: true
     },
     {
-      title: "NEVHA Security",
-      number: "(02) 8123-4567",
+      title: "Malolos Rescue",
+      numbers: ["0928 2269 801", "0977 6405 828", "(044) 760-5160"],
+      description: "Local rescue unit",
+      icon: AlertTriangle,
+      color: "bg-red-500",
+      urgent: false
+    },
+    {
+      title: "Northfields Main Gate Guard",
+      numbers: ["0995 076 1754"],
       description: "24/7 community security hotline",
       icon: Shield,
       color: "bg-blue-500",
       urgent: false
     },
     {
-      title: "Maintenance Emergency",
-      number: "(02) 8123-4568",
-      description: "Water leaks, power outages, urgent repairs",
-      icon: AlertTriangle,
+      title: "ACE Hospital (Malolos)",
+      numbers: ["(044) 816 7698", "0998 9753 115"],
+      description: "Hospital and emergency room",
+      icon: Phone,
+      color: "bg-green-600",
+      urgent: false
+    },
+    {
+      title: "Bulacan Medical Center",
+      numbers: [
+        "0933 3507 791 (E.R. TRIAGE)",
+        "0923 4498 262 (E.R. SURGERY)",
+        "0919 8537 331",
+        "(044) 449 4207"
+      ],
+      description: "Provincial hospital",
+      icon: Phone,
+      color: "bg-green-600",
+      urgent: false
+    },
+    {
+      title: "Sacred Heart Hospital",
+      numbers: ["(044) 794 4744", "(044) 794 7192", "(044) 791 2911"],
+      description: "Hospital and emergency room",
+      icon: Phone,
+      color: "bg-green-600",
+      urgent: false
+    },
+    {
+      title: "Philippine Red Cross (Bulacan)",
+      numbers: ["0968 2433 409", "(044) 662 5922"],
+      description: "Red Cross Bulacan Chapter",
+      icon: Phone,
+      color: "bg-rose-500",
+      urgent: false
+    },
+    {
+      title: "City Health Office (Malolos)",
+      numbers: ["(044) 931 8888 LOCAL 2207"],
+      description: "City Health Office",
+      icon: Phone,
+      color: "bg-green-500",
+      urgent: false
+    },
+    {
+      title: "City Mayor's Office (Malolos)",
+      numbers: ["(044) 931 8888 LOCAL 2201-2202"],
+      description: "City Mayor's Office",
+      icon: Phone,
+      color: "bg-indigo-500",
+      urgent: false
+    },
+    {
+      title: "Meralco",
+      numbers: ["16211"],
+      description: "Power utility hotline",
+      icon: Phone,
       color: "bg-orange-500",
+      urgent: false
+    },
+    {
+      title: "PLDT",
+      numbers: ["171"],
+      description: "Telephone/internet provider hotline",
+      icon: Phone,
+      color: "bg-orange-500",
+      urgent: false
+    },
+    {
+      title: "Malolos Water District",
+      numbers: ["0917 1036 903", "(044) 896 0536"],
+      description: "Water utility",
+      icon: Phone,
+      color: "bg-cyan-500",
+      urgent: false
+    },
+    {
+      title: "Prime Water",
+      numbers: ["0919 0742 083"],
+      description: "Water utility",
+      icon: Phone,
+      color: "bg-cyan-500",
+      urgent: false
+    },
+    {
+      title: "Calumpit Police Hotline",
+      numbers: ["0998 5985 380"],
+      description: "Nearby municipality police hotline",
+      icon: Shield,
+      color: "bg-red-500",
       urgent: false
     }
   ]
+
+  const toTel = (num: string) => {
+    const base = num.replace(/local.*$/i, '').replace(/\(E\.R\..*?\)/gi, '').trim()
+    const digits = base.replace(/[^\d+]/g, '')
+    return digits
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 font-inter">
@@ -122,7 +229,7 @@ export default function EmergencyPage() {
                 contact.urgent ? 'border-red-200' : 'border-gray-100'
               }`}>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-12 h-12 ${contact.color} rounded-xl flex items-center justify-center shadow-md`}>
                         <Icon className="w-6 h-6 text-white" />
@@ -132,15 +239,19 @@ export default function EmergencyPage() {
                         <p className="text-sm text-gray-600">{contact.description}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Button 
-                        asChild
-                        className={`${contact.color} hover:opacity-90 text-white font-bold`}
-                      >
-                        <a href={`tel:${contact.number.replace(/[^\d]/g, '')}`}>
-                          {contact.number}
-                        </a>
-                      </Button>
+                    <div className="flex flex-col items-end gap-2">
+                      {contact.numbers.map((num, i) => (
+                        <Button
+                          key={i}
+                          asChild
+                          size="sm"
+                          className={`${i === 0 ? `${contact.color} text-white font-bold hover:opacity-90` : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
+                        >
+                          <a href={`tel:${toTel(num)}`}>
+                            {num}
+                          </a>
+                        </Button>
+                      ))}
                     </div>
                   </div>
                 </CardContent>
