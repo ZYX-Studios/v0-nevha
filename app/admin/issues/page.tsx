@@ -20,7 +20,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import type { Issue } from "@/lib/types"
-import { ArrowLeft, Search, Edit, CheckCircle, Clock, AlertCircle, Calendar, MapPin, User, Download } from "lucide-react"
+import { ArrowLeft, Search, Edit, CheckCircle, Clock, AlertCircle, Calendar, MapPin, User, Download, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 type IssuesStats = {
@@ -61,6 +61,8 @@ function IssuesManagementContent() {
   // Sort state
   const [sortBy, setSortBy] = useState<"createdAt" | "priority" | "status">("createdAt")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+  // Delete state
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -133,6 +135,22 @@ function IssuesManagementContent() {
       setIssues(items)
     } catch {
       // keep previous issues if refresh fails
+    }
+  }
+
+  const handleDeleteIssue = async (issueId: string) => {
+    try {
+      setDeletingId(issueId)
+      const res = await fetch(`/api/admin/issues/${issueId}`, { method: "DELETE" })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || "Failed to delete issue")
+      toast.success("Issue deleted")
+      setIssues((prev) => prev.filter((it) => it.id !== issueId))
+      await reloadStats()
+    } catch (e) {
+      toast.error((e as any)?.message || "Failed to delete issue")
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -972,6 +990,44 @@ function IssuesManagementContent() {
                                 {issue.status === "resolved" ? "Reopen" : "Mark Resolved"}
                               </Button>
                             </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => { /* open confirm dialog */ }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[520px] w-[calc(100vw-2rem)] p-4 md:p-6">
+                          <DialogHeader>
+                            <DialogTitle>Delete Issue</DialogTitle>
+                            <DialogDescription>
+                              This action cannot be undone. This will permanently delete the issue and all related status updates, attachments, comments, and department links.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-3">
+                            <p className="text-sm text-foreground">{issue.title}</p>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                            <DialogClose asChild>
+                              <Button variant="outline" className="w-full">
+                                Cancel
+                              </Button>
+                            </DialogClose>
+                            <Button
+                              variant="destructive"
+                              className="w-full"
+                              onClick={() => handleDeleteIssue(issue.id)}
+                              disabled={deletingId === issue.id}
+                            >
+                              {deletingId === issue.id ? "Deleting…" : "Delete"}
+                            </Button>
                           </div>
                         </DialogContent>
                       </Dialog>

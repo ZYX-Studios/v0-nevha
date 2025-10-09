@@ -166,3 +166,26 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })
   }
 }
+
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  try {
+    const id = params.id
+    if (!id) return NextResponse.json({ error: "Missing issue id" }, { status: 400 })
+
+    const supabase = createAdminClient()
+
+    // Deleting the issue will cascade to related rows via FK ON DELETE CASCADE
+    const { error } = await supabase
+      .from("issues")
+      .delete()
+      .eq("id", id)
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })
+  }
+}
