@@ -68,7 +68,7 @@ function IssuesManagementContent() {
     let cancelled = false
     async function load() {
       try {
-        const res = await fetch("/api/admin/issues", { cache: "no-store" })
+        const res = await fetch("/api/admin/issues", { cache: "no-store", credentials: "same-origin" })
         const json = await res.json()
         if (!res.ok) throw new Error(json?.error || "Failed to load issues")
         const items = Array.isArray(json.items) ? (json.items as Issue[]) : []
@@ -109,7 +109,7 @@ function IssuesManagementContent() {
     async function loadStats() {
       try {
         setStatsLoading(true)
-        const res = await fetch("/api/admin/issues/stats", { cache: "no-store" })
+        const res = await fetch("/api/admin/issues/stats", { cache: "no-store", credentials: "same-origin" })
         const json = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(json?.error || "Failed to load stats")
         if (!cancelled) setStats(json as IssuesStats)
@@ -128,7 +128,7 @@ function IssuesManagementContent() {
   // Reload issues on-demand (keeps dashboard counts in sync even if something else updated the DB)
   const reloadIssues = async () => {
     try {
-      const res = await fetch("/api/admin/issues", { cache: "no-store" })
+      const res = await fetch("/api/admin/issues", { cache: "no-store", credentials: "same-origin" })
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || "Failed to load issues")
       const items = Array.isArray(json.items) ? (json.items as Issue[]) : []
@@ -158,7 +158,7 @@ function IssuesManagementContent() {
   const reloadStats = async () => {
     try {
       setStatsLoading(true)
-      const res = await fetch("/api/admin/issues/stats", { cache: "no-store" })
+      const res = await fetch("/api/admin/issues/stats", { cache: "no-store", credentials: "same-origin" })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json?.error || "Failed to load stats")
       setStats(json as IssuesStats)
@@ -212,6 +212,15 @@ function IssuesManagementContent() {
     return counts
   }, [issues])
 
+  const priorityCountsFromIssues = useMemo(() => {
+    const counts: Record<string, number> = { P1: 0, P2: 0, P3: 0, P4: 0 }
+    for (const i of issues) {
+      const k = (i.priority || "P3").toUpperCase()
+      if (k in counts) counts[k] += 1
+    }
+    return counts
+  }, [issues])
+
   // Unified open count: prefer live issues; fallback to API uiOpenCount; then derive from uiStatusCounts
   const openUICount = useMemo(() => {
     const local = uiCountsFromIssues.not_started + uiCountsFromIssues.in_progress + uiCountsFromIssues.on_hold
@@ -219,6 +228,21 @@ function IssuesManagementContent() {
     if (typeof stats?.uiOpenCount === "number") return stats.uiOpenCount
     return uiStatusCounts.not_started + uiStatusCounts.in_progress + uiStatusCounts.on_hold
   }, [issues, uiCountsFromIssues, stats, uiStatusCounts])
+
+  const openUICardCount = useMemo(() => {
+    if (typeof stats?.uiOpenCount === "number") return stats.uiOpenCount
+    return openUICount
+  }, [stats, openUICount])
+
+  const totalUICardCount = useMemo(() => {
+    if (issues.length > 0) return issues.length
+    if (stats?.uiStatusCounts) {
+      const s = stats.uiStatusCounts
+      return (s.not_started || 0) + (s.in_progress || 0) + (s.on_hold || 0) + (s.resolved || 0) + (s.closed || 0)
+    }
+    if (typeof stats?.total === "number") return stats.total
+    return 0
+  }, [issues, stats])
 
   // Add update without specifying status -> API defaults to in_progress
   const handleAddUpdate = async (issueId: string) => {
@@ -595,7 +619,7 @@ function IssuesManagementContent() {
               <CardTitle className="text-sm text-muted-foreground">Total Issues</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{statsLoading ? "…" : stats?.total ?? 0}</div>
+              <div className="text-3xl font-bold">{statsLoading && !stats ? "…" : totalUICardCount}</div>
             </CardContent>
           </Card>
           <Card>
@@ -603,7 +627,7 @@ function IssuesManagementContent() {
               <CardTitle className="text-sm text-muted-foreground">Open Issues</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{openUICount}</div>
+              <div className="text-3xl font-bold">{openUICardCount}</div>
             </CardContent>
           </Card>
           <Card>
@@ -683,7 +707,7 @@ function IssuesManagementContent() {
               <CardTitle className="text-sm text-muted-foreground">Priority Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-              {statsLoading || !stats ? (
+              {(statsLoading || !stats) ? (
                 <div className="text-sm text-muted-foreground">Loading…</div>
               ) : (
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -695,7 +719,7 @@ function IssuesManagementContent() {
                   ].map((p) => (
                     <div key={p.k} className="flex items-center justify-between">
                       <span className="text-muted-foreground">{p.label}</span>
-                      <span className="font-medium">{stats.priorityCounts?.[p.k] ?? 0}</span>
+                      <span className="font-medium">{stats?.priorityCounts?.[p.k] ?? (priorityCountsFromIssues[p.k] ?? 0)}</span>
                     </div>
                   ))}
                 </div>

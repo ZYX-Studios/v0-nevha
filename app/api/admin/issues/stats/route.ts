@@ -11,16 +11,8 @@ export async function GET() {
     const now = new Date()
     const cutoff7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-    // Total issues
-    const totalHead = await supabase.from("issues").select("*", { count: "exact", head: true })
-    const total = totalHead.count || 0
-
-    // Open issues (NEW/TRIAGED/IN_PROGRESS/NEEDS_INFO)
-    const openHead = await supabase
-      .from("issues")
-      .select("*", { count: "exact", head: true })
-      .in("status", ["NEW", "TRIAGED", "IN_PROGRESS", "NEEDS_INFO"])
-    const openCount = openHead.count || 0
+    // We'll compute total and open counts from statusCounts below to ensure consistency with the Status Breakdown.
+    // (Avoid head counts which can drift due to policies/views.)
 
     // Counts by status
     const statusCounts: Record<string, number> = {}
@@ -44,12 +36,14 @@ export async function GET() {
     const createdLast7Days = created7Head.count || 0
 
     // Resolved in last 7 days (from issue_status_updates)
-    const resolved7Head = await supabase
+    const resolvedUpdates7 = await supabase
       .from("issue_status_updates")
-      .select("*", { count: "exact", head: true })
+      .select("issue_id")
       .eq("status", "RESOLVED")
       .gte("created_at", cutoff7)
-    const resolvedLast7Days = resolved7Head.count || 0
+    const resolvedLast7Days = resolvedUpdates7.data
+      ? new Set(resolvedUpdates7.data.map((r: any) => r.issue_id as string)).size
+      : 0
 
     // Average resolution time (days) for issues that have at least one RESOLVED update
     const resolvedUpdates = await supabase
@@ -155,6 +149,21 @@ export async function GET() {
       closed: statusCounts["CLOSED"] || 0,
     }
     const uiOpenCount = uiStatusCounts.not_started + uiStatusCounts.in_progress + uiStatusCounts.on_hold
+
+    // Compute totals from statusCounts to keep the cards aligned with the Status Breakdown
+    const total =
+      (statusCounts["NEW"] || 0) +
+      (statusCounts["TRIAGED"] || 0) +
+      (statusCounts["IN_PROGRESS"] || 0) +
+      (statusCounts["NEEDS_INFO"] || 0) +
+      (statusCounts["RESOLVED"] || 0) +
+      (statusCounts["CLOSED"] || 0)
+
+    const openCount =
+      (statusCounts["NEW"] || 0) +
+      (statusCounts["TRIAGED"] || 0) +
+      (statusCounts["IN_PROGRESS"] || 0) +
+      (statusCounts["NEEDS_INFO"] || 0)
 
     return NextResponse.json({
       total,
