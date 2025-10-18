@@ -1,6 +1,6 @@
 // Service Worker for PWA offline functionality
 
-const CACHE_VERSION = "v3.1" // Update this when deploying changes
+const CACHE_VERSION = "v3.2" // Update this when deploying changes
 const CACHE_NAME = `nevha-pwa-${CACHE_VERSION}`
 const STATIC_CACHE_URLS = [
   "/",

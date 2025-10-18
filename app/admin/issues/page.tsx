@@ -63,6 +63,8 @@ function IssuesManagementContent() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
   // Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  // Loading state for issues to synchronize cards and breakdown
+  const [issuesLoaded, setIssuesLoaded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -72,9 +74,15 @@ function IssuesManagementContent() {
         const json = await res.json()
         if (!res.ok) throw new Error(json?.error || "Failed to load issues")
         const items = Array.isArray(json.items) ? (json.items as Issue[]) : []
-        if (!cancelled) setIssues(items)
+        if (!cancelled) {
+          setIssues(items)
+          setIssuesLoaded(true)
+        }
       } catch {
-        if (!cancelled) setIssues([])
+        if (!cancelled) {
+          setIssues([])
+          setIssuesLoaded(true)
+        }
       }
     }
     load()
@@ -230,19 +238,22 @@ function IssuesManagementContent() {
   }, [issues, uiCountsFromIssues, stats, uiStatusCounts])
 
   const openUICardCount = useMemo(() => {
+    if (stats?.uiStatusCounts) {
+      const s = stats.uiStatusCounts
+      return (s.not_started || 0) + (s.in_progress || 0) + (s.on_hold || 0)
+    }
     if (typeof stats?.uiOpenCount === "number") return stats.uiOpenCount
-    return openUICount
-  }, [stats, openUICount])
+    return 0
+  }, [stats])
 
   const totalUICardCount = useMemo(() => {
-    if (issues.length > 0) return issues.length
     if (stats?.uiStatusCounts) {
       const s = stats.uiStatusCounts
       return (s.not_started || 0) + (s.in_progress || 0) + (s.on_hold || 0) + (s.resolved || 0) + (s.closed || 0)
     }
     if (typeof stats?.total === "number") return stats.total
     return 0
-  }, [issues, stats])
+  }, [stats])
 
   // Add update without specifying status -> API defaults to in_progress
   const handleAddUpdate = async (issueId: string) => {
@@ -627,7 +638,7 @@ function IssuesManagementContent() {
               <CardTitle className="text-sm text-muted-foreground">Open Issues</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{openUICardCount}</div>
+              <div className="text-3xl font-bold">{statsLoading && !stats ? "…" : openUICardCount}</div>
             </CardContent>
           </Card>
           <Card>
@@ -665,33 +676,14 @@ function IssuesManagementContent() {
               <CardTitle className="text-sm text-muted-foreground">Status Breakdown</CardTitle>
             </CardHeader>
             <CardContent>
-              {issues.length === 0 ? (
-                stats?.uiStatusCounts ? (
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {[
-                      { k: "not_started", label: "Not Started", value: uiStatusCounts.not_started },
-                      { k: "in_progress", label: "In Progress", value: uiStatusCounts.in_progress },
-                      { k: "on_hold", label: "On Hold", value: uiStatusCounts.on_hold },
-                      { k: "resolved", label: "Resolved", value: uiStatusCounts.resolved },
-                      { k: "closed", label: "Closed", value: uiStatusCounts.closed },
-                    ].map((s) => (
-                      <div key={s.k} className="flex items-center justify-between">
-                        <span className="text-muted-foreground">{s.label}</span>
-                        <span className="font-medium">{s.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">Loading…</div>
-                )
-              ) : (
+              {stats?.uiStatusCounts ? (
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   {[
-                    { k: "not_started", label: "Not Started", value: uiCountsFromIssues.not_started },
-                    { k: "in_progress", label: "In Progress", value: uiCountsFromIssues.in_progress },
-                    { k: "on_hold", label: "On Hold", value: uiCountsFromIssues.on_hold },
-                    { k: "resolved", label: "Resolved", value: uiCountsFromIssues.resolved },
-                    { k: "closed", label: "Closed", value: uiCountsFromIssues.closed },
+                    { k: "not_started", label: "Not Started", value: uiStatusCounts.not_started },
+                    { k: "in_progress", label: "In Progress", value: uiStatusCounts.in_progress },
+                    { k: "on_hold", label: "On Hold", value: uiStatusCounts.on_hold },
+                    { k: "resolved", label: "Resolved", value: uiStatusCounts.resolved },
+                    { k: "closed", label: "Closed", value: uiStatusCounts.closed },
                   ].map((s) => (
                     <div key={s.k} className="flex items-center justify-between">
                       <span className="text-muted-foreground">{s.label}</span>
@@ -699,6 +691,8 @@ function IssuesManagementContent() {
                     </div>
                   ))}
                 </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">Loading…</div>
               )}
             </CardContent>
           </Card>
@@ -719,7 +713,7 @@ function IssuesManagementContent() {
                   ].map((p) => (
                     <div key={p.k} className="flex items-center justify-between">
                       <span className="text-muted-foreground">{p.label}</span>
-                      <span className="font-medium">{stats?.priorityCounts?.[p.k] ?? (priorityCountsFromIssues[p.k] ?? 0)}</span>
+                      <span className="font-medium">{stats?.priorityCounts?.[p.k] ?? 0}</span>
                     </div>
                   ))}
                 </div>

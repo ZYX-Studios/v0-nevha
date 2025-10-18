@@ -11,10 +11,7 @@ export async function GET() {
     const now = new Date()
     const cutoff7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-    // We'll compute total and open counts from statusCounts below to ensure consistency with the Status Breakdown.
-    // (Avoid head counts which can drift due to policies/views.)
-
-    // Counts by status
+    // Counts by status (DB head counts for accuracy)
     const statusCounts: Record<string, number> = {}
     for (const s of statuses) {
       const h = await supabase.from("issues").select("*", { count: "exact", head: true }).eq("status", s)
@@ -28,7 +25,7 @@ export async function GET() {
       priorityCounts[p] = h.count || 0
     }
 
-    // Created in last 7 days
+    // Created in last 7 days (DB head count to avoid timezone drift)
     const created7Head = await supabase
       .from("issues")
       .select("*", { count: "exact", head: true })
@@ -114,10 +111,10 @@ export async function GET() {
       if (nm) nameToId.set(nm, d.id as string)
     }
 
-    const { data: allIssues } = await supabase
+    const { data: allIssuesForDept } = await supabase
       .from("issues")
       .select("id, category")
-    for (const i of allIssues || []) {
+    for (const i of allIssuesForDept || []) {
       const iid = i.id as string
       if (linkedIssueIds.has(iid)) continue // already accounted via explicit link
       const cat = String(i.category || "").trim()
