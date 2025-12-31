@@ -19,7 +19,7 @@ export function BottomNav() {
       href: "/report",
       icon: FileText,
       label: "Report",
-      isActive: pathname === "/report"
+      isActive: pathname === "/report" || pathname.startsWith("/report")
     },
     {
       href: "/emergency",
@@ -31,51 +31,43 @@ export function BottomNav() {
 
   return (
     <>
-      {/* Bottom Navigation - Light & Accessible Design */}
+      <div className="h-28" /> {/* Spacer */}
+
       <motion.nav
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.6 }}
-        className="fixed bottom-4 left-4 right-4 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200 z-50"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl backdrop-saturate-150 border-t border-slate-200/60 pb-safe-area-inset-bottom"
       >
-        <div className="flex justify-around items-center py-4 px-2">
+        <div className="flex justify-around items-center px-4 pt-3 pb-4">
           {navItems.map((item) => {
             const Icon = item.icon
             return (
-              <Link 
+              <Link
                 key={item.href}
-                href={item.href} 
-                className="flex flex-col items-center min-w-[70px] min-h-[70px] justify-center"
+                href={item.href}
+                className="relative flex-1 flex flex-col items-center justify-center group"
               >
-                <motion.div
-                  whileTap={{ scale: 0.95 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-2 ${
-                    item.isActive 
-                      ? "bg-blue-500 shadow-lg" 
-                      : "bg-gray-100 border border-gray-200"
-                  }`}>
-                    <Icon className={`w-6 h-6 ${
-                      item.isActive ? "text-white" : "text-gray-600"
+                <div className="relative p-1.5 mb-1">
+                  {item.isActive && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute inset-0 bg-blue-100 rounded-xl"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <Icon className={`relative z-10 w-6 h-6 transition-colors duration-200 ${item.isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"
                     }`} />
-                  </div>
-                  <span className={`text-sm ${
-                    item.isActive 
-                      ? "text-gray-900 font-semibold" 
-                      : "text-gray-600 font-medium"
+                </div>
+                <span className={`text-[10px] font-medium transition-colors duration-200 ${item.isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"
                   }`}>
-                    {item.label}
-                  </span>
-                </motion.div>
+                  {item.label}
+                </span>
               </Link>
             )
           })}
         </div>
       </motion.nav>
-
-      {/* Safe Area Bottom */}
-      <div className="h-28" />
     </>
   )
 }

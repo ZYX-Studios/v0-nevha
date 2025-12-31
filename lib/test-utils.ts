@@ -78,7 +78,7 @@ export class TestDataFactory {
       title: "Test Issue",
       description: "This is a test issue for development purposes.",
       category: "Maintenance",
-      priority: "normal",
+      priority: "P3",
       status: "not_started",
       location: "Test Location",
       createdAt: new Date().toISOString(),
@@ -126,9 +126,9 @@ export const mockApiResponses = {
 
   issues: {
     list: [
-      TestDataFactory.createIssue({ title: "Broken Light", status: "not_started", priority: "high" }),
-      TestDataFactory.createIssue({ title: "Noise Complaint", status: "in_progress", priority: "normal" }),
-      TestDataFactory.createIssue({ title: "Landscaping", status: "resolved", priority: "low" }),
+      TestDataFactory.createIssue({ title: "Broken Light", status: "not_started", priority: "P2" }),
+      TestDataFactory.createIssue({ title: "Noise Complaint", status: "in_progress", priority: "P3" }),
+      TestDataFactory.createIssue({ title: "Landscaping", status: "resolved", priority: "P4" }),
     ],
   },
 }
@@ -160,14 +160,14 @@ export const testScenarios = {
       title: "Water Leak Emergency",
       description: "Major water leak in the basement causing flooding",
       category: "Plumbing",
-      priority: "urgent" as const,
+      priority: "P1" as const,
       location: "Building A Basement",
     },
     normalIssue: {
       title: "Burnt Out Light Bulb",
       description: "Light bulb in hallway needs replacement",
       category: "Maintenance",
-      priority: "normal" as const,
+      priority: "P3" as const,
       location: "Building B Hallway",
     },
   },

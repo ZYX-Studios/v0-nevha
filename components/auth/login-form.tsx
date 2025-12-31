@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/hooks/use-auth"
 import { Eye, EyeOff, Home } from "lucide-react"
+import Link from "next/link"
 
 interface LoginFormProps {
   onSuccess?: () => void
@@ -77,7 +78,16 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-gray-300">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-gray-300">Password</Label>
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm font-medium text-orange-500 hover:text-orange-400 transition-colors"
+                tabIndex={-1}
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <Input
                 id="password"

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
+  console.log("Admin Stats API hit at", new Date().toISOString())
+  console.log("Using Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
+
   try {
     const supabase = createAdminClient()
 
@@ -84,6 +89,16 @@ export async function GET() {
       .eq("is_published", true)
       .order("published_at", { ascending: false })
       .limit(3)
+
+    console.log("--- DEBUG LOGS START ---")
+    console.log("API Executed at:", new Date().toISOString())
+    console.log("Env URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log("Issues found:", recentIssuesRes.data?.length)
+    if (recentIssuesRes.data?.[0]) console.log("First Issue:", recentIssuesRes.data[0].title)
+
+    console.log("Announcements found:", recentAnnouncementsRes.data?.length)
+    if (recentAnnouncementsRes.data?.[0]) console.log("First Announcement:", recentAnnouncementsRes.data[0].title)
+    console.log("--- DEBUG LOGS END ---")
 
     const recentAnnouncements = (recentAnnouncementsRes.data || []).map((announcement: any) => ({
       id: announcement.id,

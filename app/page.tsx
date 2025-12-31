@@ -5,28 +5,42 @@ import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { 
-  Home, 
-  MessageSquare, 
-  AlertTriangle, 
-  Clock, 
-  Phone, 
-  FileText, 
-  ChevronLeft, 
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  MessageSquare,
+  AlertTriangle,
+  Clock,
+  Phone,
+  FileText,
+  ChevronLeft,
   ChevronRight,
   RefreshCw,
-  Users,
   MapPin,
-  Shield
+  Shield,
+  Sun,
+  Cloud,
+  CloudRain,
+  Moon,
+  Wind
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { BottomNav } from "@/components/ui/bottom-nav"
 import { useState, useEffect } from "react"
+import { useSwipeable } from "react-swipeable"
 
 export default function HomePage() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [greeting, setGreeting] = useState("")
+
+  // Dynamic greeting based on time
+  useEffect(() => {
+    const hour = new Date().getHours()
+    if (hour < 12) setGreeting("Good Morning")
+    else if (hour < 18) setGreeting("Good Afternoon")
+    else setGreeting("Good Evening")
+  }, [])
 
   // Load announcements on mount
   useEffect(() => {
@@ -53,40 +67,58 @@ export default function HomePage() {
     setCurrentSlide((prev) => (prev - 1 + Math.max(1, announcements.length)) % Math.max(1, announcements.length))
   }
 
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: nextSlide,
+    onSwipedRight: prevSlide,
+    trackMouse: true
+  })
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0 }
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 font-inter">
+    <div className="min-h-screen bg-slate-50 font-sans pb-24">
       {/* Safe Area Top */}
-      <div className="h-safe-area-inset-top bg-transparent" />
-      
+      <div className="h-safe-area-inset-top bg-white/80 backdrop-blur-md sticky top-0 z-50" />
+
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="px-4 py-4 bg-white/95 backdrop-blur-xl border-b border-blue-100 shadow-sm"
+        className="px-5 py-4 bg-white/80 backdrop-blur-xl backdrop-saturate-150 border-b border-blue-100/50 sticky top-0 z-40"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Image
-              src="/NEVHA logo.svg"
-              alt="NEVHA Logo"
-              width={40}
-              height={40}
-              className="w-10 h-10"
-            />
+            <div className="relative">
+              <Image
+                src="/NEVHA logo.svg"
+                alt="NEVHA Logo"
+                width={42}
+                height={42}
+                className="w-[42px] h-[42px] drop-shadow-sm"
+              />
+            </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">Homeowners Assocation App</h1>
-              <p className="text-xs text-blue-600 font-medium">Northfields Executive Village</p>
+              <h1 className="text-base font-bold text-slate-900 leading-tight">Northfields Executive</h1>
+              <p className="text-[11px] text-slate-500 font-medium tracking-wide uppercase">Village HOA</p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="hidden sm:flex items-center space-x-1 text-xs text-gray-500">
-              <MapPin className="w-3 h-3" />
-              <span>Portal</span>
-            </div>
-            <Link 
-              href="/admin" 
-              className="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200 opacity-60 hover:opacity-100"
+          <div className="flex items-center space-x-3">
+            <Link
+              href="/admin"
+              className="text-xs font-medium text-slate-400 hover:text-blue-600 transition-colors px-2 py-1 rounded-md hover:bg-blue-50"
             >
               Admin
             </Link>
@@ -95,245 +127,212 @@ export default function HomePage() {
       </motion.header>
 
       {/* Main Content */}
-      <div className="px-4 py-4">
+      <div className="px-5 py-6 space-y-6">
         {/* Welcome Section */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="mb-4"
+          transition={{ duration: 0.5 }}
         >
-          <Card className="rounded-xl border-0 shadow-md bg-gradient-to-r from-blue-600 to-blue-700 overflow-hidden">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between text-white">
+          <Card className="rounded-2xl border-0 shadow-xl shadow-blue-900/5 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-3 opacity-10">
+              <Image
+                src="/NEVHA logo.svg"
+                alt="Background Logo"
+                width={120}
+                height={120}
+                className="w-32 h-32 rotate-12"
+              />
+            </div>
+
+            <CardContent className="p-6 relative z-10">
+              <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-xl font-bold mb-1">Welcome Home!</h2>
-                  <p className="text-blue-100 text-sm">Stay connected with your NEVHA community</p>
+                  <div className="flex items-center space-x-2 text-blue-100 mb-1">
+                    <Sun className="w-4 h-4" />
+                    <span className="text-sm font-medium">Sunny, 28°C</span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-white mb-2 leading-tight">
+                    {greeting || "Welcome"}! 👋
+                  </h2>
+                  <p className="text-blue-50 text-sm max-w-[200px] leading-relaxed opacity-90">
+                    Stay updated with the latest community news and events.
+                  </p>
                 </div>
-                <Users className="w-8 h-8 text-blue-200" />
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
         {/* Community Announcements */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-        >
-          <div className="mb-3">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Community Updates</h3>
-            <p className="text-sm text-gray-600">Latest neighborhood news</p>
+        <div>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <h3 className="text-lg font-bold text-slate-900">Latest Updates</h3>
+            <Link href="/announcements" className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+              View All
+            </Link>
           </div>
-          
-          <Card className="rounded-xl border-0 shadow-md bg-white overflow-hidden border border-gray-100">
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="flex items-center justify-center h-48 px-4">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  >
-                    <RefreshCw className="w-6 h-6 text-blue-500" />
-                  </motion.div>
-                </div>
-              ) : announcements.length > 0 ? (
-                <div className="relative">
-                  {/* Navigation Controls */}
-                  <div className="flex items-center justify-between p-4 pb-3">
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={prevSlide}
-                      className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-all shadow-sm border border-blue-200"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-blue-600" />
-                    </motion.button>
-                    
-                    <div className="flex space-x-1">
-                      {announcements.map((_, idx) => (
-                        <motion.div
-                          key={idx}
-                          animate={{
-                            scale: idx === currentSlide ? 1.2 : 1,
-                            backgroundColor: idx === currentSlide ? "#2563eb" : "#cbd5e1"
-                          }}
-                          transition={{ duration: 0.3 }}
-                          className="w-2 h-2 rounded-full"
-                        />
-                      ))}
-                    </div>
-                    
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={nextSlide}
-                      className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-all shadow-sm border border-blue-200"
-                    >
-                      <ChevronRight className="w-4 h-4 text-blue-600" />
-                    </motion.button>
-                  </div>
 
-                  {/* Announcement Content */}
-                  <div className="px-4 pb-4 min-h-[180px] flex items-center">
+          <div {...swipeHandlers} className="relative group">
+            <Card className="rounded-2xl border border-blue-100/60 shadow-lg shadow-slate-200/50 bg-white/90 backdrop-blur-xl overflow-hidden min-h-[200px]">
+              <CardContent className="p-0">
+                {loading ? (
+                  <div className="p-6 space-y-4">
+                    <div className="flex space-x-3">
+                      <Skeleton className="h-12 w-12 rounded-xl" />
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-20 w-full rounded-xl" />
+                  </div>
+                ) : announcements.length > 0 ? (
+                  <div className="relative">
+                    {/* Content */}
                     <AnimatePresence mode="wait">
                       {announcements[currentSlide] && (
                         <motion.div
                           key={currentSlide}
-                          initial={{ opacity: 0, x: 20 }}
+                          initial={{ opacity: 0, x: 10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.4, ease: "easeInOut" }}
-                          className="text-center w-full"
+                          exit={{ opacity: 0, x: -10 }}
+                          transition={{ duration: 0.3 }}
+                          className="p-6"
                         >
-                          <motion.div
-                            initial={{ scale: 0.8 }}
-                            animate={{ scale: 1 }}
-                            transition={{ duration: 0.5, delay: 0.1 }}
-                            className={`w-14 h-14 rounded-xl mx-auto mb-4 flex items-center justify-center shadow-md ${
-                              announcements[currentSlide].priority === "high"
-                                ? "bg-gradient-to-br from-red-500 to-red-600"
-                                : "bg-gradient-to-br from-blue-500 to-blue-600"
-                            }`}
-                          >
-                            {announcements[currentSlide].priority === "high" ? (
-                              <AlertTriangle className="w-7 h-7 text-white" />
-                            ) : (
-                              <MessageSquare className="w-7 h-7 text-white" />
-                            )}
-                          </motion.div>
-                          
-                          <h2 className="text-lg font-bold text-gray-900 mb-2 leading-tight px-2">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className={`p-3 rounded-xl shadow-sm ${announcements[currentSlide].priority === "high"
+                                ? "bg-red-50 text-red-600"
+                                : "bg-blue-50 text-blue-600"
+                              }`}>
+                              {announcements[currentSlide].priority === "high" ? (
+                                <AlertTriangle className="w-6 h-6" />
+                              ) : (
+                                <MessageSquare className="w-6 h-6" />
+                              )}
+                            </div>
+                            <div className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-full">
+                              {new Date(announcements[currentSlide].publishDate || announcements[currentSlide].createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+
+                          <h4 className="text-lg font-bold text-slate-900 mb-2 line-clamp-1">
                             {announcements[currentSlide].title}
-                          </h2>
-                          
-                          <p className="text-sm text-gray-700 leading-relaxed mb-3 px-2">
+                          </h4>
+                          <p className="text-sm text-slate-600 leading-relaxed line-clamp-3 mb-4">
                             {announcements[currentSlide].content}
                           </p>
-                          
-                          <div className="flex items-center justify-center text-xs text-gray-500 mb-3">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {new Date(announcements[currentSlide].publishDate || announcements[currentSlide].createdAt).toLocaleDateString()}
-                          </div>
-                          
+
                           {announcements[currentSlide].priority === "high" && (
-                            <Badge className="bg-gradient-to-r from-red-500 to-red-600 text-white border-0 px-3 py-1 text-xs font-semibold rounded-full shadow-md">
-                              HIGH PRIORITY
-                            </Badge>
+                            <div className="inline-flex items-center space-x-1.5 bg-red-50 border border-red-100 px-2.5 py-1 rounded-md text-red-700 text-xs font-semibold">
+                              <AlertTriangle className="w-3 h-3" />
+                              <span>Important Notice</span>
+                            </div>
                           )}
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </div>
 
-                  {/* View all announcements CTA */}
-                  <div className="px-4 pb-4 flex justify-center">
-                    <Button asChild variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50 font-medium text-sm">
-                      <Link href="/announcements" className="inline-flex items-center gap-1">
-                        View all
-                        <ChevronRight className="w-3 h-3" />
-                      </Link>
-                    </Button>
+                    {/* Pagination Dots */}
+                    <div className="absolute bottom-4 right-6 flex space-x-1.5">
+                      {announcements.map((_, idx) => (
+                        <div
+                          key={idx}
+                          className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentSlide
+                              ? "w-4 bg-blue-600"
+                              : "w-1.5 bg-slate-200"
+                            }`}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-12 px-4">
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <MessageSquare className="w-12 h-12 text-blue-300 mx-auto mb-3" />
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">
-                      Stay Connected
-                    </h3>
-                    <p className="text-gray-600 text-sm">
-                      Community announcements will appear here
-                    </p>
-                  </motion.div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Quick Actions - Compact */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-6"
-        >
-          <div className="mb-3">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Quick Actions</h3>
-            <p className="text-sm text-gray-600">Essential services</p>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[200px] text-center p-6 bg-slate-50/50">
+                    <MessageSquare className="w-10 h-10 text-slate-300 mb-3" />
+                    <p className="text-sm font-medium text-slate-900">No updates yet</p>
+                    <p className="text-xs text-slate-500">Check back later for community news</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-          
-          <div className="grid gap-3">
-            <Link href="/report">
-              <motion.div
-                whileTap={{ scale: 0.98 }}
-                className="bg-white rounded-xl border border-gray-100 shadow-md hover:shadow-lg transition-all p-4 hover:bg-gray-50"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
-                      <FileText className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-bold text-gray-900">Report a Concern</h4>
-                      <p className="text-xs text-gray-600">Submit maintenance requests</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </div>
-              </motion.div>
-            </Link>
+        </div>
 
-            <Link href="/emergency">
-              <motion.div
-                whileTap={{ scale: 0.98 }}
-                className="bg-white rounded-xl border border-gray-100 shadow-md hover:shadow-lg transition-all p-4 hover:bg-red-50"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-md">
-                      <Phone className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-bold text-gray-900">Emergency Hotline</h4>
-                      <p className="text-xs text-gray-600">24/7 emergency contacts</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </div>
-              </motion.div>
-            </Link>
-
-            <Link href="/applications">
-              <motion.div
-                whileTap={{ scale: 0.98 }}
-                className="bg-white rounded-xl border border-gray-100 shadow-md hover:shadow-lg transition-all p-4 hover:bg-blue-50"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
-                      <Shield className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-bold text-gray-900">Applications</h4>
-                      <p className="text-xs text-gray-600">Vehicle stickers & permits</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </div>
-              </motion.div>
-            </Link>
+        {/* Quick Actions */}
+        <div className="mt-8">
+          <div className="mb-3 px-1">
+            <h3 className="text-lg font-bold text-slate-900">Services</h3>
           </div>
-        </motion.div>
+
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="grid gap-4"
+          >
+            <QuickActionCard
+              href="/report"
+              icon={FileText}
+              title="Report a Concern"
+              description="Submit maintenance requests"
+              color="orange"
+            />
+
+            <QuickActionCard
+              href="/emergency"
+              icon={Phone}
+              title="Emergency Hotline"
+              description="24/7 security & medical contacts"
+              color="red"
+            />
+
+            <QuickActionCard
+              href="/applications"
+              icon={Shield}
+              title="Applications"
+              description="Vehicle stickers, IDs & permits"
+              color="blue"
+            />
+          </motion.div>
+        </div>
       </div>
 
       {/* Bottom Navigation */}
       <BottomNav />
     </div>
+  )
+}
+
+function QuickActionCard({ href, icon: Icon, title, description, color }: any) {
+  const colorStyles = {
+    blue: "bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white",
+    orange: "bg-orange-50 text-orange-600 group-hover:bg-orange-600 group-hover:text-white",
+    red: "bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white"
+  }
+
+  return (
+    <Link href={href}>
+      <motion.div
+        variants={{
+          hidden: { opacity: 0, y: 10 },
+          show: { opacity: 1, y: 0 }
+        }}
+        whileTap={{ scale: 0.98 }}
+        className="group relative bg-white rounded-xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className={`p-3 rounded-xl transition-colors duration-300 ${colorStyles[color as keyof typeof colorStyles]}`}>
+              <Icon className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-slate-900 group-hover:text-slate-700 transition-colors">{title}</h4>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">{description}</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" />
+        </div>
+      </motion.div>
+    </Link>
   )
 }

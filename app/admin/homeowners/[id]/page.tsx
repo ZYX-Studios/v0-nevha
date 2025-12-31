@@ -8,9 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Homeowner, Member, Sticker } from "@/lib/types"
-import { ArrowLeft, Calendar, Home, Phone, User2, UsersRound, Tag, Mail, MapPin, CircleDollarSign, ExternalLink, DollarSign } from "lucide-react"
+import { ArrowLeft, Calendar, Home, Phone, User2, UsersRound, Tag, Mail, MapPin, CircleDollarSign, ExternalLink, DollarSign, Edit } from "lucide-react"
 
 export default function HomeownerDetailPage() {
   const router = useRouter()
@@ -39,12 +47,107 @@ export default function HomeownerDetailPage() {
     notes: "",
   })
 
+  // Edit dialog state
+  const [editOpen, setEditOpen] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    middleInitial: "",
+    suffix: "",
+    block: "",
+    lot: "",
+    phase: "",
+    street: "",
+    unitNumber: "",
+    contactNumber: "",
+    email: "",
+    facebookProfile: "",
+    isOwner: "true",
+    moveInDate: "",
+    residencyStartDate: "",
+    lengthOfResidency: "",
+    emergencyContactName: "",
+    emergencyContactPhone: "",
+    notes: "",
+  })
+
+  useEffect(() => {
+    if (homeowner) {
+      setEditForm({
+        firstName: homeowner.firstName || "",
+        lastName: homeowner.lastName || "",
+        middleInitial: homeowner.middleInitial || "",
+        suffix: (homeowner as any).suffix || "",
+        block: homeowner.block || "",
+        lot: homeowner.lot || "",
+        phase: homeowner.phase || "",
+        street: homeowner.street || "",
+        unitNumber: (homeowner as any).unitNumber || "",
+        contactNumber: homeowner.contactNumber || "",
+        email: (homeowner as any).email || "",
+        facebookProfile: (homeowner as any).facebookProfile || "",
+        isOwner: homeowner.isOwner ? "true" : "false",
+        moveInDate: homeowner.moveInDate || "",
+        residencyStartDate: (homeowner as any).residencyStartDate || "",
+        lengthOfResidency: homeowner.lengthOfResidency !== null && homeowner.lengthOfResidency !== undefined ? String(homeowner.lengthOfResidency) : "",
+        emergencyContactName: homeowner.emergencyContactName || "",
+        emergencyContactPhone: homeowner.emergencyContactPhone || "",
+        notes: (homeowner as any).notes || "",
+      })
+    }
+  }, [homeowner])
+
+  const onUpdate = async () => {
+    if (!id) return
+    setEditSaving(true)
+    setError(null)
+    try {
+      const payload = {
+        firstName: editForm.firstName.trim() || null,
+        lastName: editForm.lastName.trim() || null,
+        middleInitial: editForm.middleInitial.trim() || null,
+        suffix: editForm.suffix.trim() || null,
+        block: editForm.block.trim() || null,
+        lot: editForm.lot.trim() || null,
+        phase: editForm.phase.trim() || null,
+        street: editForm.street.trim() || null,
+        unitNumber: editForm.unitNumber.trim() || null,
+        contactNumber: editForm.contactNumber.trim() || null,
+        email: editForm.email.trim() || null,
+        facebookProfile: editForm.facebookProfile.trim() || null,
+        isOwner: editForm.isOwner === "true",
+        moveInDate: editForm.moveInDate || null,
+        residencyStartDate: editForm.residencyStartDate || null,
+        lengthOfResidency: editForm.lengthOfResidency, // handled by server: empty -> null
+        emergencyContactName: editForm.emergencyContactName.trim() || null,
+        emergencyContactPhone: editForm.emergencyContactPhone.trim() || null,
+        notes: editForm.notes.trim() || null,
+      }
+
+      const res = await fetch(`/api/admin/homeowners/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Failed to update homeowner")
+
+      setEditOpen(false)
+      refreshAll()
+    } catch (e: any) {
+      setError(e.message || "Failed to update homeowner")
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   const [savingMember, setSavingMember] = useState(false)
   const [savingSticker, setSavingSticker] = useState(false)
 
   const getDuesStatusBadge = () => {
     if (!duesStatus) return null
-    
+
     if (duesStatus.is_paid_in_full) {
       return <Badge className="bg-green-100 text-green-800">Paid in Full</Badge>
     } else if (duesStatus.amount_paid > 0) {
@@ -260,18 +363,126 @@ export default function HomeownerDetailPage() {
         {/* Overview */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User2 className="h-5 w-5" />
-              {headerSubtitle || "Homeowner"}
-              {typeof homeowner?.isOwner === "boolean" ? (
-                <Badge variant={homeowner.isOwner ? "default" : "outline"}>{homeowner.isOwner ? "Owner" : "Renter"}</Badge>
-              ) : null}
-              {getDuesStatusBadge()}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {headerAddress}
-              {homeowner?.contactNumber ? ` • ${homeowner.contactNumber}` : ""}
-            </p>
+            <div className="flex items-start justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <User2 className="h-5 w-5" />
+                  {headerSubtitle || "Homeowner"}
+                  {typeof homeowner?.isOwner === "boolean" ? (
+                    <Badge variant={homeowner.isOwner ? "default" : "outline"}>{homeowner.isOwner ? "Owner" : "Renter"}</Badge>
+                  ) : null}
+                  {getDuesStatusBadge()}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {headerAddress}
+                  {homeowner?.contactNumber ? ` • ${homeowner.contactNumber}` : ""}
+                </p>
+              </div>
+              <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Edit Homeowner</DialogTitle>
+                    <DialogDescription>Update homeowner details</DialogDescription>
+                  </DialogHeader>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Name</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <Input placeholder="First Name" value={editForm.firstName} onChange={(e) => setEditForm(f => ({ ...f, firstName: e.target.value }))} />
+                        <Input placeholder="Last Name" value={editForm.lastName} onChange={(e) => setEditForm(f => ({ ...f, lastName: e.target.value }))} />
+                        <Input placeholder="M.I." value={editForm.middleInitial} onChange={(e) => setEditForm(f => ({ ...f, middleInitial: e.target.value }))} />
+                        <Input placeholder="Suffix" value={editForm.suffix} onChange={(e) => setEditForm(f => ({ ...f, suffix: e.target.value }))} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Ownership</Label>
+                      <Select value={editForm.isOwner} onValueChange={(v) => setEditForm(f => ({ ...f, isOwner: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="true">Owner</SelectItem>
+                          <SelectItem value="false">Renter</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Unit Number (if Condo/Apt)</Label>
+                      <Input placeholder="Unit" value={editForm.unitNumber} onChange={(e) => setEditForm(f => ({ ...f, unitNumber: e.target.value }))} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Block</Label>
+                      <Input placeholder="Block" value={editForm.block} onChange={(e) => setEditForm(f => ({ ...f, block: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Lot</Label>
+                      <Input placeholder="Lot" value={editForm.lot} onChange={(e) => setEditForm(f => ({ ...f, lot: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Phase</Label>
+                      <Input placeholder="Phase" value={editForm.phase} onChange={(e) => setEditForm(f => ({ ...f, phase: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Street</Label>
+                      <Input placeholder="Street" value={editForm.street} onChange={(e) => setEditForm(f => ({ ...f, street: e.target.value }))} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Contact Number</Label>
+                      <Input placeholder="Contact No" value={editForm.contactNumber} onChange={(e) => setEditForm(f => ({ ...f, contactNumber: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input placeholder="Email" value={editForm.email} onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Facebook Profile</Label>
+                      <Input placeholder="Facebook URL" value={editForm.facebookProfile} onChange={(e) => setEditForm(f => ({ ...f, facebookProfile: e.target.value }))} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Move-in Date</Label>
+                      <Input type="date" value={editForm.moveInDate} onChange={(e) => setEditForm(f => ({ ...f, moveInDate: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Residency Start Date</Label>
+                      <Input type="date" value={editForm.residencyStartDate} onChange={(e) => setEditForm(f => ({ ...f, residencyStartDate: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Length of Residency (Years override)</Label>
+                      <Input type="number" placeholder="Length" value={editForm.lengthOfResidency} onChange={(e) => setEditForm(f => ({ ...f, lengthOfResidency: e.target.value }))} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Emergency Contact Name</Label>
+                      <Input placeholder="Name" value={editForm.emergencyContactName} onChange={(e) => setEditForm(f => ({ ...f, emergencyContactName: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Emergency Contact Phone</Label>
+                      <Input placeholder="Phone" value={editForm.emergencyContactPhone} onChange={(e) => setEditForm(f => ({ ...f, emergencyContactPhone: e.target.value }))} />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Notes</Label>
+                      <Input placeholder="Notes" value={editForm.notes} onChange={(e) => setEditForm(f => ({ ...f, notes: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setEditOpen(false)} disabled={editSaving}>Cancel</Button>
+                    <Button onClick={onUpdate} disabled={editSaving}>
+                      {editSaving ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
@@ -306,19 +517,19 @@ export default function HomeownerDetailPage() {
               )}
               {duesStatus && (
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" /> 
+                  <DollarSign className="h-4 w-4" />
                   HOA Dues {new Date().getFullYear()}: {formatCurrency(duesStatus.amount_paid)} / {formatCurrency(duesStatus.annual_amount)}
                 </div>
               )}
               {duesStatus && duesStatus.balance_due > 0 && (
                 <div className="flex items-center gap-2 text-red-600">
-                  <DollarSign className="h-4 w-4" /> 
+                  <DollarSign className="h-4 w-4" />
                   Balance Due: {formatCurrency(duesStatus.balance_due)}
                 </div>
               )}
               {duesStatus && duesStatus.payment_date && (
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" /> 
+                  <Calendar className="h-4 w-4" />
                   Last Dues Payment: {formatDateLocal(duesStatus.payment_date)}
                 </div>
               )}
@@ -377,11 +588,11 @@ export default function HomeownerDetailPage() {
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
                     <Label>Full Name</Label>
-                    <Input value={memberForm.fullName} onChange={(e) => setMemberForm(f => ({...f, fullName: e.target.value}))} />
+                    <Input value={memberForm.fullName} onChange={(e) => setMemberForm(f => ({ ...f, fullName: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
                     <Label>Relation</Label>
-                    <Select value={memberForm.relation} onValueChange={(v) => setMemberForm(f => ({...f, relation: v}))}>
+                    <Select value={memberForm.relation} onValueChange={(v) => setMemberForm(f => ({ ...f, relation: v }))}>
                       <SelectTrigger><SelectValue placeholder="Select relation" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Child of homeowner/tenant">Child of homeowner/tenant</SelectItem>
@@ -438,34 +649,34 @@ export default function HomeownerDetailPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label>Sticker No</Label>
-                      <Input placeholder="Sticker No" value={stickerForm.code} onChange={(e) => setStickerForm(f => ({...f, code: e.target.value}))} />
+                      <Input placeholder="Sticker No" value={stickerForm.code} onChange={(e) => setStickerForm(f => ({ ...f, code: e.target.value }))} />
                     </div>
                     <div className="space-y-2">
                       <Label>Plate No</Label>
-                      <Input placeholder="Plate No" value={stickerForm.vehiclePlateNo} onChange={(e) => setStickerForm(f => ({...f, vehiclePlateNo: e.target.value}))} />
+                      <Input placeholder="Plate No" value={stickerForm.vehiclePlateNo} onChange={(e) => setStickerForm(f => ({ ...f, vehiclePlateNo: e.target.value }))} />
                     </div>
                     <div className="space-y-2">
                       <Label>Maker</Label>
-                      <Input placeholder="Maker" value={stickerForm.make} onChange={(e) => setStickerForm(f => ({...f, make: e.target.value}))} />
+                      <Input placeholder="Maker" value={stickerForm.make} onChange={(e) => setStickerForm(f => ({ ...f, make: e.target.value }))} />
                     </div>
                     <div className="space-y-2">
                       <Label>Model</Label>
-                      <Input placeholder="Model" value={stickerForm.model} onChange={(e) => setStickerForm(f => ({...f, model: e.target.value}))} />
+                      <Input placeholder="Model" value={stickerForm.model} onChange={(e) => setStickerForm(f => ({ ...f, model: e.target.value }))} />
                     </div>
                     <div className="space-y-2">
                       <Label>Amount Paid</Label>
-                      <Input type="number" inputMode="decimal" step="0.01" placeholder="Amount Paid" value={stickerForm.amountPaid} onChange={(e) => setStickerForm(f => ({...f, amountPaid: e.target.value}))} />
+                      <Input type="number" inputMode="decimal" step="0.01" placeholder="Amount Paid" value={stickerForm.amountPaid} onChange={(e) => setStickerForm(f => ({ ...f, amountPaid: e.target.value }))} />
                     </div>
                     <div className="space-y-1">
                       <Label>Date Issued</Label>
-                      <Input type="date" value={stickerForm.issuedAt} onChange={(e) => setStickerForm(f => ({...f, issuedAt: e.target.value}))} />
+                      <Input type="date" value={stickerForm.issuedAt} onChange={(e) => setStickerForm(f => ({ ...f, issuedAt: e.target.value }))} />
                       <button type="button" onClick={setIssuedToday} className="text-xs text-muted-foreground underline hover:text-foreground">
                         Set today
                       </button>
                     </div>
                     <div className="space-y-2">
                       <Label>Category</Label>
-                      <Select value={stickerForm.category} onValueChange={(v) => setStickerForm(f => ({...f, category: v}))}>
+                      <Select value={stickerForm.category} onValueChange={(v) => setStickerForm(f => ({ ...f, category: v }))}>
                         <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Sedan">Sedan</SelectItem>
@@ -478,11 +689,11 @@ export default function HomeownerDetailPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
-                    
+
+
                     <div className="space-y-2 md:col-span-2">
                       <Label>Notes</Label>
-                      <Input placeholder="Notes" value={stickerForm.notes} onChange={(e) => setStickerForm(f => ({...f, notes: e.target.value}))} />
+                      <Input placeholder="Notes" value={stickerForm.notes} onChange={(e) => setStickerForm(f => ({ ...f, notes: e.target.value }))} />
                     </div>
                   </div>
                   <Button onClick={onUpsertSticker} disabled={savingSticker || !stickerForm.code.trim()}>
