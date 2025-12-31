@@ -117,21 +117,21 @@ export default function ReportPage() {
   // Load active departments for the "Issue Related To" options
   useEffect(() => {
     let mounted = true
-    ;(async () => {
-      try {
-        const res = await fetch("/api/departments", { cache: "no-store" })
-        const json = await res.json().catch(() => ({}))
-        if (!mounted) return
-        if (res.ok && Array.isArray(json.items)) {
-          const names = json.items.map((i: any) => String(i.name || "")).filter(Boolean)
-          setDeptOptions(names)
-        } else {
+      ; (async () => {
+        try {
+          const res = await fetch("/api/departments", { cache: "no-store" })
+          const json = await res.json().catch(() => ({}))
+          if (!mounted) return
+          if (res.ok && Array.isArray(json.items)) {
+            const names = json.items.map((i: any) => String(i.name || "")).filter(Boolean)
+            setDeptOptions(names)
+          } else {
+            setDeptOptions([])
+          }
+        } catch {
           setDeptOptions([])
         }
-      } catch {
-        setDeptOptions([])
-      }
-    })()
+      })()
     return () => {
       mounted = false
     }
@@ -295,13 +295,13 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 font-inter">
+    <div className="min-h-screen bg-background font-sans">
       {/* Safe Area Top */}
       <div className="h-safe-area-inset-top bg-transparent" />
-      
+
       {/* Header */}
-      <header className="px-4 py-4 bg-white/95 backdrop-blur-xl border-b border-blue-100 shadow-sm">
-        <div className="flex items-center justify-between">
+      <header className="px-4 py-4 bg-white/80 backdrop-blur-md border-b border-border/40 sticky top-0 z-10">
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
           <div className="flex items-center space-x-3">
             <Image
               src="/NEVHA logo.svg"
@@ -311,14 +311,14 @@ export default function ReportPage() {
               className="w-10 h-10"
             />
             <div>
-              <h1 className="text-lg font-bold text-gray-900">NEVHA</h1>
-              <p className="text-xs text-blue-600 font-medium">Northfields Executive Village</p>
+              <h1 className="text-lg font-bold text-foreground">NEVHA</h1>
+              <p className="text-xs text-primary font-medium">Northfields Executive Village</p>
             </div>
           </div>
           <Button
             size="sm"
             onClick={() => router.push("/status")}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2"
+            className="text-xs px-4"
           >
             Check Status
           </Button>
@@ -326,74 +326,72 @@ export default function ReportPage() {
       </header>
 
       {/* Main Content */}
-      <div className="px-4 py-4">
+      <div className="px-4 py-6 max-w-2xl mx-auto">
         {/* Page Header */}
-        <div className="mb-4">
+        <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/")} className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2">
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={() => router.push("/")} className="rounded-full">
+              <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Report a Concern</h2>
-              <p className="text-sm text-gray-600">Share details to help us resolve it quickly</p>
+              <h2 className="text-2xl font-bold text-foreground">Report a Concern</h2>
+              <p className="text-sm text-muted-foreground">Share details to help us resolve it quickly</p>
             </div>
           </div>
         </div>
 
-        <Card className="rounded-xl border-0 shadow-md bg-white overflow-hidden border border-gray-100 max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle className="text-gray-900 text-base">Issue Details</CardTitle>
-            <CardDescription className="text-gray-600 text-sm">
+        <Card className="rounded-[2rem] border-border/50 shadow-lg bg-card overflow-hidden">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-foreground text-lg">Issue Details</CardTitle>
+            <CardDescription className="text-muted-foreground text-sm">
               Please provide as much detail as possible. You don't need to sign in to submit.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <Alert variant="destructive" className="border-red-200 bg-red-50">
+                <Alert variant="destructive" className="border-red-200 bg-red-50 text-red-900 rounded-2xl">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-red-700">{error}</AlertDescription>
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
-              <div className="pt-1">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Your Details</p>
+              <div className="pt-2">
+                <p className="text-xs font-bold text-primary uppercase tracking-wider">Your Details</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reporter_full_name" className="text-gray-700 text-sm">Full Name</Label>
+                <Label htmlFor="reporter_full_name" className="text-foreground/80 text-sm font-medium">Full Name</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="reporter_full_name"
                     placeholder="Full Name"
                     value={form.reporter_full_name}
                     onChange={(e) => {
                       update("reporter_full_name", e.target.value)
-                      // If user edits the field, clear previous verification
                       if (selectedResidentToken) setSelectedResidentToken(null)
                       if (verifyError) setVerifyError(false)
                     }}
                     disabled={isSubmitting}
-                    className={`bg-white text-gray-900 placeholder:text-gray-400 pl-9 focus:ring-2 ${selectedResidentToken ? "pr-9" : ""} ${verifyError ? "border-red-300 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-blue-300 focus:ring-blue-200"}`}
+                    className={`pl-10 h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl ${verifyError ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
                   />
                   {selectedResidentToken && (
-                    <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />
+                    <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
                   )}
                 </div>
                 {!selectedResidentToken && (
-                  <div className="mt-2 text-[11px] sm:text-xs border border-yellow-200 bg-yellow-50 text-yellow-800 rounded px-3 py-2">
+                  <div className="mt-2 text-[11px] sm:text-xs border border-amber-200/50 bg-amber-50 text-amber-800 rounded-xl px-3 py-2">
                     Only registered homeowners can submit. Start typing your full name and select from the list to verify.
                   </div>
                 )}
                 {verifyError && (
-                  <p className="mt-1 text-xs text-red-600">Please select your name from the suggestions to verify before submitting.</p>
+                  <p className="mt-1 text-xs text-destructive font-medium">Please select your name from the suggestions to verify before submitting.</p>
                 )}
-                {/* Subtle suggestions list appears only while typing and not yet verified */}
                 {!selectedResidentToken && (nameSuggestions.length > 0 || isSearchingName) && (
-                  <div className="mt-2 border border-gray-200 rounded-md bg-white shadow-sm">
+                  <div className="mt-2 border border-border/50 rounded-xl bg-white shadow-lg overflow-hidden">
                     {isSearchingName && (
-                      <div className="px-3 py-2 text-xs text-gray-500">Searching…</div>
+                      <div className="px-4 py-3 text-xs text-muted-foreground">Searching…</div>
                     )}
                     {nameSuggestions.map((s) => (
                       <button
@@ -405,85 +403,84 @@ export default function ReportPage() {
                           setNameSuggestions([])
                           if (verifyError) setVerifyError(false)
                         }}
-                        className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        className="block w-full text-left px-4 py-3 text-sm hover:bg-secondary/50 transition-colors border-b border-border/50 last:border-0"
                       >
                         {s.name}
                       </button>
                     ))}
                   </div>
                 )}
-                {/* Verified state is indicated by the check icon inside the input */}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reporter_phone" className="text-gray-700 text-sm">Contact Number</Label>
+                <Label htmlFor="reporter_phone" className="text-foreground/80 text-sm font-medium">Contact Number</Label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="reporter_phone"
                     placeholder="Contact Number"
                     value={form.reporter_phone}
                     onChange={(e) => update("reporter_phone", e.target.value)}
                     disabled={isSubmitting}
-                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-9 focus:border-blue-300 focus:ring-blue-200"
+                    className="pl-10 h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="reporter_block" className="text-gray-700 text-sm">Block</Label>
+                  <Label htmlFor="reporter_block" className="text-foreground/80 text-sm font-medium">Block</Label>
                   <Input
                     id="reporter_block"
-                    placeholder="Block"
+                    placeholder="Blk"
                     value={form.reporter_block}
                     onChange={(e) => update("reporter_block", e.target.value)}
                     disabled={isSubmitting}
-                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:ring-blue-200"
+                    className="h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl text-center"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reporter_lot" className="text-gray-700 text-sm">Lot</Label>
+                  <Label htmlFor="reporter_lot" className="text-foreground/80 text-sm font-medium">Lot</Label>
                   <Input
                     id="reporter_lot"
                     placeholder="Lot"
                     value={form.reporter_lot}
                     onChange={(e) => update("reporter_lot", e.target.value)}
                     disabled={isSubmitting}
-                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:ring-blue-200"
+                    className="h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl text-center"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reporter_phase" className="text-gray-700 text-sm">Phase</Label>
+                  <Label htmlFor="reporter_phase" className="text-foreground/80 text-sm font-medium">Phase</Label>
                   <Input
                     id="reporter_phase"
-                    placeholder="Phase"
+                    placeholder="Ph"
                     value={form.reporter_phase}
                     onChange={(e) => update("reporter_phase", e.target.value)}
                     disabled={isSubmitting}
-                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:ring-blue-200"
+                    className="h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl text-center"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reporter_street" className="text-gray-700 text-sm">Street</Label>
+                  <Label htmlFor="reporter_street" className="text-foreground/80 text-sm font-medium">Street</Label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="reporter_street"
-                      placeholder="Street"
+                      placeholder="St"
                       value={form.reporter_street}
                       onChange={(e) => update("reporter_street", e.target.value)}
                       disabled={isSubmitting}
-                      className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-9 focus:border-blue-300 focus:ring-blue-200"
+                      className="pl-9 h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl"
                     />
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reporter_email" className="text-gray-700 text-sm">Email</Label>
+                <Label htmlFor="reporter_email" className="text-foreground/80 text-sm font-medium">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="reporter_email"
                     type="email"
@@ -491,28 +488,28 @@ export default function ReportPage() {
                     value={form.reporter_email}
                     onChange={(e) => update("reporter_email", e.target.value)}
                     disabled={isSubmitting}
-                    className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-9 focus:border-blue-300 focus:ring-blue-200"
+                    className="pl-10 h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl"
                   />
                 </div>
               </div>
 
-              <div className="pt-2">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Concern Details</p>
+              <div className="pt-4">
+                <p className="text-xs font-bold text-primary uppercase tracking-wider">Concern Details</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category" className="text-gray-700 text-sm">Issue Related To *</Label>
+                <Label htmlFor="category" className="text-foreground/80 text-sm font-medium">Issue Related To *</Label>
                 <Select value={form.category} onValueChange={(v) => update("category", v)} disabled={isSubmitting}>
-                  <SelectTrigger className="bg-white border-gray-200 text-gray-900 focus:border-blue-300 focus:ring-blue-200">
+                  <SelectTrigger className="h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl border-border/50 shadow-lg">
                     {deptOptions.map((name) => (
-                      <SelectItem key={name} value={name}>
+                      <SelectItem key={name} value={name} className="rounded-lg my-1 cursor-pointer">
                         {name}
                       </SelectItem>
                     ))}
-                    <SelectItem key="Others" value="Others">
+                    <SelectItem key="Others" value="Others" className="rounded-lg my-1 cursor-pointer">
                       Others
                     </SelectItem>
                   </SelectContent>
@@ -520,7 +517,7 @@ export default function ReportPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-gray-700 text-sm">Describe Your Concern *</Label>
+                <Label htmlFor="description" className="text-foreground/80 text-sm font-medium">Describe Your Concern *</Label>
                 <Textarea
                   id="description"
                   placeholder="Provide details (when it started, frequency, any context)."
@@ -528,12 +525,12 @@ export default function ReportPage() {
                   onChange={(e) => update("description", e.target.value)}
                   disabled={isSubmitting}
                   rows={5}
-                  className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:ring-blue-200"
+                  className="bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl resize-none p-4"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="suggested_solution" className="text-gray-700 text-sm">Do you have any solution to suggest?</Label>
+                <Label htmlFor="suggested_solution" className="text-foreground/80 text-sm font-medium">Do you have any solution to suggest?</Label>
                 <Textarea
                   id="suggested_solution"
                   placeholder="Your suggestion"
@@ -541,30 +538,30 @@ export default function ReportPage() {
                   onChange={(e) => update("suggested_solution", e.target.value)}
                   disabled={isSubmitting}
                   rows={3}
-                  className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:ring-blue-200"
+                  className="bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl resize-none p-4"
                 />
               </div>
 
-              <div className="flex items-start gap-4 rounded-lg border-2 border-blue-200 p-4 bg-blue-50">
+              <div className="flex items-start gap-4 rounded-xl border border-primary/20 p-4 bg-primary/5">
                 <Checkbox
                   id="acknowledged"
                   checked={form.acknowledged}
                   onCheckedChange={(v) => update("acknowledged", Boolean(v))}
                   disabled={isSubmitting}
-                  className="mt-0.5 h-5 w-5 border-2 border-blue-400 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                  className="mt-0.5 h-5 w-5 border-2 border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded-md"
                 />
-                <Label htmlFor="acknowledged" className="text-sm text-gray-800 leading-relaxed font-medium cursor-pointer">
+                <Label htmlFor="acknowledged" className="text-sm text-foreground/90 leading-relaxed font-medium cursor-pointer">
                   I understand that this is not an Emergency hotline and I shouldn't expect immediate response. The
                   concern I am raising is to further improve the community of Northfields.
                 </Label>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button type="button" variant="outline" onClick={() => router.push("/")} disabled={isSubmitting} className="w-full sm:flex-1 border-gray-200 text-gray-600 hover:bg-gray-50">
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <Button type="button" variant="ghost" onClick={() => router.push("/")} disabled={isSubmitting} className="w-full sm:flex-1 rounded-full text-muted-foreground hover:bg-secondary">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting || !selectedResidentToken} className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white">
-                  {isSubmitting ? "Submitting..." : "Submit"}
+                <Button type="submit" disabled={isSubmitting || !selectedResidentToken} className="w-full sm:flex-1 rounded-full shadow-lg hover:shadow-xl transition-all">
+                  {isSubmitting ? "Submitting..." : "Submit Report"}
                 </Button>
               </div>
             </form>

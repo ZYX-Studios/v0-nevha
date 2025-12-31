@@ -26,7 +26,7 @@ export default function EmergencyPage() {
       urgent: true
     },
     {
-      title: "City Fire Station (Malolos)", 
+      title: "City Fire Station (Malolos)",
       numbers: ["0995 1860 370", "(044) 791-6129"],
       description: "Fire department emergency response",
       icon: AlertTriangle,
@@ -159,13 +159,13 @@ export default function EmergencyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 font-inter">
+    <div className="min-h-screen bg-background font-sans">
       {/* Safe Area Top */}
       <div className="h-safe-area-inset-top bg-transparent" />
-      
+
       {/* Header */}
-      <header className="px-4 py-4 bg-white/95 backdrop-blur-xl border-b border-blue-100 shadow-sm">
-        <div className="flex items-center justify-between">
+      <header className="px-4 py-4 bg-white/80 backdrop-blur-md border-b border-border/40 sticky top-0 z-10">
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
           <div className="flex items-center space-x-3">
             <Image
               src="/NEVHA logo.svg"
@@ -175,11 +175,11 @@ export default function EmergencyPage() {
               className="w-10 h-10"
             />
             <div>
-              <h1 className="text-lg font-bold text-gray-900">NEVHA</h1>
-              <p className="text-xs text-blue-600 font-medium">Northfields Executive Village</p>
+              <h1 className="text-lg font-bold text-foreground">NEVHA</h1>
+              <p className="text-xs text-primary font-medium">Northfields Executive Village</p>
             </div>
           </div>
-          <div className="hidden sm:flex items-center space-x-1 text-xs text-gray-500">
+          <div className="hidden sm:flex items-center space-x-1 text-xs text-muted-foreground">
             <MapPin className="w-3 h-3" />
             <span>Portal</span>
           </div>
@@ -187,33 +187,33 @@ export default function EmergencyPage() {
       </header>
 
       {/* Main Content */}
-      <div className="px-4 py-4">
+      <div className="px-4 py-6 max-w-2xl mx-auto">
         {/* Page Header */}
-        <div className="mb-4">
+        <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
-            <Button asChild variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2">
+            <Button asChild variant="ghost" size="icon" className="rounded-full">
               <Link href="/">
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-5 w-5" />
               </Link>
             </Button>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Emergency Hotlines</h2>
-              <p className="text-sm text-gray-600">Important contact numbers for emergencies</p>
+              <h2 className="text-2xl font-bold text-foreground">Emergency Hotlines</h2>
+              <p className="text-sm text-muted-foreground">Important contact numbers for emergencies</p>
             </div>
           </div>
         </div>
 
         {/* Emergency Notice */}
-        <Card className="rounded-xl border-2 border-red-200 shadow-md bg-red-50 overflow-hidden mb-4">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <AlertTriangle className="w-4 h-4 text-white" />
+        <Card className="rounded-[2rem] border-2 border-destructive/20 shadow-lg bg-destructive/5 overflow-hidden mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-destructive rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md">
+                <AlertTriangle className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <h3 className="font-bold text-red-900 mb-1">Life-Threatening Emergency</h3>
-                <p className="text-sm text-red-800 leading-relaxed">
-                  For immediate life-threatening emergencies, call <strong>911</strong> first, then notify NEVHA Security.
+              <div className="flex-1">
+                <h3 className="font-bold text-destructive text-lg mb-1">Life-Threatening Emergency</h3>
+                <p className="text-sm text-destructive/80 leading-relaxed">
+                  For immediate life-threatening emergencies, call <strong className="font-bold">911</strong> first, then notify NEVHA Security.
                 </p>
               </div>
             </div>
@@ -221,33 +221,31 @@ export default function EmergencyPage() {
         </Card>
 
         {/* Emergency Contacts */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {emergencyContacts.map((contact, index) => {
             const Icon = contact.icon
             return (
-              <Card key={index} className={`rounded-xl border-0 shadow-md bg-white overflow-hidden border ${
-                contact.urgent ? 'border-red-200' : 'border-gray-100'
-              }`}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 ${contact.color} rounded-xl flex items-center justify-center shadow-md`}>
-                        <Icon className="w-6 h-6 text-white" />
+              <Card key={index} className="rounded-[2rem] border-border/50 shadow-md hover:shadow-lg transition-shadow bg-card overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-14 h-14 ${contact.color} rounded-2xl flex items-center justify-center shadow-lg`}>
+                        <Icon className="w-7 h-7 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-gray-900">{contact.title}</h3>
-                        <p className="text-sm text-gray-600">{contact.description}</p>
+                        <h3 className="font-bold text-foreground text-lg">{contact.title}</h3>
+                        <p className="text-sm text-muted-foreground">{contact.description}</p>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-wrap sm:flex-col items-start sm:items-end gap-2 mt-2 sm:mt-0">
                       {contact.numbers.map((num, i) => (
                         <Button
                           key={i}
                           asChild
                           size="sm"
-                          className={`${i === 0 ? `${contact.color} text-white font-bold hover:opacity-90` : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
+                          className={`rounded-full shadow-sm hover:shadow-md transition-all ${i === 0 ? `${contact.color} border-0 text-white font-bold hover:brightness-110` : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
                         >
-                          <a href={`tel:${toTel(num)}`}>
+                          <a href={`tel:${toTel(num)}`} className="px-4">
                             {num}
                           </a>
                         </Button>
@@ -261,26 +259,26 @@ export default function EmergencyPage() {
         </div>
 
         {/* Additional Information */}
-        <Card className="rounded-xl border-0 shadow-md bg-white overflow-hidden border border-gray-100 mt-6">
-          <CardHeader>
-            <CardTitle className="text-gray-900 text-base flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-500" />
-              Important Information
+        <Card className="rounded-[2rem] border-border/50 shadow-md bg-card overflow-hidden mt-8">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-foreground text-lg flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              Information
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3 text-sm text-gray-700">
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-1">NEVHA Security Hours</h4>
-                <p>24/7 availability for all security-related concerns</p>
+            <div className="space-y-4 text-sm text-muted-foreground">
+              <div className="p-4 rounded-2xl bg-secondary/30">
+                <h4 className="font-bold text-foreground mb-1">NEVHA Security Hours</h4>
+                <p>24/7 availability for all security-related concerns.</p>
               </div>
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-1">Maintenance Emergency</h4>
-                <p>Available 24/7 for urgent repairs that pose safety risks</p>
+              <div className="p-4 rounded-2xl bg-secondary/30">
+                <h4 className="font-bold text-foreground mb-1">Maintenance Emergency</h4>
+                <p>Available 24/7 for urgent repairs that pose safety risks.</p>
               </div>
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-1">Non-Emergency Issues</h4>
-                <p>For non-urgent concerns, please use the <Link href="/report" className="text-blue-600 underline">Report a Concern</Link> feature</p>
+              <div className="p-4 rounded-2xl bg-secondary/30">
+                <h4 className="font-bold text-foreground mb-1">Non-Emergency Issues</h4>
+                <p>For non-urgent concerns, please use the <Link href="/report" className="text-primary font-medium hover:underline">Report a Concern</Link> feature.</p>
               </div>
             </div>
           </CardContent>

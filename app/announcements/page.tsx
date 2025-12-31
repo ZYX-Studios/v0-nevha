@@ -77,48 +77,46 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black">
+    <div className="min-h-screen bg-background font-sans">
       {/* Header */}
-      <header className="border-b border-gray-700/30 bg-gray-900/80 backdrop-blur-xl sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <AnimatedSection className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/")}
-                className="flex items-center space-x-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back</span>
-              </Button>
-              <div className="flex items-center space-x-2">
-                <div className="bg-orange-500 rounded-lg p-2">
-                  <Home className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-white">Community Announcements</h1>
-                  <p className="text-sm text-gray-400">Stay informed with the latest updates</p>
-                </div>
+      <header className="px-4 py-4 bg-white/80 backdrop-blur-md border-b border-border/40 sticky top-0 z-10">
+        <div className="container mx-auto max-w-3xl flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/")}
+              className="flex items-center space-x-2 rounded-full text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back</span>
+            </Button>
+            <div className="flex items-center space-x-3">
+              <div className="bg-primary/10 rounded-xl p-2.5">
+                <Home className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-foreground">Community Announcements</h1>
+                <p className="text-sm text-muted-foreground">Stay informed with the latest updates</p>
               </div>
             </div>
-            <Button onClick={() => router.push("/report")} variant="outline" className="hidden sm:inline-flex">
-              Report a Concern
-            </Button>
-          </AnimatedSection>
+          </div>
+          <Button onClick={() => router.push("/report")} variant="outline" className="hidden sm:inline-flex rounded-full border-primary/20 text-primary hover:bg-primary/5">
+            Report a Concern
+          </Button>
         </div>
       </header>
 
-      <div className="container mx-auto px-3 md:px-4 py-8 md:py-12 max-w-3xl">
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
         {/* Search */}
-        <AnimatedSection className="mb-6 md:mb-8">
+        <AnimatedSection className="mb-8">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search announcements..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-11 h-12 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-full shadow-sm"
             />
           </div>
         </AnimatedSection>
@@ -127,74 +125,74 @@ export default function AnnouncementsPage() {
         <div className="space-y-6">
           {filteredAnnouncements.length === 0 ? (
             <AnimatedSection>
-            <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 shadow-2xl">
-              <CardContent className="text-center py-12">
-                <div className="bg-gray-700/80 rounded-full p-3 w-fit mx-auto mb-4">
-                  <Info className="h-6 w-6 text-gray-300" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2 text-white">
-                  {searchTerm ? "No matching announcements" : "No announcements available"}
-                </h3>
-                <p className="text-gray-400">
-                  {searchTerm ? "Try adjusting your search terms." : "Check back later for community updates."}
-                </p>
-              </CardContent>
-            </Card>
+              <Card className="bg-card border-border/50 shadow-md rounded-[2rem]">
+                <CardContent className="text-center py-16">
+                  <div className="bg-secondary/50 rounded-full p-4 w-fit mx-auto mb-4">
+                    <Info className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2 text-foreground">
+                    {searchTerm ? "No matching announcements" : "No announcements available"}
+                  </h3>
+                  <p className="text-muted-foreground">
+                    {searchTerm ? "Try adjusting your search terms." : "Check back later for community updates."}
+                  </p>
+                </CardContent>
+              </Card>
             </AnimatedSection>
           ) : (
             filteredAnnouncements.map((announcement, idx) => (
               <AnimatedSection key={announcement.id} delay={idx * 0.06}>
-              <Card className="overflow-hidden bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 shadow-2xl">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center space-x-2">
-                        <Badge
-                          variant={getPriorityVariant(announcement.priority)}
-                          className="flex items-center space-x-1"
-                        >
-                          {getPriorityIcon(announcement.priority)}
-                          <span className="capitalize">{announcement.priority}</span>
-                        </Badge>
-                        <div className="flex items-center space-x-1 text-sm text-gray-400">
-                          <Calendar className="h-3 w-3" />
-                          <span>{formatDate(announcement.publishDate || announcement.createdAt)}</span>
+                <Card className="overflow-hidden bg-card border-border/50 shadow-md hover:shadow-lg transition-all duration-300 rounded-[2rem]">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-3 flex-1">
+                        <div className="flex items-center space-x-3">
+                          <Badge
+                            variant={getPriorityVariant(announcement.priority)}
+                            className="flex items-center space-x-1.5 px-3 py-1 rounded-full"
+                          >
+                            {getPriorityIcon(announcement.priority)}
+                            <span className="capitalize font-semibold">{announcement.priority}</span>
+                          </Badge>
+                          <div className="flex items-center space-x-1.5 text-xs font-medium text-muted-foreground bg-secondary/50 px-3 py-1 rounded-full">
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span>{formatDate(announcement.publishDate || announcement.createdAt)}</span>
+                          </div>
                         </div>
+                        <CardTitle className="text-2xl font-bold text-foreground leading-tight px-1">{announcement.title}</CardTitle>
                       </div>
-                      <CardTitle className="text-xl text-white">{announcement.title}</CardTitle>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose prose-sm max-w-none">
-                    <p className="text-gray-300 whitespace-pre-wrap">{announcement.content}</p>
-                  </div>
-                  {announcement.expiryDate && (
-                    <div className="mt-4 pt-4 border-t border-gray-700/30">
-                      <p className="text-sm text-gray-400 flex items-center space-x-1">
-                        <AlertCircle className="h-3 w-3" />
-                        <span>Expires: {formatDate(announcement.expiryDate)}</span>
-                      </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="prose prose-sm max-w-none text-muted-foreground bg-secondary/20 p-6 rounded-2xl">
+                      <p className="whitespace-pre-wrap leading-relaxed">{announcement.content}</p>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                    {announcement.expiryDate && (
+                      <div className="mt-4 pt-2 px-2">
+                        <p className="text-xs font-medium text-destructive/70 flex items-center space-x-1.5 bg-destructive/5 px-3 py-2 rounded-lg w-fit">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          <span>Expires: {formatDate(announcement.expiryDate)}</span>
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </AnimatedSection>
             ))
           )}
         </div>
 
         {/* Call to Action */}
-        <AnimatedSection className="mt-10 md:mt-12 text-center">
-          <Card className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/30 shadow-2xl">
-            <CardContent className="py-8">
-              <h3 className="text-xl font-semibold mb-2 text-white">Want to report a concern?</h3>
-              <p className="text-gray-400 mb-4">
+        <AnimatedSection className="mt-12 text-center">
+          <Card className="bg-gradient-to-br from-primary/5 to-secondary/30 border-primary/10 shadow-lg rounded-[2.5rem]">
+            <CardContent className="py-12 px-6">
+              <h3 className="text-2xl font-bold mb-3 text-foreground">Want to report a concern?</h3>
+              <p className="text-muted-foreground mb-8 max-w-md mx-auto">
                 Help us keep the community safe and tidy. Share details so we can act quickly.
               </p>
-              <Button onClick={() => router.push("/report")} size="lg" className="bg-orange-500 hover:bg-orange-600 text-white">
+              <Button onClick={() => router.push("/report")} size="lg" className="rounded-full px-8 py-6 text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300">
                 Report a Concern
-                <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+                <ArrowLeft className="ml-2 h-5 w-5 rotate-180" />
               </Button>
             </CardContent>
           </Card>
