@@ -115,7 +115,7 @@ export default function HomePage() {
                         />
                         <div>
                             <h1 className="text-base font-bold text-foreground">Northfields Executive</h1>
-                            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Village HOA</p>
+                            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Village H.O.A.</p>
                         </div>
                     </div>
                     <Link href="/admin">
