@@ -113,7 +113,7 @@ function AdminDashboardContent() {
                   <Home className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-foreground">Admin Dashboard</h1>
+                  <h1 className="text-lg font-bold text-foreground">Nevha Admin Dashboard</h1>
                   <p className="text-sm text-muted-foreground">Community Management Portal</p>
                 </div>
               </div>
