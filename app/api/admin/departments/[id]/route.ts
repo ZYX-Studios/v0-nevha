@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
+import { requireAdminAPI } from "@/lib/supabase/guards"
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const id = params.id
     if (!id) return NextResponse.json({ error: "Missing department id" }, { status: 400 })

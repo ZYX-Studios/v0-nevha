@@ -9,6 +9,20 @@
 
 This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
 Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+ 
+  ## Project Documentation
+  
+  For detailed information about the project's architecture, setup, and features, please refer to the **[Documentation Index](./projectDocs/SUMMARY.md)**.
+  
+  *   [Overview](./projectDocs/00-overview.md)
+  *   [UI & Features](./projectDocs/08-ui-and-features.md)
+  *   [Architecture](./projectDocs/01-architecture.md)
+  *   [Authentication](./projectDocs/02-authentication.md)
+  *   [Database Schema](./projectDocs/03-database.md)
+  *   [Admin Panel](./projectDocs/04-admin-panel.md)
+  *   [API Reference](./projectDocs/05-api-reference.md)
+  *   [Components & Styling](./projectDocs/06-components-styling.md)
+  *   [Workflows](./projectDocs/07-workflows.md)
 
 ## Deployment
 

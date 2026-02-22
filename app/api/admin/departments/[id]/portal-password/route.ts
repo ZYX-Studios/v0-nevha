@@ -2,12 +2,15 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 import bcrypt from "bcryptjs"
+import { requireAdminAPI } from "@/lib/supabase/guards"
 
 const BodySchema = z.object({
   new_password: z.string().min(8, "Password must be at least 8 characters"),
 })
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const id = params.id
     if (!id) return NextResponse.json({ error: "Missing department id" }, { status: 400 })
@@ -17,7 +20,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
     const supabase = createAdminClient()
-    // Ensure department exists and is active
+
     const { data: dep, error: depErr } = await supabase
       .from("departments")
       .select("id,name,is_active")
@@ -34,7 +37,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .eq("id", id)
 
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 400 })
-
     return NextResponse.json({ ok: true }, { status: 200 })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 import { createClient as createSSRClient } from "@/lib/supabase/server"
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 function mapRow(row: any) {
   return {
     id: row.id as string,
@@ -17,7 +17,12 @@ function mapRow(row: any) {
 }
 
 export async function GET(request: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient()
     const url = (request as any).nextUrl as URL
     const search = url.searchParams.get("search")?.trim()
@@ -66,7 +71,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const admin = createAdminClient()
     const supa = await createSSRClient()
     const {

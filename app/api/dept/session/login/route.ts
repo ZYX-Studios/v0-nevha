@@ -47,6 +47,13 @@ export async function POST(req: Request) {
       ver: (dep.portal_password_updated_at as string | null) ?? null,
     })
 
+    // Stamp last_login_at — fire and forget, don't block the response
+    supabase
+      .from("departments")
+      .update({ last_login_at: new Date().toISOString() })
+      .eq("id", dep.id)
+      .then(() => { }) // intentionally ignored
+
     const res = NextResponse.json({ ok: true, department: { id: dep.id, name: dep.name } }, { status: 200 })
     res.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,

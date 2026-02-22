@@ -41,6 +41,8 @@ export function signSession(payload: DeptSession): string {
   return `${body}.${sig}`
 }
 
+const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60 // 7 days
+
 export function verifySession(token: string): DeptSession | null {
   try {
     const secret = getSecret()
@@ -53,6 +55,9 @@ export function verifySession(token: string): DeptSession | null {
     const json = base64urlDecode(body)
     const payload = JSON.parse(json) as DeptSession
     if (!payload?.dept_id || !payload?.iat) return null
+    // TTL check: reject sessions older than 7 days
+    const ageSeconds = Math.floor(Date.now() / 1000) - payload.iat
+    if (ageSeconds > SESSION_TTL_SECONDS) return null
     return payload
   } catch {
     return null

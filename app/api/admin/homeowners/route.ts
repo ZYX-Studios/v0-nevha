@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 import { z } from "zod"
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 const CreateHomeownerSchema = z.object({
   userId: z.string().uuid().optional().nullable(),
   propertyAddress: z.string().optional().nullable(),
@@ -29,7 +29,12 @@ const CreateHomeownerSchema = z.object({
 })
 
 export async function GET(req: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient()
     const { searchParams } = new URL(req.url)
     const q = (searchParams.get("q") || "").trim()
@@ -178,7 +183,12 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient()
     const json = await req.json()
     const parsed = CreateHomeownerSchema.safeParse(json)

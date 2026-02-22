@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import { sendEmail } from "@/lib/resend"
+import { requireAdminAPI } from "@/lib/supabase/guards"
 
 export async function GET(req: Request) {
+
+
   try {
     const url = new URL(req.url)
     const key = url.searchParams.get("key")
@@ -35,6 +38,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+
+
   try {
     const url = new URL(req.url)
     const key = url.searchParams.get("key")

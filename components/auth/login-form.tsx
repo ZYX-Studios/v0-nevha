@@ -30,8 +30,17 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
     e.preventDefault()
     setError("")
 
+    const isValidEmail = (email: string) => {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    }
+
     if (!email || !password) {
       setError("Please fill in all fields")
+      return
+    }
+
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address")
       return
     }
 

@@ -42,7 +42,9 @@ export interface Homeowner {
   facebookProfile?: string | null
   datePaid?: string | null
   amountPaid?: number | null
+  profilePhotoUrl?: string | null
 }
+
 
 export interface CarSticker {
   id: string
@@ -183,4 +185,87 @@ export interface Sticker {
   vehicleModel?: string
   vehicleColor?: string
   vehicleCategory?: string
+}
+export interface RegistrationRequest {
+  id: string
+  user_id: string
+  email: string
+  first_name: string
+  last_name: string
+  phone?: string
+  claimed_block?: string
+  claimed_lot?: string
+  claimed_phase?: string
+  matched_homeowner_id?: string
+  match_confidence: 'high' | 'low' | 'none'
+  status: 'pending' | 'approved' | 'rejected'
+  admin_notes?: string
+  reviewed_by?: string
+  reviewed_at?: string
+  created_at: string
+  documents?: {
+    type: string
+    fileId: string
+    viewLink: string
+    uploadedAt: string
+    fileName: string
+  }[]
+}
+
+export interface Payment {
+  id: string
+  homeowner_id: string
+  fee_type: 'annual_dues' | 'car_sticker'
+  fee_year: number
+  amount: number
+  payment_method: 'gcash' | 'bank_transfer' | 'cash' | 'check'
+  proof_url?: string
+  proof_drive_file_id?: string
+  status: 'pending' | 'verified' | 'rejected'
+  admin_notes?: string
+  verified_by?: string
+  verified_at?: string
+  created_at: string
+}
+
+export interface PaymentQrCode {
+  id: string
+  payment_method: string
+  label: string
+  account_name?: string
+  account_number?: string
+  qr_image_url: string
+  is_active: boolean
+}
+
+export interface HoaDuesConfig {
+  id: string
+  dues_year: number
+  annual_amount: number
+  car_sticker_price: number
+  due_date?: string
+  late_fee_amount?: number
+  late_fee_grace_days?: number
+  is_active: boolean
+}
+
+/** A single uploaded vehicle document ref stored in vehicle_requests.documents JSONB */
+export interface VehicleDocumentRef {
+  fileId: string
+  fileName: string
+  proxyUrl: string
+  docType: 'or' | 'cr'
+}
+
+export interface VehicleRequest {
+  id: string
+  user_id: string
+  vehicle_type: 'car' | 'motorcycle' | 'other'
+  plate_number: string
+  sticker_price: number
+  status: 'pending' | 'approved' | 'rejected'
+  /** Array of GDrive document refs uploaded at submission time */
+  documents?: VehicleDocumentRef[]
+  created_at: string
+  updated_at: string
 }

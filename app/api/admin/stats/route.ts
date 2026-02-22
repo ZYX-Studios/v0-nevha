@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  console.log("Admin Stats API hit at", new Date().toISOString())
-  console.log("Using Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
+  const authError = await requireAdminAPI()
+  if (authError) return authError
 
   try {
     const supabase = createAdminClient()
@@ -44,6 +44,34 @@ export async function GET() {
       .in("role", ["ADMIN", "STAFF"])
       .eq("is_active", true)
     const adminUsers = adminUsersCount.count || 0
+
+    // Get pending payments count
+    const pendingPaymentsCount = await supabase
+      .from("payments")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
+    const pendingPayments = pendingPaymentsCount.count || 0
+
+    // Get pending vehicle requests count
+    const pendingVehicleRequestsCount = await supabase
+      .from("vehicle_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
+    const pendingVehicleRequests = pendingVehicleRequestsCount.count || 0
+
+    // Get pending registration requests count
+    const pendingRegistrationsCount = await supabase
+      .from("registration_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
+    const pendingRegistrations = pendingRegistrationsCount.count || 0
+
+    // Get pending name change requests count
+    const pendingNameChangesCount = await supabase
+      .from("profile_change_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
+    const pendingNameChanges = pendingNameChangesCount.count || 0
 
     // Get recent issues (last 5)
     const recentIssuesRes = await supabase
@@ -90,15 +118,6 @@ export async function GET() {
       .order("published_at", { ascending: false })
       .limit(3)
 
-    console.log("--- DEBUG LOGS START ---")
-    console.log("API Executed at:", new Date().toISOString())
-    console.log("Env URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
-    console.log("Issues found:", recentIssuesRes.data?.length)
-    if (recentIssuesRes.data?.[0]) console.log("First Issue:", recentIssuesRes.data[0].title)
-
-    console.log("Announcements found:", recentAnnouncementsRes.data?.length)
-    if (recentAnnouncementsRes.data?.[0]) console.log("First Announcement:", recentAnnouncementsRes.data[0].title)
-    console.log("--- DEBUG LOGS END ---")
 
     const recentAnnouncements = (recentAnnouncementsRes.data || []).map((announcement: any) => ({
       id: announcement.id,
@@ -117,6 +136,12 @@ export async function GET() {
         publishedAnnouncements,
         activeCarStickers,
         adminUsers,
+        pendingPayments,
+        pendingVehicleRequests,
+        pendingRegistrations,
+        pendingNameChanges,
+        // Combined verification count for the unified verifications sidebar badge
+        pendingVerifications: pendingPayments + pendingVehicleRequests,
       },
       recentItems: {
         issues: recentIssues,

@@ -2,14 +2,19 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { createAdminClient } from "@/lib/supabase/server-admin"
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 const BodySchema = z.object({
   new_password: z.string().min(8, "Password must be at least 8 characters"),
   scope: z.enum(["all", "active"]).optional().default("all"),
 })
 
 export async function POST(req: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const json = await req.json().catch(() => ({}))
     const parsed = BodySchema.safeParse(json)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })

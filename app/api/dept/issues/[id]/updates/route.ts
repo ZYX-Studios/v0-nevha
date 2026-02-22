@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { getDeptContext } from "@/lib/dept/auth"
 import { createAdminClient } from "@/lib/supabase/server-admin"
+import { requireDeptSessionAPI } from "@/lib/supabase/guards"
 
 const PostSchema = z.object({
   status: z.enum(["not_started", "in_progress", "on_hold", "resolved", "closed"]).optional(),
@@ -9,41 +10,30 @@ const PostSchema = z.object({
   author_label: z.string().min(1),
 })
 
-function uiToDbStatus(ui: "not_started" | "in_progress" | "on_hold" | "resolved" | "closed"): "NEW" | "TRIAGED" | "IN_PROGRESS" | "NEEDS_INFO" | "RESOLVED" | "CLOSED" {
+function uiToDbStatus(ui: "not_started" | "in_progress" | "on_hold" | "resolved" | "closed") {
   switch (ui) {
-    case "not_started":
-      return "TRIAGED"
-    case "in_progress":
-      return "IN_PROGRESS"
-    case "on_hold":
-      return "NEEDS_INFO"
-    case "resolved":
-      return "RESOLVED"
-    case "closed":
-      return "CLOSED"
-    default:
-      return "TRIAGED"
+    case "not_started": return "TRIAGED"
+    case "in_progress": return "IN_PROGRESS"
+    case "on_hold": return "NEEDS_INFO"
+    case "resolved": return "RESOLVED"
+    case "closed": return "CLOSED"
+    default: return "TRIAGED"
   }
 }
 
 function dbToUiStatus(db: string | null): "not_started" | "in_progress" | "on_hold" | "resolved" | "closed" {
   switch ((db || "").toUpperCase()) {
-    case "IN_PROGRESS":
-      return "in_progress"
-    case "NEEDS_INFO":
-      return "on_hold"
-    case "RESOLVED":
-      return "resolved"
-    case "CLOSED":
-      return "closed"
-    case "NEW":
-    case "TRIAGED":
-    default:
-      return "not_started"
+    case "IN_PROGRESS": return "in_progress"
+    case "NEEDS_INFO": return "on_hold"
+    case "RESOLVED": return "resolved"
+    case "CLOSED": return "closed"
+    default: return "not_started"
   }
 }
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireDeptSessionAPI()
+  if (authError) return authError
   try {
     const ctx = await getDeptContext()
     if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -54,11 +44,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     const supabase = createAdminClient()
 
     const { data: link, error: linkErr } = await supabase
-      .from("issue_departments")
-      .select("issue_id")
-      .eq("issue_id", issueId)
-      .eq("department_id", ctx.id)
-      .limit(1)
+      .from("issue_departments").select("issue_id").eq("issue_id", issueId).eq("department_id", ctx.id).limit(1)
     if (linkErr) return NextResponse.json({ error: linkErr.message }, { status: 400 })
     if (!Array.isArray(link) || link.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
@@ -85,6 +71,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireDeptSessionAPI()
+  if (authError) return authError
   try {
     const ctx = await getDeptContext()
     if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -98,25 +86,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const supabase = createAdminClient()
 
-    // Ensure issue belongs to this department
     const { data: link, error: linkErr } = await supabase
-      .from("issue_departments")
-      .select("issue_id")
-      .eq("issue_id", issueId)
-      .eq("department_id", ctx.id)
-      .limit(1)
-
+      .from("issue_departments").select("issue_id").eq("issue_id", issueId).eq("department_id", ctx.id).limit(1)
     if (linkErr) return NextResponse.json({ error: linkErr.message }, { status: 400 })
     if (!Array.isArray(link) || link.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     const uiStatus = (parsed.data.status as any) || "in_progress"
     const dbStatus = uiToDbStatus(uiStatus)
 
-    // 1) Update current issue status
     const { error: updateErr } = await supabase.from("issues").update({ status: dbStatus }).eq("id", issueId)
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 400 })
 
-    // 2) Insert status update line
     const { error } = await supabase.from("issue_status_updates").insert({
       issue_id: issueId,
       status: dbStatus,
@@ -125,7 +105,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       author_department_id: ctx.id,
       source: "dept_portal",
     })
-
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
     return NextResponse.json({ success: true }, { status: 201 })

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 import { createClient } from "@supabase/supabase-js"
 import { z } from "zod"
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 const CreateUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
@@ -13,10 +13,13 @@ const CreateUserSchema = z.object({
 })
 
 export async function GET(req: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
     const supabase = createAdminClient()
     const { searchParams } = new URL(req.url)
-    
+
     const q = (searchParams.get("q") || "").trim()
     const role = searchParams.get("role") || ""
     const isActive = searchParams.get("isActive")
@@ -25,7 +28,7 @@ export async function GET(req: Request) {
     const sortParam = (searchParams.get("sort") || "created_at").toLowerCase()
     const orderParam = (searchParams.get("order") || "desc").toLowerCase()
     const ascending = orderParam === "asc"
-    
+
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
 
@@ -43,9 +46,14 @@ export async function GET(req: Request) {
       ].join(",")) as typeof query
     }
 
-    // Role filter
-    if (role && ["ADMIN", "STAFF", "PUBLIC"].includes(role)) {
-      query = query.eq("role", role) as typeof query
+    // Role filter — supports comma-separated values like "ADMIN,STAFF"
+    if (role) {
+      const roles = role.split(",").map(r => r.trim()).filter(r => ["ADMIN", "STAFF", "PUBLIC", "HOMEOWNER"].includes(r))
+      if (roles.length === 1) {
+        query = query.eq("role", roles[0]) as typeof query
+      } else if (roles.length > 1) {
+        query = query.in("role", roles) as typeof query
+      }
     }
 
     // Active status filter
@@ -110,10 +118,13 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
     const json = await req.json()
     const parsed = CreateUserSchema.safeParse(json)
-    
+
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Invalid input", details: parsed.error.flatten() },

@@ -11,7 +11,7 @@ export type DeptContext = {
 export async function getDeptContext(): Promise<DeptContext | null> {
   try {
     // Use next/headers in route handlers
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const token = cookieStore.get(COOKIE_NAME)?.value
     if (!token) return null
     const payload: DeptSession | null = verifySession(token)

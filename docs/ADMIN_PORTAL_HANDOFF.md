@@ -1,8 +1,46 @@
 # Admin Portal Implementation Plan & Handoff
 
-Status: In Progress
+Status: **COMPLETE** (as of 2026-02-21)
 Owner: Engineering
-Last Updated: 2025-09-15
+Last Updated: 2026-02-21
+
+## Current Implementation Status
+
+> All planned admin portal features are implemented and deployed. The below sections document the original plan alongside current state.
+
+### ✅ Completed Features
+
+| Area | Status | Notes |
+|---|---|---|
+| **Admin Shell** | ✅ Done | `components/admin/admin-shell.tsx` — collapsible sidebar, mobile drawer, pending count badges |
+| **Admin Layout** | ✅ Done | `app/admin/layout.tsx` wraps all pages in `AdminShell` with `requireAdmin()` guard |
+| **Dashboard** | ✅ Done | Stats cards, quick actions, recent issues/announcements, name-change count |
+| **Homeowners** | ✅ Done | List/search, match-to-registration, approve/reject with email notifications |
+| **Registrations** | ✅ Done | Table with doc proxy links, match dialog, reject reason |
+| **Vehicles** | ✅ Done | Approve (auto-sticker NVH code), reject with email, OR/CR doc links |
+| **Payments** | ✅ Done | Verify/reject, GDrive proof links, updates `hoa_dues` status |
+| **Name Changes** | ✅ Done | `app/admin/profile-changes/` — 3 API endpoints + review UI |
+| **QR Codes** | ✅ Done | Admin QR management page |
+| **Profile Photos** | ✅ Done | `/api/profile/photo` GDrive upload; display in member profile |
+| **RLS** | ✅ Done | All tables audited; `issue_status_updates`, `airtable_*`, `car_stickers` added |
+| **Perf Indexes** | ✅ Done | 17 FK covering indexes added |
+| **Function security** | ✅ Done | `search_path` fixed on 7 public functions |
+
+### Key File Locations
+
+```
+components/admin/admin-shell.tsx        # Shared nav shell
+app/admin/layout.tsx                    # Admin layout wrapping all pages
+app/admin/page.tsx                      # Dashboard page
+app/admin/profile-changes/page.tsx      # Name change review UI
+app/api/admin/profile-changes/          # List + approve + reject API
+app/api/admin/stats/route.ts            # Dashboard stats incl. pendingNameChanges
+app/api/profile/photo/route.ts          # Profile photo GDrive upload
+app/api/vehicles/upload-doc/route.ts    # OR/CR GDrive upload for vehicle requests
+lib/types.ts                            # Homeowner, Vehicle, Member types
+```
+
+---
 
 ## 1) Decisions and Scope
 

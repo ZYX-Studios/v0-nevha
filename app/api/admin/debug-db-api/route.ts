@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 // Use the same server-admin client creation logic if possible, 
 // or create one directly to be sure what env vars are used.
 // We'll try to read env vars directly to see what the process sees.
 
 export async function GET() {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
     try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 

@@ -1,27 +1,117 @@
-// Admin dashboard with overview and management tools
+// Admin dashboard — content only, nav shell provided by admin layout
+'use client'
 
-"use client"
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import type { Announcement, Issue } from '@/lib/types'
+import {
+  Users, AlertCircle, MessageSquare, Car, DollarSign,
+  CheckCircle, Clock, UserCheck, ClipboardList, Plus,
+  TrendingUp, QrCode, Shield
+} from 'lucide-react'
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { useAuth } from "@/hooks/use-auth"
-import type { Announcement, Issue } from "@/lib/types"
-import { Home, Users, MessageSquare, AlertCircle, Car, Plus, ArrowLeft, CheckCircle, Clock, DollarSign } from "lucide-react"
+interface DashboardStats {
+  totalHomeowners: number
+  activeIssues: number
+  publishedAnnouncements: number
+  activeCarStickers: number
+  adminUsers: number
+  pendingPayments: number
+  pendingVehicleRequests: number
+  pendingRegistrations: number
+  pendingNameChanges: number
+  recentIssues: Issue[]
+  recentAnnouncements: Announcement[]
+}
 
-function AdminDashboardContent() {
-  const { session, logout } = useAuth()
+const STAT_CARDS = (stats: DashboardStats) => [
+  { label: 'Homeowners', value: stats.totalHomeowners, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', route: '/admin/homeowners' },
+  { label: 'Active Issues', value: stats.activeIssues, icon: AlertCircle, color: 'text-orange-600', bg: 'bg-orange-50', route: '/admin/issues' },
+  { label: 'Announcements', value: stats.publishedAnnouncements, icon: MessageSquare, color: 'text-purple-600', bg: 'bg-purple-50', route: '/admin/announcements' },
+  { label: 'Car Stickers', value: stats.activeCarStickers, icon: Car, color: 'text-emerald-600', bg: 'bg-emerald-50', route: '/admin/homeowners' },
+  { label: 'Admin Users', value: stats.adminUsers, icon: Shield, color: 'text-slate-600', bg: 'bg-slate-100', route: '/admin/users' },
+]
+
+const QUICK_ACTIONS = (stats: DashboardStats) => [
+  { label: 'New Announcement', icon: Plus, route: '/admin/announcements/new', primary: true, badge: 0 },
+  { label: 'Registrations', icon: ClipboardList, route: '/admin/registrations', primary: false, badge: stats.pendingRegistrations },
+  { label: 'Vehicles', icon: Car, route: '/admin/vehicles', primary: false, badge: stats.pendingVehicleRequests },
+  { label: 'Payments', icon: DollarSign, route: '/admin/payments', primary: false, badge: stats.pendingPayments },
+  { label: 'Name Changes', icon: UserCheck, route: '/admin/profile-changes', primary: false, badge: stats.pendingNameChanges },
+  { label: 'QR Codes', icon: QrCode, route: '/admin/qr-codes', primary: false, badge: 0 },
+]
+
+function StatCard({ stat, loading, router }: { stat: ReturnType<typeof STAT_CARDS>[0], loading: boolean, router: ReturnType<typeof useRouter> }) {
+  return (
+    <motion.div
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => !loading && router.push(stat.route)}
+      className="cursor-pointer"
+    >
+      <Card className="border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
+        <CardContent className="p-5">
+          <div className="flex items-start justify-between mb-4">
+            <div className={`p-2.5 rounded-xl ${stat.bg}`}>
+              <stat.icon className={`h-5 w-5 ${stat.color}`} />
+            </div>
+            <TrendingUp className="h-4 w-4 text-slate-300" />
+          </div>
+          <p className="text-2xl font-bold text-slate-900 mb-0.5">{loading ? '—' : stat.value}</p>
+          <p className="text-xs font-medium text-slate-500">{stat.label}</p>
+        </CardContent>
+      </Card>
+    </motion.div>
+  )
+}
+
+function QuickAction({ action, router }: { action: ReturnType<typeof QUICK_ACTIONS>[0], router: ReturnType<typeof useRouter> }) {
+  return (
+    <motion.button
+      whileHover={{ y: -1 }}
+      whileTap={{ scale: 0.97 }}
+      onClick={() => router.push(action.route)}
+      className={`relative flex flex-col items-center justify-center gap-2 py-5 px-3 rounded-2xl border text-sm font-semibold transition-all ${action.primary
+          ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-600/25'
+          : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-blue-50'
+        }`}
+    >
+      <div className={`p-2 rounded-xl relative ${action.primary ? 'bg-white/20' : 'bg-slate-100'}`}>
+        <action.icon className="h-5 w-5" />
+        {action.badge > 0 && (
+          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+            {action.badge > 9 ? '9+' : action.badge}
+          </span>
+        )}
+      </div>
+      <span className="text-xs text-center leading-tight">{action.label}</span>
+    </motion.button>
+  )
+}
+
+function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+  if (status === 'resolved') return 'default'
+  if (status === 'in_progress') return 'secondary'
+  return 'outline'
+}
+
+function getPriorityVariant(priority: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+  if (priority === 'urgent' || priority === 'P1') return 'destructive'
+  if (priority === 'high' || priority === 'P2') return 'secondary'
+  return 'outline'
+}
+
+export default function AdminDashboardPage() {
   const router = useRouter()
-  const [stats, setStats] = useState({
-    totalHomeowners: 0,
-    activeIssues: 0,
-    publishedAnnouncements: 0,
-    activeCarStickers: 0,
-    adminUsers: 0,
-    recentIssues: [] as Issue[],
-    recentAnnouncements: [] as Announcement[],
+  const [stats, setStats] = useState<DashboardStats>({
+    totalHomeowners: 0, activeIssues: 0, publishedAnnouncements: 0,
+    activeCarStickers: 0, adminUsers: 0, pendingPayments: 0,
+    pendingVehicleRequests: 0, pendingRegistrations: 0, pendingNameChanges: 0,
+    recentIssues: [], recentAnnouncements: [],
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,298 +120,172 @@ function AdminDashboardContent() {
     const fetchStats = async () => {
       try {
         setLoading(true)
-        setError(null)
-        const response = await fetch('/api/admin/stats', { cache: 'no-store' })
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch dashboard statistics')
-        }
-
-        const data = await response.json()
-
+        const res = await fetch('/api/admin/stats', { cache: 'no-store' })
+        if (!res.ok) throw new Error('Failed to fetch dashboard statistics')
+        const data = await res.json()
         setStats({
-          totalHomeowners: data.stats.totalHomeowners,
-          activeIssues: data.stats.activeIssues,
-          publishedAnnouncements: data.stats.publishedAnnouncements,
-          activeCarStickers: data.stats.activeCarStickers,
-          adminUsers: data.stats.adminUsers,
-          recentIssues: data.recentItems.issues,
-          recentAnnouncements: data.recentItems.announcements,
+          totalHomeowners: data.stats.totalHomeowners ?? 0,
+          activeIssues: data.stats.activeIssues ?? 0,
+          publishedAnnouncements: data.stats.publishedAnnouncements ?? 0,
+          activeCarStickers: data.stats.activeCarStickers ?? 0,
+          adminUsers: data.stats.adminUsers ?? 0,
+          pendingPayments: data.stats.pendingPayments ?? 0,
+          pendingVehicleRequests: data.stats.pendingVehicleRequests ?? 0,
+          pendingRegistrations: data.stats.pendingRegistrations ?? 0,
+          pendingNameChanges: data.stats.pendingNameChanges ?? 0,
+          recentIssues: data.recentItems?.issues ?? [],
+          recentAnnouncements: data.recentItems?.announcements ?? [],
         })
       } catch (err: any) {
-        console.error('Failed to fetch dashboard stats:', err)
-        setError(err.message || 'Failed to load dashboard statistics')
+        setError(err.message)
       } finally {
         setLoading(false)
       }
     }
-
     fetchStats()
   }, [])
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "resolved":
-        return <CheckCircle className="h-4 w-4 text-green-600" />
-      case "in_progress":
-        return <Clock className="h-4 w-4 text-blue-600" />
-      default:
-        return <AlertCircle className="h-4 w-4 text-orange-600" />
-    }
-  }
-
-  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
-    switch (status) {
-      case "resolved":
-        return "default"
-      case "in_progress":
-        return "secondary"
-      default:
-        return "outline"
-    }
-  }
-
-  const getPriorityVariant = (priority: string): "default" | "secondary" | "destructive" | "outline" => {
-    switch (priority) {
-      case "urgent":
-        return "destructive"
-      case "high":
-        return "secondary"
-      default:
-        return "outline"
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-background font-sans">
-      {/* Header */}
-      <header className="border-b border-border/40 bg-white/80 backdrop-blur-md sticky top-0 z-10 transition-all duration-200">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/")}
-                className="flex items-center space-x-2 rounded-full hover:bg-secondary/80"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back</span>
-              </Button>
-              <div className="flex items-center space-x-3">
-                <div className="bg-primary/10 rounded-xl p-2.5 transition-transform hover:scale-105 duration-200">
-                  <Home className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-foreground">NEVHA Admin Dashboard</h1>
-                  <p className="text-sm text-muted-foreground">Community Management Portal</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  console.log("[admin] Starting logout process (non-blocking)...")
-                  // Fire-and-forget: do not await to avoid UI hang if signOut stalls
-                  try { void logout() } catch { }
-                  const dest = "/auth?logout=1"
-                  console.log("[admin] Redirecting immediately ->", dest)
-                  if (typeof window !== "undefined") {
-                    window.location.replace(dest)
-                  } else {
-                    router.replace(dest)
-                  }
-                }}
-                className="rounded-full border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-all duration-200"
-              >
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="p-6 max-w-7xl mx-auto space-y-8">
+      {/* Page header */}
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <p className="text-sm text-slate-500 mt-0.5">NEVHA Community Management Overview</p>
+      </div>
 
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Error Display */}
-        {error && (
-          <Card className="mb-6 border-destructive">
-            <CardContent className="p-4">
-              <p className="text-destructive text-sm">{error}</p>
-            </CardContent>
-          </Card>
-        )}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
+      )}
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          {[
-            { label: "Homeowners", value: stats.totalHomeowners, icon: Users, route: "/admin/homeowners", color: "text-blue-600", bg: "bg-blue-50" },
-            { label: "Active Issues", value: stats.activeIssues, icon: AlertCircle, route: "/admin/issues", color: "text-orange-600", bg: "bg-orange-50" },
-            { label: "Announcements", value: stats.publishedAnnouncements, icon: MessageSquare, route: "/admin/announcements", color: "text-purple-600", bg: "bg-purple-50" },
-            { label: "Car Stickers", value: stats.activeCarStickers, icon: Car, route: "/admin/homeowners", color: "text-emerald-600", bg: "bg-emerald-50" },
-            { label: "Admin Users", value: stats.adminUsers, icon: Users, route: "/admin/users", color: "text-slate-600", bg: "bg-slate-50" },
-          ].map((stat, i) => (
-            <Card
-              key={i}
-              className="cursor-pointer hover:shadow-lg transition-all duration-300 rounded-[2rem] border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden group"
-              onClick={() => !loading && router.push(stat.route)}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-2xl ${stat.bg} transition-colors group-hover:scale-110 duration-300`}>
-                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-3xl font-bold text-foreground mb-1">
-                    {loading ? "..." : stat.value}
-                  </p>
-                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
+      {/* Stats Grid */}
+      <section>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {STAT_CARDS(stats).map((stat, i) => (
+            <StatCard key={i} stat={stat} loading={loading} router={router} />
           ))}
         </div>
+      </section>
 
-        {/* Quick Actions */}
-        <div className="mb-8">
-          <h2 className="text-lg font-bold text-foreground mb-4 px-1">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {[
-              { label: "New Announcement", icon: Plus, route: "/admin/announcements/new", primary: true },
-              { label: "Manage Homeowners", icon: Users, route: "/admin/homeowners" },
-              { label: "HOA Dues", icon: DollarSign, route: "/admin/dues" },
-              { label: "Manage Departments", icon: Home, route: "/admin/departments" },
-              { label: "Manage Issues", icon: AlertCircle, route: "/admin/issues" },
-              { label: "Manage Users", icon: Users, route: "/admin/users" },
-            ].map((action, i) => (
-              <Button
-                key={i}
-                variant={action.primary ? "default" : "outline"}
-                onClick={() => router.push(action.route)}
-                className={`h-auto py-6 flex-col space-y-3 rounded-2xl shadow-sm hover:shadow-md transition-all ${action.primary
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "bg-card hover:bg-secondary/50 border-border/50"
-                  }`}
-              >
-                <div className={`p-2 rounded-full ${action.primary ? "bg-white/20" : "bg-secondary"}`}>
-                  <action.icon className="h-5 w-5" />
-                </div>
-                <span className="text-xs font-semibold">{action.label}</span>
+      {/* Quick Actions */}
+      <section>
+        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Quick Actions</h2>
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          {QUICK_ACTIONS(stats).map((action, i) => (
+            <QuickAction key={i} action={action} router={router} />
+          ))}
+        </div>
+      </section>
+
+      {/* Recent Activity */}
+      <section className="grid lg:grid-cols-2 gap-6">
+        {/* Recent Issues */}
+        <Card className="border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold text-slate-900">Recent Issues</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/admin/issues')} className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg h-7 px-2">
+                View all
               </Button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Recent Issues */}
-          <Card className="rounded-[2rem] border-border/50 shadow-md bg-card/80 backdrop-blur-sm overflow-hidden">
-            <CardHeader className="pb-4 border-b border-border/30">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-bold text-foreground">Recent Issues</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => router.push("/admin/issues")} className="rounded-full text-primary hover:text-primary hover:bg-primary/10">
-                  View All
-                </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="flex items-center justify-center py-12 text-slate-400">
+                <Clock className="h-6 w-6 animate-pulse" />
               </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                {loading ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground space-y-2">
-                    <Clock className="h-8 w-8 animate-pulse opacity-50" />
-                    <p>Loading recent issues...</p>
-                  </div>
-                ) : stats.recentIssues.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground bg-secondary/20 rounded-2xl border border-dashed border-border/50">
-                    <AlertCircle className="h-8 w-8 mb-2 opacity-50" />
-                    <p>No recent issues</p>
-                  </div>
-                ) : (
-                  stats.recentIssues.map((issue) => (
-                    <div key={issue.id} className="group flex items-start space-x-4 p-4 rounded-2xl bg-secondary/20 hover:bg-secondary/40 border border-transparent hover:border-border/50 transition-all cursor-pointer" onClick={() => router.push(`/admin/issues/${issue.id}`)}>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-bold text-foreground truncate max-w-[70%]">{issue.title}</h4>
-                          <span className="text-[10px] text-muted-foreground font-medium bg-background px-2 py-1 rounded-full shadow-sm">
-                            {new Date(issue.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2 mb-3 leading-relaxed">{issue.description}</p>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={getStatusVariant(issue.status)}
-                            className="text-[10px] px-2 py-0.5 rounded-full shadow-none border-0 ring-1 ring-inset ring-black/5"
-                          >
-                            <span className="flex items-center gap-1">
-                              {getStatusIcon(issue.status)}
-                              <span className="capitalize">{issue.status.replace("_", " ")}</span>
-                            </span>
-                          </Badge>
-                          <Badge variant={getPriorityVariant(issue.priority)} className="text-[10px] px-2 py-0.5 rounded-full shadow-none">
-                            {issue.priority}
-                          </Badge>
-                        </div>
-                      </div>
+            ) : stats.recentIssues.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                <AlertCircle className="h-8 w-8 mb-2 opacity-40" />
+                <p className="text-sm">No recent issues</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {stats.recentIssues.map((issue) => (
+                  <div
+                    key={issue.id}
+                    onClick={() => router.push(`/admin/issues/${issue.id}`)}
+                    className="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition-colors"
+                  >
+                    <div className="mt-0.5">
+                      {issue.status === 'resolved'
+                        ? <CheckCircle className="h-4 w-4 text-emerald-500" />
+                        : issue.status === 'in_progress'
+                          ? <Clock className="h-4 w-4 text-blue-500" />
+                          : <AlertCircle className="h-4 w-4 text-orange-500" />}
                     </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Announcements */}
-          <Card className="rounded-[2rem] border-border/50 shadow-md bg-card/80 backdrop-blur-sm overflow-hidden">
-            <CardHeader className="pb-4 border-b border-border/30">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-bold text-foreground">Recent Announcements</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => router.push("/admin/announcements")} className="rounded-full text-primary hover:text-primary hover:bg-primary/10">
-                  View All
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                {loading ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground space-y-2">
-                    <Clock className="h-8 w-8 animate-pulse opacity-50" />
-                    <p>Loading recent announcements...</p>
-                  </div>
-                ) : stats.recentAnnouncements.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground bg-secondary/20 rounded-2xl border border-dashed border-border/50">
-                    <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
-                    <p>No recent announcements</p>
-                  </div>
-                ) : (
-                  stats.recentAnnouncements.map((announcement) => (
-                    <div key={announcement.id} className="group p-4 rounded-2xl bg-secondary/20 hover:bg-secondary/40 border border-transparent hover:border-border/50 transition-all cursor-pointer" onClick={() => router.push(`/admin/announcements/${announcement.id}/edit`)}>
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-bold text-foreground truncate">{announcement.title}</h4>
-                        <Badge variant={getPriorityVariant(announcement.priority)} className="text-[10px] px-2 py-0.5 rounded-full shadow-none">
-                          {announcement.priority}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate">{issue.title}</p>
+                      <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{issue.description}</p>
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <Badge variant={getStatusVariant(issue.status)} className="text-[10px] px-1.5 py-0 rounded-full capitalize">
+                          {issue.status.replace('_', ' ')}
+                        </Badge>
+                        <Badge variant={getPriorityVariant(issue.priority)} className="text-[10px] px-1.5 py-0 rounded-full">
+                          {issue.priority}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3 leading-relaxed">{announcement.content}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground font-medium bg-background px-2 py-1 rounded-full shadow-sm">
-                          {new Date(announcement.createdAt).toLocaleDateString()}
+                    </div>
+                    <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                      {new Date(issue.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Announcements */}
+        <Card className="border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold text-slate-900">Recent Announcements</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/admin/announcements')} className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg h-7 px-2">
+                View all
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="flex items-center justify-center py-12 text-slate-400">
+                <Clock className="h-6 w-6 animate-pulse" />
+              </div>
+            ) : stats.recentAnnouncements.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                <MessageSquare className="h-8 w-8 mb-2 opacity-40" />
+                <p className="text-sm">No recent announcements</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {stats.recentAnnouncements.map((ann) => (
+                  <div
+                    key={ann.id}
+                    onClick={() => router.push(`/admin/announcements/${ann.id}/edit`)}
+                    className="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition-colors"
+                  >
+                    <MessageSquare className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate">{ann.title}</p>
+                      <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{ann.content}</p>
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${ann.isPublished ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {ann.isPublished ? 'Published' : 'Draft'}
                         </span>
-                        <Badge variant={announcement.isPublished ? "default" : "outline"} className={`text-[10px] px-2 py-0.5 rounded-full shadow-none ${announcement.isPublished ? "bg-emerald-500 hover:bg-emerald-600 border-0" : "bg-secondary text-muted-foreground"}`}>
-                          {announcement.isPublished ? "Published" : "Draft"}
+                        <Badge variant={getPriorityVariant(ann.priority)} className="text-[10px] px-1.5 py-0 rounded-full">
+                          {ann.priority}
                         </Badge>
                       </div>
                     </div>
-                  ))
-                )}
+                    <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                      {new Date(ann.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
     </div>
   )
-}
-
-export default function AdminDashboardPage() {
-  return <AdminDashboardContent />
 }

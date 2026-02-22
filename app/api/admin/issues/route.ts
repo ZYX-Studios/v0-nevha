@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 function mapPriority(dbPriority: string | null): "P1" | "P2" | "P3" | "P4" {
   switch ((dbPriority || "").toUpperCase()) {
     case "P1":
@@ -35,7 +35,12 @@ function mapStatus(dbStatus: string | null): "not_started" | "in_progress" | "on
 }
 
 export async function GET(req: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient()
     const url = new URL(req.url)
     const q = (url.searchParams.get("q") || "").trim()

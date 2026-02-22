@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 import { z } from "zod"
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 const CreateDepartmentSchema = z.object({
   name: z.string().min(1),
   // Accept a raw string (may contain comma/semicolon-separated emails) or null
@@ -32,22 +32,44 @@ function normalizeEmailList(raw: string | null | undefined) {
 }
 
 export async function GET() {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient()
     const { data, error } = await supabase
       .from("departments")
-      .select("id,name,email,is_active,created_at,updated_at")
+      .select(`
+        id, name, email, is_active, created_at, updated_at,
+        last_login_at, portal_password_updated_at,
+        issue_departments(issue_id)
+      `)
       .order("name", { ascending: true })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-    return NextResponse.json({ items: data ?? [] }, { status: 200 })
+
+    // Map to include open_issue_count derived from issue_departments join
+    const items = (data ?? []).map((d: any) => ({
+      ...d,
+      open_issue_count: Array.isArray(d.issue_departments) ? d.issue_departments.length : 0,
+      issue_departments: undefined, // strip from payload
+    }))
+
+    return NextResponse.json({ items }, { status: 200 })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })
   }
 }
 
 export async function POST(req: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient()
     const json = await req.json()
     const parsed = CreateDepartmentSchema.safeParse(json)
@@ -72,7 +94,12 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient()
     const json = await req.json()
     const parsed = UpdateDepartmentSchema.safeParse(json)

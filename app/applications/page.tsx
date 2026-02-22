@@ -1,176 +1,216 @@
-"use client"
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft, Car, Clock, CheckCircle2, XCircle, ChevronRight, Plus, DollarSign } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { format } from 'date-fns'
 
-import Image from "next/image"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Shield, Clock, MapPin, Wrench, FileText } from "lucide-react"
-import { BottomNav } from "@/components/ui/bottom-nav"
+export const dynamic = 'force-dynamic'
 
-export default function ApplicationsPage() {
-  const upcomingFeatures = [
-    {
-      title: "Vehicle Sticker Application",
-      description: "Apply for resident and visitor vehicle stickers online",
-      icon: Shield,
-      color: "bg-blue-500"
-    },
-    {
-      title: "Parking Permits",
-      description: "Request temporary and permanent parking permits",
-      icon: FileText,
-      color: "bg-green-500"
-    },
-    {
-      title: "Amenity Reservations",
-      description: "Book clubhouse, function halls, and recreational facilities",
-      icon: Clock,
-      color: "bg-purple-500"
-    },
-    {
-      title: "Maintenance Requests",
-      description: "Schedule non-emergency maintenance and repairs",
-      icon: Wrench,
-      color: "bg-orange-500"
-    }
-  ]
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; className: string }> = {
+    pending: { label: 'Pending', className: 'bg-amber-100 text-amber-700 border-amber-200' },
+    approved: { label: 'Approved', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+    rejected: { label: 'Rejected', className: 'bg-red-100 text-red-700 border-red-200' },
+    verified: { label: 'Verified', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  }
+  const s = map[status] ?? { label: status, className: 'bg-slate-100 text-slate-500' }
+  return (
+    <Badge variant="outline" className={`text-[11px] font-bold uppercase tracking-wide ${s.className}`}>
+      {s.label}
+    </Badge>
+  )
+}
+
+function StatusIcon({ status }: { status: string }) {
+  if (status === 'approved' || status === 'verified') return <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+  if (status === 'rejected') return <XCircle className="w-4 h-4 text-red-400" />
+  return <Clock className="w-4 h-4 text-amber-500 animate-pulse" />
+}
+
+export default async function ApplicationsPage() {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) redirect('/auth')
+
+  const homeownerRes = await supabase
+    .from('homeowners')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const homeownerId = homeownerRes.data?.id ?? null
+
+  // Fetch vehicle requests + pending payments in parallel
+  const [vehicleRes, paymentRes] = await Promise.all([
+    supabase
+      .from('vehicle_requests')
+      .select('id, vehicle_type, plate_number, sticker_price, status, created_at, updated_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+    homeownerId
+      ? supabase
+        .from('payments')
+        .select('id, fee_type, fee_year, amount, status, created_at')
+        .eq('homeowner_id', homeownerId)
+        .in('status', ['pending', 'verified', 'rejected'])
+        .order('created_at', { ascending: false })
+        .limit(10)
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
+  const vehicleRequests = vehicleRes.data ?? []
+  const payments = paymentRes.data ?? []
+
+  const hasAny = vehicleRequests.length > 0 || payments.length > 0
+
+  const FEE_LABELS: Record<string, string> = {
+    annual_dues: 'Annual Dues',
+    car_sticker: 'Car Sticker',
+    monthly_dues: 'Monthly Dues',
+  }
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      {/* Safe Area Top */}
-      <div className="h-safe-area-inset-top bg-transparent" />
-
+    <div className="min-h-screen bg-[#F2F2F7] font-sans pb-20">
       {/* Header */}
-      <header className="px-4 py-4 bg-white/80 backdrop-blur-md border-b border-border/40 sticky top-0 z-10">
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <div className="flex items-center space-x-3">
-            <Image
-              src="/NEVHA logo.svg"
-              alt="NEVHA Logo"
-              width={40}
-              height={40}
-              className="w-10 h-10"
-            />
-            <div>
-              <h1 className="text-lg font-bold text-foreground">NEVHA</h1>
-              <p className="text-xs text-primary font-medium">Northfields Executive Village</p>
-            </div>
-          </div>
-          <div className="hidden sm:flex items-center space-x-1 text-xs text-muted-foreground">
-            <MapPin className="w-3 h-3" />
-            <span>Portal</span>
-          </div>
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-black/5 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/">
+            <Button variant="ghost" size="icon" className="rounded-full text-slate-500 hover:text-slate-900 -ml-2">
+              <ArrowLeft className="w-6 h-6" />
+            </Button>
+          </Link>
+          <h1 className="text-[17px] font-semibold text-slate-900">My Applications</h1>
         </div>
+        <Link href="/vehicles">
+          <Button size="sm" className="gap-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold h-8">
+            <Plus className="w-3.5 h-3.5" />
+            Register Vehicle
+          </Button>
+        </Link>
       </header>
 
-      {/* Main Content */}
-      <div className="px-4 py-6 max-w-2xl mx-auto">
-        {/* Page Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-3">
-            <Button asChild variant="ghost" size="icon" className="rounded-full">
-              <Link href="/">
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-            </Button>
-            <div>
-              <h2 className="text-2xl font-bold text-foreground">Applications</h2>
-              <p className="text-sm text-muted-foreground">Online services and applications</p>
-            </div>
+      <main className="px-4 py-6 max-w-md mx-auto space-y-6">
+
+        {/* Vehicle Requests Section */}
+        <section>
+          <h2 className="text-[13px] font-semibold text-slate-500 uppercase tracking-wider mb-3 px-1">
+            Vehicle Registrations
+          </h2>
+          <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+            {vehicleRequests.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                  <Car className="w-5 h-5 text-slate-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-600">No vehicle requests yet</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
+                  Register your vehicle to get a NEVHA car sticker.
+                </p>
+                <Link href="/vehicles" className="mt-3">
+                  <Button size="sm" variant="outline" className="rounded-full text-xs gap-1.5">
+                    <Plus className="w-3.5 h-3.5" />
+                    Register Vehicle
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {vehicleRequests.map((req) => (
+                  <div key={req.id} className="px-4 py-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                      <Car className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm text-slate-900 capitalize">
+                          {req.vehicle_type}
+                        </span>
+                        <span className="font-mono text-xs text-slate-500 uppercase">
+                          {req.plate_number}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Submitted {format(new Date(req.created_at), 'MMM dd, yyyy')}
+                        {req.sticker_price && ` · ₱${Number(req.sticker_price).toLocaleString()}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge status={req.status} />
+                      <StatusIcon status={req.status} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
+        </section>
 
-        {/* Coming Soon Notice */}
-        <Card className="rounded-[2.5rem] border-0 shadow-lg bg-gradient-to-br from-primary to-blue-600 overflow-hidden mb-8">
-          <CardContent className="p-8 text-center relative">
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-              <Clock className="w-32 h-32 text-white" />
+        {/* Payment Verifications Section */}
+        {homeownerId && (
+          <section>
+            <div className="flex items-center justify-between mb-3 px-1">
+              <h2 className="text-[13px] font-semibold text-slate-500 uppercase tracking-wider">
+                Payment Submissions
+              </h2>
+              <Link href="/bills">
+                <Button variant="ghost" size="sm" className="text-blue-600 text-[13px] font-semibold h-auto p-0 gap-1">
+                  View Bills
+                  <ChevronRight className="w-3 h-3" />
+                </Button>
+              </Link>
             </div>
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4 border border-white/30 shadow-inner">
-              <Clock className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-3">Coming Soon!</h3>
-            <p className="text-blue-50 text-base leading-relaxed max-w-sm mx-auto">
-              We're working hard to bring you convenient online applications and services.
-              These features will be available soon to make your NEVHA experience even better.
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Upcoming Features */}
-        <div className="mb-8">
-          <h3 className="text-lg font-bold text-foreground mb-4 px-2">What's Coming</h3>
-          <div className="space-y-4">
-            {upcomingFeatures.map((feature, index) => {
-              const Icon = feature.icon
-              return (
-                <Card key={index} className="rounded-[2rem] border-border/50 shadow-sm bg-card overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-14 h-14 ${feature.color} bg-opacity-90 rounded-2xl flex items-center justify-center shadow-lg`}>
-                        <Icon className="w-7 h-7 text-white" />
+            <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+              {payments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                    <DollarSign className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-600">No recent payment submissions</p>
+                  <p className="text-xs text-slate-400 mt-1">Go to Bills to make a payment.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {payments.map((p) => (
+                    <div key={p.id} className="px-4 py-4 flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${p.status === 'verified' ? 'bg-emerald-50' :
+                          p.status === 'rejected' ? 'bg-red-50' : 'bg-amber-50'
+                        }`}>
+                        <DollarSign className={`w-4 h-4 ${p.status === 'verified' ? 'text-emerald-600' :
+                            p.status === 'rejected' ? 'text-red-500' : 'text-amber-500'
+                          }`} />
                       </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-foreground text-lg">{feature.title}</h4>
-                        <p className="text-sm text-muted-foreground">{feature.description}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm text-slate-900">
+                          {FEE_LABELS[p.fee_type] ?? p.fee_type.replace(/_/g, ' ')}
+                          <span className="text-slate-400 font-normal ml-1 text-xs">({p.fee_year})</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {format(new Date(p.created_at), 'MMM dd, yyyy')} · ₱{Number(p.amount).toLocaleString()}
+                        </p>
                       </div>
-                      <div className="px-3 py-1 bg-secondary rounded-full text-xs text-muted-foreground font-semibold">
-                        Soon
+                      <div className="flex items-center gap-2 shrink-0">
+                        <StatusBadge status={p.status} />
+                        <StatusIcon status={p.status} />
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Current Options */}
-        <Card className="rounded-[2rem] border-border/50 shadow-lg bg-card overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-foreground text-lg">Need Help Now?</CardTitle>
-            <CardDescription className="text-muted-foreground text-sm">
-              While we're building these features, you can still get assistance
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-2xl border border-secondary/50">
-                <div>
-                  <h4 className="font-bold text-foreground text-sm">Report Issues</h4>
-                  <p className="text-xs text-muted-foreground">Submit concerns and requests</p>
+                  ))}
                 </div>
-                <Button asChild size="sm" className="rounded-full shadow-md">
-                  <Link href="/report" className="px-6">
-                    Report
-                  </Link>
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-2xl border border-secondary/50">
-                <div>
-                  <h4 className="font-bold text-foreground text-sm">Emergency Hotlines</h4>
-                  <p className="text-xs text-muted-foreground">24/7 emergency contacts</p>
-                </div>
-                <Button asChild size="sm" variant="outline" className="rounded-full border-border/50 text-foreground hover:bg-secondary">
-                  <Link href="/emergency" className="px-6">
-                    Contact
-                  </Link>
-                </Button>
-              </div>
-
-              <div className="mt-4 p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                <p className="text-sm text-primary/80">
-                  <strong className="font-semibold text-primary">For immediate assistance:</strong> Visit the NEVHA office or call our main line during business hours.
-                </p>
-              </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </section>
+        )}
 
-      {/* Bottom Navigation */}
-      <BottomNav />
+        {/* If totally new user prompt */}
+        {!hasAny && !homeownerId && (
+          <div className="text-center py-8 text-slate-400 text-sm">
+            You don&apos;t have any active applications yet.
+          </div>
+        )}
+
+      </main>
     </div>
   )
 }

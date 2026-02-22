@@ -2,23 +2,34 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { motion, AnimatePresence } from "framer-motion"
+import { useState, useEffect } from "react"
+import { useSwipeable } from "react-swipeable"
+import {
+    MessageSquare,
+    ChevronRight,
+    FileText,
+    Phone,
+    Shield,
+    Home,
+    Bell,
+    Wallet,
+    User,
+    QrCode,
+    Search
+} from "lucide-react"
+
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-    MessageSquare,
-    AlertTriangle,
-    ChevronRight,
-    Phone,
-    FileText,
-    Shield,
-} from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
-import { BottomNav } from "@/components/ui/bottom-nav"
-import { useState, useEffect } from "react"
-import { useSwipeable } from "react-swipeable"
+import { useAuth } from "@/hooks/use-auth"
+
+// NEVHA Premium Design System
+// Colors: Primary Blue (#007AFF), Indigo Gradient (#6366f1), Background (#F2F2F7)
+// Shadows: Apple-style diffuse shadows
 
 export default function HomePage() {
+    const { session, isLoading: authLoading } = useAuth()
     const [currentSlide, setCurrentSlide] = useState(0)
     const [announcements, setAnnouncements] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
@@ -63,236 +74,195 @@ export default function HomePage() {
         trackMouse: true
     })
 
-    return (
-        <div className="min-h-screen bg-background">
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center justify-between max-w-7xl mx-auto px-8 py-6">
-                <div className="flex items-center gap-3">
-                    <Image
-                        src="/NEVHA logo.svg"
-                        alt="NEVHA Logo"
-                        width={48}
-                        height={48}
-                        className="w-12 h-12"
-                    />
-                    <div>
-                        <h1 className="text-lg font-bold text-foreground">Northfields Executive</h1>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Village HOA</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    {[
-                        { href: "/", label: "Home" },
-                        { href: "/report", label: "Report" },
-                        { href: "/emergency", label: "Emergency" }
-                    ].map((item) => (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className="relative px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-primary/5"
-                        >
-                            {item.label}
-                        </Link>
-                    ))}
-                    <Link href="/admin">
-                        <Button variant="default" className="ml-4">
-                            Admin
-                        </Button>
-                    </Link>
-                </div>
-            </nav>
+    // Derive display name: session.user.firstName (from users table, loaded by useAuth) → email prefix → 'Neighbor'
+    const displayName = session.user
+        ? (session.user.firstName || session.user.email?.split('@')[0] || 'Neighbor')
+        : 'Neighbor'
 
-            {/* Mobile Header */}
-            <header className="lg:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border/40 px-5 py-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+    return (
+        <div className="min-h-screen bg-[#F2F2F7] pb-32 font-sans selection:bg-blue-100">
+            {/* 1. Header (Sticky, Glassmorphic 20px Blur) */}
+            <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/70 border-b border-white/20 px-6 py-4 flex items-center justify-between shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
+                <div className="flex items-center gap-3">
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-blue-500 rounded-xl blur opacity-25 group-hover:opacity-40 transition-opacity duration-500"></div>
                         <Image
                             src="/NEVHA logo.svg"
                             alt="NEVHA Logo"
                             width={42}
                             height={42}
-                            className="w-[42px] h-[42px]"
+                            className="w-[42px] h-[42px] rounded-xl relative z-10 shadow-sm"
                         />
-                        <div>
-                            <h1 className="text-base font-bold text-foreground">Northfields Executive</h1>
-                            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Village H.O.A.</p>
-                        </div>
                     </div>
-                    <Link href="/admin">
-                        <Button size="sm" variant="ghost">
-                            Admin
-                        </Button>
-                    </Link>
-                </div>
-            </header>
-
-            {/* Main Content Area */}
-            <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8">
-
-                {/* Simple Greeting Section */}
-                <div className="mb-8">
-                    <div className="flex items-center justify-between mb-2">
-                        <h1 className="text-2xl font-bold text-foreground">
-                            {greeting}, Neighbor! 👋
-                        </h1>
-                        <div className="flex items-center gap-2">
-                            {/* Optional User Avatar or Profile Link could go here */}
-                        </div>
+                    <div className="flex flex-col">
+                        <span className="text-[17px] font-bold tracking-tight text-slate-900 leading-none">NEVHA</span>
+                        <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mt-0.5">Community</span>
                     </div>
-                    <p className="text-muted-foreground text-sm">
-                        Welcome to your community hub.
-                    </p>
+                </div>
+                {
+                    authLoading ? (
+                        <Skeleton className="h-8 w-20 rounded-full bg-slate-200/50" />
+                    ) : (
+                        <Link href={
+                            !session.user ? "/auth" :
+                                (session.user.role === 'admin' || session.user.role === 'staff') ? "/admin" :
+                                    "/profile"
+                        }>
+                            <button className="px-4 py-1.5 rounded-full bg-white/50 border border-white/50 text-slate-600 text-xs font-bold hover:bg-white active:scale-95 transition-all shadow-sm flex items-center gap-2">
+                                {session.user ? (
+                                    <>
+                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                        {(session.user.role === 'admin' || session.user.role === 'staff') ? "Admin" : "Profile"}
+                                    </>
+                                ) : (
+                                    "Login"
+                                )}
+                            </button>
+                        </Link>
+                    )
+                }
+            </header >
+
+            <main className="px-6 pt-8 max-w-md mx-auto w-full space-y-8">
+                {/* 2. Hero Greeting */}
+                <div className="relative">
+                    <h1 className="text-[34px] font-bold text-slate-900 tracking-tight leading-tight">
+                        {greeting},<br />
+                        <span className="text-slate-400">
+                            {authLoading
+                                ? <span className="inline-block w-28 h-8 bg-slate-200/60 rounded-lg animate-pulse align-middle" />
+                                : `${displayName}.`
+                            }
+                        </span>
+                    </h1>
                 </div>
 
-                {/* Latest Updates (Compacted) */}
-                <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold text-foreground tracking-tight">Latest Updates</h2>
-                        <Link href="/announcements" className="text-sm font-medium text-primary hover:text-primary/80 flex items-center gap-1 group">
+                {/* 3. Action Grid (The Core) */}
+                <section>
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Visitor Pass */}
+                        <Link href="/applications" className="group">
+                            <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-[#10b981] to-[#059669] p-5 text-white shadow-[0_10px_30px_-5px_rgba(16,185,129,0.2)] active:scale-[0.98] transition-transform h-full flex flex-col justify-between min-h-[160px]">
+                                <div className="relative z-10">
+                                    <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center mb-3">
+                                        <QrCode className="w-5 h-5 text-white" />
+                                    </div>
+                                    <h3 className="text-[17px] font-bold leading-tight">Visitor<br />Pass</h3>
+                                </div>
+                            </div>
+                        </Link>
+
+                        {/* Check Status */}
+                        <Link href="/status" className="group">
+                            <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-[#6366f1] to-[#4f46e5] p-5 text-white shadow-[0_10px_30px_-5px_rgba(99,102,241,0.2)] active:scale-[0.98] transition-transform h-full flex flex-col justify-between min-h-[160px]">
+                                <div className="relative z-10">
+                                    <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center mb-3">
+                                        <Search className="w-5 h-5 text-white" />
+                                    </div>
+                                    <h3 className="text-[17px] font-bold leading-tight">Check<br />Status</h3>
+                                </div>
+                            </div>
+                        </Link>
+
+                        {/* Report Concern */}
+                        <Link href="/report">
+                            <div className="bg-white p-5 rounded-[1.75rem] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.05)] border border-slate-100 h-full flex flex-col justify-between min-h-[160px] active:scale-[0.98] transition-all hover:shadow-lg hover:shadow-slate-200/50">
+                                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 mb-2">
+                                    <FileText className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-[17px] font-bold text-slate-900 leading-tight">Report<br />Concern</h3>
+                                </div>
+                            </div>
+                        </Link>
+
+                        {/* Pay Bills (Standard Card) */}
+                        <Link href="/bills">
+                            <div className="bg-white p-5 rounded-[1.75rem] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.05)] border border-slate-100 h-full flex flex-col justify-between min-h-[160px] active:scale-[0.98] transition-all hover:shadow-lg hover:shadow-slate-200/50">
+                                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-2">
+                                    <Wallet className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-[17px] font-bold text-slate-900 leading-tight">Pay<br />Bills</h3>
+                                </div>
+                            </div>
+                        </Link>
+                    </div>
+                </section>
+
+                {/* 4. Community Feed (Carousel) */}
+                <section>
+                    <div className="flex items-center justify-between mb-4 px-1">
+                        <h2 className="text-[19px] font-bold text-slate-900 tracking-tight">Latest News</h2>
+                        <Link href="/announcements" className="text-[13px] font-bold text-blue-600 active:opacity-70 bg-blue-50 px-3 py-1 rounded-full">
                             View All
-                            <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                         </Link>
                     </div>
 
-                    <div {...swipeHandlers} className="relative group">
-                        <Card className="rounded-[1.5rem] border-border/50 shadow-sm bg-card overflow-hidden min-h-[220px] hover:shadow-md transition-shadow duration-300">
-                            <CardContent className="p-0">
-                                {loading ? (
-                                    <div className="p-6 space-y-4">
-                                        <Skeleton className="h-6 w-1/3 rounded-lg" />
-                                        <Skeleton className="h-4 w-full rounded-md" />
-                                        <Skeleton className="h-4 w-2/3 rounded-md" />
-                                    </div>
-                                ) : announcements.length > 0 ? (
-                                    <div className="relative">
-                                        <AnimatePresence mode="wait">
-                                            {announcements[currentSlide] && (
-                                                <motion.div
-                                                    key={currentSlide}
-                                                    initial={{ opacity: 0, x: 20 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    exit={{ opacity: 0, x: -20 }}
-                                                    transition={{ duration: 0.3 }}
-                                                    className="p-6"
-                                                >
-                                                    <div className="flex items-start justify-between mb-3">
-                                                        <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${announcements[currentSlide].priority === "high"
-                                                            ? "bg-red-50 text-red-600"
-                                                            : "bg-blue-50 text-blue-600"
-                                                            }`}>
-                                                            {announcements[currentSlide].priority === "high" ? "Important" : "Notice"}
-                                                        </div>
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {new Date(announcements[currentSlide].publishDate || announcements[currentSlide].createdAt).toLocaleDateString()}
-                                                        </span>
+                    <div {...swipeHandlers} className="relative">
+                        <div className="bg-white rounded-[1.75rem] shadow-[0_15px_40px_-10px_rgba(0,0,0,0.08)] overflow-hidden min-h-[200px] border border-slate-100/50">
+                            {loading ? (
+                                <div className="p-6 space-y-4">
+                                    <Skeleton className="h-6 w-1/3 rounded-lg bg-slate-100" />
+                                    <Skeleton className="h-4 w-full rounded-md bg-slate-100" />
+                                    <Skeleton className="h-4 w-2/3 rounded-md bg-slate-100" />
+                                </div>
+                            ) : announcements.length > 0 ? (
+                                <div className="p-7 relative h-full flex flex-col justify-between">
+                                    <AnimatePresence mode="wait">
+                                        {announcements[currentSlide] && (
+                                            <motion.div
+                                                key={currentSlide}
+                                                initial={{ opacity: 0, x: 10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: -10 }}
+                                                transition={{ duration: 0.3 }}
+                                            >
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide ${announcements[currentSlide].priority === "high"
+                                                        ? "bg-red-50 text-red-500 ring-1 ring-red-100"
+                                                        : "bg-blue-50 text-blue-600 ring-1 ring-blue-100"
+                                                        }`}>
+                                                        {announcements[currentSlide].priority === "high" ? "Urgent Update" : "Notice"}
                                                     </div>
+                                                    <span className="text-[12px] font-semibold text-slate-400">
+                                                        {new Date(announcements[currentSlide].publishDate || announcements[currentSlide].createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                    </span>
+                                                </div>
 
-                                                    <h3 className="text-lg font-bold text-foreground mb-2 line-clamp-1">
-                                                        {announcements[currentSlide].title}
-                                                    </h3>
-                                                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-                                                        {announcements[currentSlide].content}
-                                                    </p>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
+                                                <h3 className="text-[21px] font-bold text-slate-900 mb-3 leading-snug">
+                                                    {announcements[currentSlide].title}
+                                                </h3>
+                                                <p className="text-[15px] text-slate-500 leading-relaxed line-clamp-2">
+                                                    {announcements[currentSlide].content}
+                                                </p>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
 
-                                        {/* Simple Dots for Pagination */}
-                                        <div className="absolute bottom-4 right-6 flex gap-1.5">
-                                            {announcements.map((_, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => setCurrentSlide(idx)}
-                                                    className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentSlide
-                                                        ? "w-4 bg-primary"
-                                                        : "w-1.5 bg-border hover:bg-muted-foreground/50"
-                                                        }`}
-                                                />
-                                            ))}
-                                        </div>
+                                    {/* Pagination Dots */}
+                                    <div className="flex gap-2 mt-6 justify-center">
+                                        {announcements.map((_, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentSlide ? "w-6 bg-slate-900" : "w-1.5 bg-slate-200"}`}
+                                            />
+                                        ))}
                                     </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-[220px] text-center p-6 text-muted-foreground">
-                                        <MessageSquare className="w-8 h-8 opacity-20 mb-2" />
-                                        <p className="text-sm">No new updates</p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center p-8 text-center h-[200px]">
+                                    <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                                        <MessageSquare className="w-6 h-6 text-slate-300" />
                                     </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                                    <p className="text-slate-400 text-sm font-medium">All caught up!</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                </section>
+            </main >
 
-                {/* Services Grid (Compacted) */}
-                <div>
-                    <h2 className="text-lg font-bold text-foreground mb-4 tracking-tight">Essential Services</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <PremiumServiceCard
-                            href="/report"
-                            icon={FileText}
-                            title="Report Concern"
-                            description="Submit maintenance requests"
-                            color="blue"
-                        />
-
-                        <PremiumServiceCard
-                            href="/emergency"
-                            icon={Phone}
-                            title="Emergency"
-                            description="24/7 security contacts"
-                            color="red"
-                        />
-
-                        <PremiumServiceCard
-                            href="/applications"
-                            icon={Shield}
-                            title="Applications"
-                            description="Stickers, IDs, & Permits"
-                            color="blue"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Mobile Bottom Navigation */}
-            <BottomNav />
-        </div>
-    )
-}
-
-function PremiumServiceCard({ href, icon: Icon, title, description, color }: any) {
-    // Minimalist Clean Styles
-    const colorStyles = {
-        blue: {
-            bg: "bg-blue-50/50",
-            text: "text-blue-600",
-            groupHoverBg: "group-hover:bg-blue-50",
-        },
-        red: {
-            bg: "bg-red-50/50",
-            text: "text-red-600",
-            groupHoverBg: "group-hover:bg-red-50",
-        }
-    }
-
-    const style = colorStyles[color as keyof typeof colorStyles] || colorStyles.blue
-
-    return (
-        <Link href={href}>
-            <div className={`group relative bg-card border border-border/40 rounded-[1.5rem] p-5 hover:border-border/80 hover:shadow-sm transition-all duration-200 cursor-pointer`}>
-                <div className="flex items-center gap-4">
-                    {/* Icon Container */}
-                    <div className={`w-12 h-12 flex items-center justify-center rounded-2xl ${style.bg} ${style.text} transition-colors duration-200`}>
-                        <Icon className="w-5 h-5" />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors truncate">{title}</h3>
-                        <p className="text-xs text-muted-foreground truncate">{description}</p>
-                    </div>
-
-                    <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                </div>
-            </div>
-        </Link>
+        </div >
     )
 }

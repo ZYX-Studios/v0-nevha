@@ -1,245 +1,141 @@
-// Admin homeowners management page
-
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { motion, AnimatePresence } from "framer-motion"
+import { toast } from "sonner"
+import type { Homeowner } from "@/lib/types"
+import {
+  Search, Plus, Home, Users, ChevronLeft, ChevronRight,
+  Download, X, Phone, Mail, MapPin, ArrowUpDown, SlidersHorizontal,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { Homeowner } from "@/lib/types"
-import { ArrowLeft, Plus, Search, Home, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react"
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog"
 
-function HomeownersContent() {
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+const formatSuffix = (s?: string | null) => {
+  if (!s) return ""
+  const lower = s.toLowerCase().replace(/\.$/, "")
+  if (lower === "jr") return "Jr."
+  if (lower === "sr") return "Sr."
+  if (["ii", "iii", "iv", "v"].includes(lower)) return lower.toUpperCase()
+  return s
+}
+
+const displayName = (h: Homeowner) => {
+  const base = [h.firstName, h.lastName].filter(Boolean).join(" ").trim()
+  const withSuffix = [base, formatSuffix((h as any).suffix)].filter(Boolean).join(" ").trim()
+  return withSuffix || (h as any).fullName || "—"
+}
+
+const EMPTY_FORM = {
+  firstName: "", lastName: "", middleInitial: "", suffix: "",
+  phase: "", block: "", lot: "", street: "",
+  contactNumber: "", email: "", facebookProfile: "",
+  isOwner: "true", moveInDate: "",
+  emergencyContactName: "", emergencyContactPhone: "",
+  lengthOfResidency: "", notes: "",
+}
+
+// ── component ─────────────────────────────────────────────────────────────────
+
+export default function HomeownersPage() {
   const router = useRouter()
-  const basePath = "/admin"
   const [items, setItems] = useState<Homeowner[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [total, setTotal] = useState(0)
   const [q, setQ] = useState("")
-  const [owner, setOwner] = useState<"all" | "owner" | "renter">("all")
-  const [phase, setPhase] = useState("")
-  const [block, setBlock] = useState("")
-  const [lot, setLot] = useState("")
-  const [street, setStreet] = useState("")
-  const [moveInFrom, setMoveInFrom] = useState("")
-  const [moveInTo, setMoveInTo] = useState("")
-  const [hasEmail, setHasEmail] = useState<boolean | undefined>(undefined)
-  const [hasPhone, setHasPhone] = useState<boolean | undefined>(undefined)
-  const [lengthMin, setLengthMin] = useState("")
-  const [lengthMax, setLengthMax] = useState("")
+  const [owner, setOwner] = useState("all")
   const [sort, setSort] = useState<"created_at" | "name" | "address" | "move_in_date">("created_at")
   const [order, setOrder] = useState<"asc" | "desc">("desc")
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(25)
-  const [total, setTotal] = useState(0)
+  const [pageSize] = useState(25)
 
-  // Helpers: format suffix and build display name
-  const formatSuffix = (s?: string | null) => {
-    if (!s) return ""
-    const lower = s.toLowerCase().replace(/\.$/, "")
-    if (lower === "jr") return "Jr."
-    if (lower === "sr") return "Sr."
-    if (["ii", "iii", "iv", "v"].includes(lower)) return lower.toUpperCase()
-    if (["2nd", "3rd", "4th", "5th"].includes(lower)) return lower
-    return s
-  }
+  // Advanced filters (collapsed by default)
+  const [showFilters, setShowFilters] = useState(false)
+  const [phase, setPhase] = useState("")
+  const [block, setBlock] = useState("")
+  const [lot, setLot] = useState("")
 
-  const displayName = (h: Homeowner) => {
-    const base = [h.firstName, h.lastName].filter(Boolean).join(" ").trim()
-    const withSuffix = [base, formatSuffix((h as any).suffix)].filter(Boolean).join(" ").trim()
-    return withSuffix || (h as any).fullName || "-"
-  }
-
-  // Create dialog state
-  const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({
-    moveInDate: "",
-    isOwner: "true",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    notes: "",
-    // PRD-aligned optional details
-    firstName: "",
-    lastName: "",
-    middleInitial: "",
-    suffix: "",
-    phase: "",
-    block: "",
-    lot: "",
-    street: "",
-    contactNumber: "",
-    email: "",
-    facebookProfile: "",
-    lengthOfResidency: "",
-  })
+  // Create dialog
+  const [createOpen, setCreateOpen] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
 
-  const fetchItems = async (query = "") => {
+  const fetchItems = useCallback(async (query = q) => {
     setLoading(true)
-    setError(null)
     try {
       const url = new URL("/api/admin/homeowners", window.location.origin)
-      if (query) url.searchParams.set("q", query)
+      if (query.trim()) url.searchParams.set("q", query.trim())
       if (owner !== "all") url.searchParams.set("owner", owner)
       if (phase) url.searchParams.set("phase", phase)
       if (block) url.searchParams.set("block", block)
       if (lot) url.searchParams.set("lot", lot)
-      if (street) url.searchParams.set("street", street)
-      if (moveInFrom) url.searchParams.set("moveInFrom", moveInFrom)
-      if (moveInTo) url.searchParams.set("moveInTo", moveInTo)
-      if (typeof hasEmail === "boolean") url.searchParams.set("hasEmail", String(hasEmail))
-      if (typeof hasPhone === "boolean") url.searchParams.set("hasPhone", String(hasPhone))
-      if (lengthMin) url.searchParams.set("lengthMin", lengthMin)
-      if (lengthMax) url.searchParams.set("lengthMax", lengthMax)
       url.searchParams.set("sort", sort)
       url.searchParams.set("order", order)
       url.searchParams.set("page", String(page))
       url.searchParams.set("pageSize", String(pageSize))
+
       const res = await fetch(url.toString(), { cache: "no-store" })
       const text = await res.text()
-      let json: any = null
-      try {
-        json = text ? JSON.parse(text) : null
-      } catch {
-        // Response is not JSON (likely HTML from a redirect). Treat as unauthorized.
-        throw new Error("Access denied. Please sign in as an admin and try again.")
-      }
+      let json: any
+      try { json = text ? JSON.parse(text) : null }
+      catch { throw new Error("Access denied. Please sign in as an admin.") }
       if (!res.ok) throw new Error(json?.error || "Failed to load homeowners")
-      const fetched: Homeowner[] = (json.items || []) as Homeowner[]
-      setItems(fetched)
+
+      setItems(json.items || [])
       setTotal(typeof json.total === "number" ? json.total : 0)
-      if (typeof json.page === "number") setPage(json.page)
-      if (typeof json.pageSize === "number") setPageSize(json.pageSize)
-      return fetched
     } catch (e: any) {
-      setError(e?.message || "Failed to load homeowners")
-      return [] as Homeowner[]
+      toast.error(e?.message || "Failed to load homeowners")
     } finally {
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    fetchItems()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [owner, phase, block, lot, sort, order, page, pageSize])
 
-  // Debounced search on query changes
+  // Debounced search
   useEffect(() => {
-    const handle = setTimeout(() => {
-      if (page !== 1) {
-        setPage(1)
-      } else {
-        ;(async () => {
-          const results = await fetchItems(q)
-          if ((results?.length ?? 0) === 0 && q.trim()) {
-            try {
-              const res = await fetch(`/api/admin/vehicles/lookup?plate=${encodeURIComponent(q.trim())}`, { cache: "no-store" })
-              const j = await res.json().catch(() => ({}))
-              if (res.ok && j?.homeowner?.id) {
-                const r2 = await fetch(`/api/admin/homeowners/${j.homeowner.id}`, { cache: "no-store" })
-                const j2 = await r2.json().catch(() => ({}))
-                if (r2.ok && j2?.item) {
-                  setItems([j2.item as Homeowner])
-                  setTotal(1)
-                }
-              }
-            } catch {}
-          }
-        })()
-      }
-    }, 400)
-    return () => clearTimeout(handle)
-    // We intentionally do not include `page` in deps to avoid immediate extra triggers
+    const t = setTimeout(() => { setPage(1); fetchItems(q) }, 350)
+    return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q])
 
-  // Re-fetch on sort/order/page/pageSize changes
-  useEffect(() => {
-    fetchItems(q)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sort, order, page, pageSize])
+  useEffect(() => { fetchItems() }, [fetchItems])
 
   const handleSort = (col: "name" | "address" | "move_in_date") => {
     setPage(1)
-    if (sort === col) {
-      setOrder((prev) => (prev === "asc" ? "desc" : "asc"))
-    } else {
-      setSort(col)
-      setOrder("asc")
-    }
-  }
-
-  const handleResetFilters = () => {
-    setQ("")
-    setOwner("all")
-    setPhase("")
-    setBlock("")
-    setLot("")
-    setStreet("")
-    setMoveInFrom("")
-    setMoveInTo("")
-    setHasEmail(undefined)
-    setHasPhone(undefined)
-    setLengthMin("")
-    setLengthMax("")
-    setSort("created_at")
-    setOrder("desc")
-    setPage(1)
-    setPageSize(25)
-    fetchItems("")
+    if (sort === col) setOrder(o => o === "asc" ? "desc" : "asc")
+    else { setSort(col); setOrder("asc") }
   }
 
   const handleExportCsv = () => {
-    const headers = [
-      "Name",
-      "Address",
-      "Ownership",
-      "Move-in",
-      "Contact Number",
-      "Email",
-    ]
-    const rows = items.map((h) => [
-      displayName(h),
-      h.propertyAddress || "",
-      h.isOwner ? "Owner" : "Renter",
-      h.moveInDate || "",
-      (h as any).contactNumber || "",
-      (h as any).email || "",
+    const csv = [["Name", "Address", "Type", "Move-in", "Phone", "Email"],
+    ...items.map(h => [
+      displayName(h), h.propertyAddress || "",
+      h.isOwner ? "Owner" : "Renter", h.moveInDate || "",
+      h.contactNumber || "", (h as any).email || "",
     ])
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n")
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `homeowners-page-${page}.csv`
+    ].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n")
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })),
+      download: `homeowners-p${page}.csv`,
+    })
     a.click()
-    URL.revokeObjectURL(url)
   }
-
 
   const onCreate = async () => {
     setSaving(true)
-    setError(null)
     try {
       const payload = {
-        moveInDate: form.moveInDate || null,
+        ...form,
         isOwner: form.isOwner === "true",
-        emergencyContactName: form.emergencyContactName.trim() || null,
-        emergencyContactPhone: form.emergencyContactPhone.trim() || null,
-        notes: form.notes.trim() || null,
+        moveInDate: form.moveInDate || null,
         firstName: form.firstName.trim() || null,
         lastName: form.lastName.trim() || null,
         middleInitial: form.middleInitial.trim() || null,
@@ -251,7 +147,10 @@ function HomeownersContent() {
         contactNumber: form.contactNumber.trim() || null,
         email: form.email.trim() || null,
         facebookProfile: form.facebookProfile.trim() || null,
+        emergencyContactName: form.emergencyContactName.trim() || null,
+        emergencyContactPhone: form.emergencyContactPhone.trim() || null,
         lengthOfResidency: form.lengthOfResidency !== "" ? Number(form.lengthOfResidency) : null,
+        notes: form.notes.trim() || null,
       }
       const res = await fetch("/api/admin/homeowners", {
         method: "POST",
@@ -259,241 +158,101 @@ function HomeownersContent() {
         body: JSON.stringify(payload),
       })
       const txt = await res.text()
-      let json: any = null
-      try { json = txt ? JSON.parse(txt) : null } catch { throw new Error("Access denied. Please sign in as an admin.") }
+      let json: any
+      try { json = txt ? JSON.parse(txt) : null } catch { throw new Error("Access denied.") }
       if (!res.ok) throw new Error(json?.error || "Failed to create homeowner")
-      setOpen(false)
-      setForm({
-        moveInDate: "",
-        isOwner: "true",
-        emergencyContactName: "",
-        emergencyContactPhone: "",
-        notes: "",
-        firstName: "",
-        lastName: "",
-        middleInitial: "",
-        suffix: "",
-        phase: "",
-        block: "",
-        lot: "",
-        street: "",
-        contactNumber: "",
-        email: "",
-        facebookProfile: "",
-        lengthOfResidency: "",
-      })
-      fetchItems(q)
+      toast.success("Homeowner created")
+      setCreateOpen(false)
+      setForm(EMPTY_FORM)
+      fetchItems()
     } catch (e: any) {
-      setError(e?.message || "Failed to create homeowner")
+      toast.error(e?.message || "Failed to create homeowner")
     } finally {
       setSaving(false)
     }
   }
 
-  // derived count
-  const filteredCount = useMemo(() => items.length, [items])
   const canSubmit = Boolean(form.street.trim() || (form.block.trim() && form.lot.trim()))
+  const totalPages = Math.ceil(total / pageSize)
+  const activeFilters = [phase, block, lot, owner !== "all" ? owner : ""].filter(Boolean).length
+
+  const SortBtn = ({ col, label }: { col: "name" | "address" | "move_in_date"; label: string }) => (
+    <button onClick={() => handleSort(col)} className="inline-flex items-center gap-1 text-sm font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-700 transition-colors">
+      {label}
+      <ArrowUpDown className={`w-3.5 h-3.5 ${sort === col ? "text-blue-600" : ""}`} />
+    </button>
+  )
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#F2F2F7] pb-20">
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" onClick={() => router.push(basePath)} className="flex items-center space-x-2">
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back</span>
-              </Button>
-              <div className="flex items-center space-x-2">
-                <div className="bg-primary rounded-lg p-2">
-                  <Home className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold">Manage Homeowners</h1>
-                  <p className="text-sm text-muted-foreground">List, search, and create homeowner records</p>
-                </div>
-              </div>
-            </div>
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Homeowner
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>New Homeowner</DialogTitle>
-                  <DialogDescription>Create a homeowner record</DialogDescription>
-                </DialogHeader>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Homeowner Name</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                      <Input placeholder="First Name" value={form.firstName} onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))} />
-                      <Input placeholder="Last Name" value={form.lastName} onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))} />
-                      <Input placeholder="M.I." value={form.middleInitial} onChange={(e) => setForm((f) => ({ ...f, middleInitial: e.target.value }))} />
-                      <Input placeholder="Suffix (e.g., Jr.)" value={form.suffix} onChange={(e) => setForm((f) => ({ ...f, suffix: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Phase</Label>
-                    <Input placeholder="e.g., Phase 1" value={form.phase} onChange={(e) => setForm((f) => ({ ...f, phase: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Block</Label>
-                    <Input placeholder="e.g., B2" value={form.block} onChange={(e) => setForm((f) => ({ ...f, block: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Lot</Label>
-                    <Input placeholder="e.g., L10" value={form.lot} onChange={(e) => setForm((f) => ({ ...f, lot: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Street</Label>
-                    <Input placeholder="e.g., Oak St" value={form.street} onChange={(e) => setForm((f) => ({ ...f, street: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Move-in Date</Label>
-                    <Input type="date" value={form.moveInDate} onChange={(e) => setForm((f) => ({ ...f, moveInDate: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Ownership</Label>
-                    <Select value={form.isOwner} onValueChange={(v) => setForm((f) => ({ ...f, isOwner: v }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="true">Owner</SelectItem>
-                        <SelectItem value="false">Renter</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Contact Number</Label>
-                    <Input placeholder="e.g., +63 9xx xxx xxxx" value={form.contactNumber} onChange={(e) => setForm((f) => ({ ...f, contactNumber: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input placeholder="name@example.com" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Facebook Profile</Label>
-                    <Input placeholder="https://facebook.com/username" value={form.facebookProfile} onChange={(e) => setForm((f) => ({ ...f, facebookProfile: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Emergency Contact Name</Label>
-                    <Input
-                      placeholder="Contact name"
-                      value={form.emergencyContactName}
-                      onChange={(e) => setForm((f) => ({ ...f, emergencyContactName: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Emergency Contact Phone</Label>
-                    <Input
-                      placeholder="Contact phone"
-                      value={form.emergencyContactPhone}
-                      onChange={(e) => setForm((f) => ({ ...f, emergencyContactPhone: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Length of Residency (years)</Label>
-                    <Input type="number" inputMode="numeric" placeholder="e.g., 3" value={form.lengthOfResidency} onChange={(e) => setForm((f) => ({ ...f, lengthOfResidency: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Notes</Label>
-                    <Input
-                      placeholder="Additional notes"
-                      value={form.notes}
-                      onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2 justify-end pt-2">
-                  <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
-                    Cancel
-                  </Button>
-                  <Button onClick={onCreate} disabled={saving || !canSubmit}>
-                    {saving ? "Creating..." : "Create"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-black/5 px-4 sm:px-6 py-3.5 flex items-center gap-3">
+        <div className="w-9 h-9 bg-blue-50 rounded-full flex items-center justify-center shrink-0">
+          <Users className="w-5 h-5 text-blue-600" />
         </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-bold text-slate-900 leading-none">Homeowners</h1>
+          <p className="text-xs text-slate-400 mt-0.5">{total.toLocaleString()} records</p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => setCreateOpen(true)}
+          className="gap-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm shrink-0"
+        >
+          <Plus className="w-4 h-4" /> New
+        </Button>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search by name, address, notes, or plate number..."
-                      value={q}
-                      onChange={(e) => setQ(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault()
-                          ;(async () => {
-                            const results = await fetchItems(q)
-                            if ((results?.length ?? 0) === 0 && q.trim()) {
-                              try {
-                                const res = await fetch(`/api/admin/vehicles/lookup?plate=${encodeURIComponent(q.trim())}`, { cache: "no-store" })
-                                const j = await res.json().catch(() => ({}))
-                                if (res.ok && j?.homeowner?.id) {
-                                  router.push(`/admin/homeowners/${j.homeowner.id}`)
-                                }
-                              } catch {}
-                            }
-                          })()
-                        }
-                      }}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={async () => {
-                      const results = await fetchItems(q)
-                      if ((results?.length ?? 0) === 0 && q.trim()) {
-                        try {
-                          const res = await fetch(`/api/admin/vehicles/lookup?plate=${encodeURIComponent(q.trim())}`, { cache: "no-store" })
-                          const j = await res.json().catch(() => ({}))
-                          if (res.ok && j?.homeowner?.id) {
-                            router.push(`/admin/homeowners/${j.homeowner.id}`)
-                            return
-                          }
-                        } catch {}
-                      }
-                    }}
-                    disabled={loading}
-                  >
-                    {loading ? "Searching..." : "Search"}
-                  </Button>
-                  <Button variant="ghost" onClick={handleResetFilters}>
-                    Reset
-                  </Button>
-                  <Button variant="outline" onClick={handleExportCsv}>
-                    Export CSV
-                  </Button>
-                </div>
-              </div>
+      <main className="px-4 sm:px-6 py-4 max-w-6xl mx-auto space-y-3">
+        {/* Search bar */}
+        <div className="bg-white rounded-lg border border-slate-100 shadow-sm p-3 flex gap-2 items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Search by name, address, or plate…"
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              className="pl-9 h-10 rounded-xl border-slate-200 text-base"
+            />
+            {q && (
+              <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            className={`flex items-center gap-1.5 h-10 px-3.5 rounded-xl text-sm font-semibold border transition-all ${showFilters || activeFilters > 0
+              ? "bg-blue-600 text-white border-blue-600"
+              : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+              }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
+          </button>
+          <button
+            onClick={handleExportCsv}
+            className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors"
+            title="Export CSV"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+        {/* Advanced filters */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-white rounded-lg border border-slate-100 shadow-sm p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="space-y-1">
-                  <Label>Ownership</Label>
-                  <Select value={owner} onValueChange={(v) => setOwner(v as any)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
+                  <Label className="text-xs uppercase text-slate-400 font-semibold">Type</Label>
+                  <Select value={owner} onValueChange={v => { setOwner(v); setPage(1) }}>
+                    <SelectTrigger className="h-9 text-sm rounded-lg"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
                       <SelectItem value="owner">Owner</SelectItem>
@@ -502,174 +261,195 @@ function HomeownersContent() {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Phase</Label>
-                  <Input value={phase} onChange={(e) => setPhase(e.target.value)} placeholder="e.g., Phase 1" />
+                  <Label className="text-xs uppercase text-slate-400 font-semibold">Phase</Label>
+                  <Input value={phase} onChange={e => { setPhase(e.target.value); setPage(1) }} placeholder="e.g., 1" className="h-9 text-sm rounded-lg" />
                 </div>
                 <div className="space-y-1">
-                  <Label>Block</Label>
-                  <Input value={block} onChange={(e) => setBlock(e.target.value)} placeholder="e.g., B2" />
+                  <Label className="text-xs uppercase text-slate-400 font-semibold">Block</Label>
+                  <Input value={block} onChange={e => { setBlock(e.target.value); setPage(1) }} placeholder="e.g., B2" className="h-9 text-sm rounded-lg" />
                 </div>
                 <div className="space-y-1">
-                  <Label>Lot</Label>
-                  <Input value={lot} onChange={(e) => setLot(e.target.value)} placeholder="e.g., L10" />
-                </div>
-                <div className="space-y-1">
-                  <Label>Street</Label>
-                  <Input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="e.g., Oak St" />
+                  <Label className="text-xs uppercase text-slate-400 font-semibold">Lot</Label>
+                  <Input value={lot} onChange={e => { setLot(e.target.value); setPage(1) }} placeholder="e.g., L10" className="h-9 text-sm rounded-lg" />
                 </div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <div className="space-y-1">
-                  <Label>Move-in From</Label>
-                  <Input type="date" value={moveInFrom} onChange={(e) => setMoveInFrom(e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Move-in To</Label>
-                  <Input type="date" value={moveInTo} onChange={(e) => setMoveInTo(e.target.value)} />
-                </div>
-                <div className="flex items-center gap-2 mt-6">
-                  <Checkbox id="hasEmail" checked={hasEmail === true} onCheckedChange={(v) => setHasEmail(Boolean(v))} />
-                  <Label htmlFor="hasEmail">Has Email</Label>
-                </div>
-                <div className="flex items-center gap-2 mt-6">
-                  <Checkbox id="hasPhone" checked={hasPhone === true} onCheckedChange={(v) => setHasPhone(Boolean(v))} />
-                  <Label htmlFor="hasPhone">Has Phone</Label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                <div className="space-y-1">
-                  <Label>Length Min</Label>
-                  <Input type="number" inputMode="numeric" value={lengthMin} onChange={(e) => setLengthMin(e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Length Max</Label>
-                  <Input type="number" inputMode="numeric" value={lengthMax} onChange={(e) => setLengthMax(e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Rows per page</Label>
-                  <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(parseInt(v, 10)); setPage(1) }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="25" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="25">25</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* List - Simple Table */}
-        {error && (
-          <Card className="mb-4">
-            <CardContent className="py-4">
-              <p className="text-destructive">{error}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="bg-card rounded-md border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-muted-foreground sticky top-0 z-10">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium">
-                    <button className="inline-flex items-center gap-1" onClick={() => handleSort("name")}>
-                      Name {sort === "name" ? (order === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3" />}
-                    </button>
-                  </th>
-                  <th className="text-left px-4 py-2 font-medium">
-                    <button className="inline-flex items-center gap-1" onClick={() => handleSort("address")}>
-                      Address {sort === "address" ? (order === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3" />}
-                    </button>
-                  </th>
-                  <th className="text-left px-4 py-2 font-medium">Ownership</th>
-                  <th className="text-left px-4 py-2 font-medium">
-                    <button className="inline-flex items-center gap-1" onClick={() => handleSort("move_in_date")}>
-                      Move-in {sort === "move_in_date" ? (order === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3" />}
-                    </button>
-                  </th>
-                  <th className="text-left px-4 py-2 font-medium">Contact Number</th>
-                  <th className="text-right px-4 py-2 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
-                      Loading homeowners...
-                    </td>
-                  </tr>
-                )}
-                {!loading && items.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center">
-                      <div className="space-y-2">
-                        <div className="text-sm text-muted-foreground">No homeowners found</div>
-                        <div className="text-xs text-muted-foreground">{q ? "Try adjusting your search." : "Create your first homeowner to get started."}</div>
-                        <Button size="sm" onClick={() => setOpen(true)}>
-                          <Plus className="mr-2 h-4 w-4" /> New Homeowner
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-                {!loading && items.map((h) => {
-                  const fullName = displayName(h)
-                  return (
-                    <tr key={h.id} className="border-t odd:bg-muted/30">
-                      <td className="px-4 py-2">{fullName}</td>
-                      <td className="px-4 py-2">{h.propertyAddress}</td>
-                      <td className="px-4 py-2">{h.isOwner ? "Owner" : "Renter"}</td>
-                      <td className="px-4 py-2">{h.moveInDate || "-"}</td>
-                      <td className="px-4 py-2">{h.contactNumber || "-"}</td>
-                      <td className="px-4 py-2 text-right">
-                        <Button variant="outline" size="sm" onClick={() => router.push(`${basePath}/homeowners/${h.id}`)}>
-                          View
-                        </Button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+        {/* Results table */}
+        <div className="bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden">
+          {/* Column headers */}
+          <div className="grid grid-cols-[1fr_1fr_90px_130px_48px] gap-x-4 px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+            <SortBtn col="name" label="Name" />
+            <SortBtn col="address" label="Address" />
+            <span className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Type</span>
+            <SortBtn col="move_in_date" label="Move-in" />
+            <span />
           </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-16 gap-2">
+              <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+              <span className="text-sm text-slate-400">Loading…</span>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="text-center py-16 space-y-3">
+              <Home className="w-10 h-10 text-slate-200 mx-auto" />
+              <p className="text-sm text-slate-400">{q ? "No results found" : "No homeowners yet"}</p>
+              {!q && (
+                <Button size="sm" onClick={() => setCreateOpen(true)} className="rounded-full gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> Add First Homeowner
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-50">
+              {items.map((h) => (
+                <button
+                  key={h.id}
+                  onClick={() => router.push(`/admin/homeowners/${h.id}`)}
+                  className="w-full grid grid-cols-[1fr_1fr_90px_130px_48px] gap-x-4 px-4 py-3.5 text-left hover:bg-slate-50/60 transition-colors group"
+                >
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                      {displayName(h)}
+                    </p>
+                    {(h as any).email && (
+                      <p className="text-sm text-slate-400 truncate flex items-center gap-1">
+                        <Mail className="w-3 h-3 shrink-0" />
+                        {(h as any).email}
+                      </p>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-base text-slate-600 truncate">{h.propertyAddress || "—"}</p>
+                    {h.contactNumber && (
+                      <p className="text-sm text-slate-400 flex items-center gap-1">
+                        <Phone className="w-3 h-3 shrink-0" />
+                        {h.contactNumber}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${h.isOwner
+                      ? "bg-blue-50 text-blue-700 border-blue-100"
+                      : "bg-slate-50 text-slate-500 border-slate-200"
+                      }`}>
+                      {h.isOwner ? "Owner" : "Renter"}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-500 self-center">
+                    {h.moveInDate ? new Date(h.moveInDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "—"}
+                  </p>
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 self-center transition-colors" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between py-3 text-sm text-muted-foreground">
-          <div>
-            Showing {total === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span>
-              Page {page}
+        {total > pageSize && (
+          <div className="flex items-center justify-between px-1">
+            <span className="text-sm text-slate-400">
+              {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total.toLocaleString()}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page * pageSize >= total}
-            >
-              <ChevronRight className="h-4 w-4" />
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30 hover:bg-slate-100 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm text-slate-500 font-medium px-2">Page {page} / {totalPages}</span>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={page >= totalPages}
+                className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30 hover:bg-slate-100 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Create dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-lg">
+          <DialogHeader>
+            <DialogTitle>New Homeowner</DialogTitle>
+            <DialogDescription>Add a new homeowner record</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Name row */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input placeholder="First name" value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} className="rounded-xl" />
+                <Input placeholder="Last name" value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} className="rounded-xl" />
+                <Input placeholder="M.I." value={form.middleInitial} onChange={e => setForm(f => ({ ...f, middleInitial: e.target.value }))} className="rounded-xl" />
+                <Input placeholder="Suffix (Jr., Sr.…)" value={form.suffix} onChange={e => setForm(f => ({ ...f, suffix: e.target.value }))} className="rounded-xl" />
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Address <span className="text-red-400">*</span></Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Input placeholder="Phase" value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))} className="rounded-xl" />
+                <Input placeholder="Block" value={form.block} onChange={e => setForm(f => ({ ...f, block: e.target.value }))} className="rounded-xl" />
+                <Input placeholder="Lot" value={form.lot} onChange={e => setForm(f => ({ ...f, lot: e.target.value }))} className="rounded-xl" />
+              </div>
+              <Input placeholder="Street" value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} className="rounded-xl" />
+            </div>
+
+            {/* Type + Move-in */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Type</Label>
+                <Select value={form.isOwner} onValueChange={v => setForm(f => ({ ...f, isOwner: v }))}>
+                  <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Owner</SelectItem>
+                    <SelectItem value="false">Renter</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Move-in Date</Label>
+                <Input type="date" value={form.moveInDate} onChange={e => setForm(f => ({ ...f, moveInDate: e.target.value }))} className="rounded-xl" />
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Contact</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input placeholder="Phone" value={form.contactNumber} onChange={e => setForm(f => ({ ...f, contactNumber: e.target.value }))} className="rounded-xl" />
+                <Input placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="rounded-xl" />
+              </div>
+            </div>
+
+            {/* Emergency + Notes */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Emergency Contact</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input placeholder="Name" value={form.emergencyContactName} onChange={e => setForm(f => ({ ...f, emergencyContactName: e.target.value }))} className="rounded-xl" />
+                <Input placeholder="Phone" value={form.emergencyContactPhone} onChange={e => setForm(f => ({ ...f, emergencyContactPhone: e.target.value }))} className="rounded-xl" />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={saving} className="flex-1 rounded-xl">Cancel</Button>
+            <Button onClick={onCreate} disabled={saving || !canSubmit} className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700">
+              {saving ? "Creating…" : "Create Homeowner"}
             </Button>
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
-}
-
-export default function HomeownersPage() {
-  return <HomeownersContent />
 }

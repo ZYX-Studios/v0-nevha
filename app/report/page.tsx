@@ -1,18 +1,37 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, AlertCircle, CheckCircle, User, Phone, Mail, MapPin } from "lucide-react"
-import { BottomNav } from "@/components/ui/bottom-nav"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  ArrowLeft,
+  AlertCircle,
+  CheckCircle,
+  MapPin,
+  AlertTriangle,
+  ChevronRight,
+  ChevronLeft,
+  Lightbulb,
+  Truck,
+  Trees,
+  Zap,
+  Droplets,
+  ShieldAlert,
+  HelpCircle,
+  User,
+  Wallet,
+  MessageSquare,
+  Store,
+  Users,
+  Share2,
+  Trophy
+} from "lucide-react"
 
 // Categories now come from live departments via /api/departments; we append an "Others" option client-side
 
@@ -41,16 +60,18 @@ type PendingReport = (FormState & { verified_resident_token?: string }) & { queu
 
 export default function ReportPage() {
   const router = useRouter()
+  const [step, setStep] = useState(1) // 1: Category, 2: Location/Verify, 3: Details, 4: Review
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [successRef, setSuccessRef] = useState<string | null>(null)
   const [deptOptions, setDeptOptions] = useState<string[]>([])
+
   // Resident verification state
   const [selectedResidentToken, setSelectedResidentToken] = useState<string | null>(null)
   const [nameSuggestions, setNameSuggestions] = useState<{ name: string; token: string }[]>([])
   const [isSearchingName, setIsSearchingName] = useState(false)
   const nameSearchAbortRef = useRef<AbortController | null>(null)
-  const [verifyError, setVerifyError] = useState(false)
+
   const [form, setForm] = useState<FormState>({
     description: "",
     category: "",
@@ -65,6 +86,27 @@ export default function ReportPage() {
     acknowledged: false,
     priority: "P3",
   })
+
+  // Category Icons Mapping
+  const getCategoryIcon = (cat: string) => {
+    const lower = cat.toLowerCase()
+    if (lower.includes("security") || lower === "peace and order") return ShieldAlert
+    if (lower.includes("water")) return Droplets
+    if (lower.includes("power") || lower.includes("electric")) return Zap
+    if (lower.includes("maintenance")) return Truck
+    if (lower.includes("environment") || lower.includes("garden")) return Trees
+    if (lower.includes("street") || lower.includes("light")) return Lightbulb
+
+    // New mappings
+    if (lower.includes("finance")) return Wallet
+    if (lower.includes("grievance")) return MessageSquare
+    if (lower.includes("livelihood")) return Store
+    if (lower.includes("membership")) return Users
+    if (lower.includes("social")) return Share2
+    if (lower.includes("sports")) return Trophy
+
+    return HelpCircle
+  }
 
   // Minimal offline queue using localStorage
   useEffect(() => {
@@ -174,23 +216,63 @@ export default function ReportPage() {
 
   const update = (field: keyof FormState, value: string | boolean) => setForm((p) => ({ ...p, [field]: value }))
 
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  }
+
+  const isValidPhone = (phone: string) => {
+    // Basic PH mobile number check or generic 10+ digits
+    const digits = phone.replace(/\D/g, "")
+    return digits.length >= 10
+  }
+
+  // Navigation Handlers
+  const nextStep = () => {
+    setError("")
+    if (step === 1 && !form.category) {
+      setError("Please select a category first.")
+      return
+    }
+    if (step === 2) {
+      if (!form.reporter_full_name) {
+        setError("Please enter your name.")
+        return
+      }
+      if (!selectedResidentToken) {
+        setError("Please select your name from the list to verify you are a resident.")
+        return
+      }
+    }
+    if (step === 3) {
+      if (!form.description.trim()) {
+        setError("Please tell us what happened.")
+        return
+      }
+      const email = form.reporter_email.trim()
+      if (!email) {
+        setError("Please enter your email address for status tracking.")
+        return
+      }
+      if (!isValidEmail(email)) {
+        setError("Please enter a valid email address (e.g. name@example.com).")
+        return
+      }
+      if (form.reporter_phone && !isValidPhone(form.reporter_phone)) {
+        setError("Please enter a valid phone number (at least 10 digits).")
+        return
+      }
+    }
+    setStep(s => s + 1)
+  }
+
+  const prevStep = () => setStep(s => s - 1)
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
 
-    if (!form.description.trim() || !form.category) {
-      setError("Please fill in all required fields")
-      return
-    }
     if (!form.acknowledged) {
-      setError("Please acknowledge the notice before submitting.")
-      return
-    }
-
-    // Require verified resident selection
-    if (!selectedResidentToken) {
-      setVerifyError(true)
-      setError("Please select your name from the suggestions to verify residency before submitting.")
+      setError("Please check the box to confirm this report is true.")
       return
     }
 
@@ -201,7 +283,7 @@ export default function ReportPage() {
         const key = "hoa-report-queue"
         const raw = localStorage.getItem(key)
         const queue: PendingReport[] = raw ? JSON.parse(raw) : []
-        queue.push({ ...form, verified_resident_token: selectedResidentToken, queuedAt: Date.now() })
+        queue.push({ ...form, verified_resident_token: selectedResidentToken ?? undefined, queuedAt: Date.now() })
         localStorage.setItem(key, JSON.stringify(queue))
         setSuccessRef("PENDING-OFFLINE")
         return
@@ -227,65 +309,29 @@ export default function ReportPage() {
   if (successRef) {
     const isPending = successRef === "PENDING-OFFLINE"
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4 font-inter">
-        <Card className="w-full max-w-md border-0 shadow-md bg-white overflow-hidden border border-gray-100">
-          <CardContent className="text-center py-8">
-            <div className="bg-green-100 rounded-full p-3 w-fit mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+      <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-4 font-sans">
+        <Card className="w-full max-w-md border-0 shadow-lg rounded-[2rem] bg-white overflow-hidden">
+          <CardContent className="text-center py-10 px-6">
+            <div className="bg-green-100 rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+              <CheckCircle className="h-10 w-10 text-green-600" />
             </div>
-            <h2 className="text-xl font-semibold mb-2 text-gray-900">
-              {isPending ? "Report Queued for Upload" : "Report Submitted Successfully"}
+            <h2 className="text-2xl font-bold mb-3 text-slate-900">
+              {isPending ? "Saved Offline" : "Report Sent!"}
             </h2>
-            <p className="text-gray-600 mb-6 text-sm">
+            <p className="text-slate-500 mb-8 text-[15px] leading-relaxed">
               {isPending
-                ? "You were offline. We queued your report and will upload it once you go online."
-                : "Your report has been submitted. Use the reference code below to check status."}
+                ? "You're offline right now. We'll send your report automatically when you have internet."
+                : "Thank you for helping us. We have received your report."}
             </p>
             {!isPending && (
-              <div className="mb-6">
-                <div className="font-mono text-lg font-semibold text-gray-900 bg-gray-50 p-3 rounded-lg border">{successRef}</div>
-                <div className="mt-3 flex gap-2 justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => navigator.clipboard.writeText(successRef)}
-                    className="px-3 border-gray-200 text-gray-600 hover:bg-gray-50"
-                  >
-                    Copy Code
-                  </Button>
-                  <Button onClick={() => router.push(`/status/${encodeURIComponent(successRef)}`)} className="px-3 bg-blue-600 hover:bg-blue-700 text-white">
-                    View Status
-                  </Button>
-                </div>
+              <div className="mb-8 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Reference Code</span>
+                <div className="font-mono text-xl font-bold text-slate-900">{successRef}</div>
               </div>
             )}
             <div className="space-y-3">
-              <Button onClick={() => router.push("/")} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                Back to Home
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSuccessRef(null)
-                  setForm({
-                    description: "",
-                    category: "",
-                    reporter_full_name: "",
-                    reporter_phone: "",
-                    reporter_email: "",
-                    reporter_block: "",
-                    reporter_lot: "",
-                    reporter_phase: "",
-                    reporter_street: "",
-                    suggested_solution: "",
-                    acknowledged: false,
-                    priority: "P3",
-                  })
-                  setSelectedResidentToken(null)
-                  setNameSuggestions([])
-                }}
-                className="w-full border-gray-200 text-gray-600 hover:bg-gray-50"
-              >
-                Report Another Issue
+              <Button onClick={() => router.push("/")} className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg shadow-lg shadow-blue-500/30">
+                Done
               </Button>
             </div>
           </CardContent>
@@ -295,282 +341,324 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      {/* Safe Area Top */}
-      <div className="h-safe-area-inset-top bg-transparent" />
+    <div className="min-h-screen bg-[#F2F2F7] font-sans pb-32">
+      {/* Sticky Glass Header */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-black/5 px-4 py-3 flex items-center justify-between shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+        <div className="flex items-center gap-3">
+          {step > 1 ? (
+            <Button onClick={prevStep} variant="ghost" size="icon" className="rounded-full text-slate-500 hover:text-slate-900 -ml-2">
+              <ChevronLeft className="w-6 h-6" />
+            </Button>
+          ) : (
+            <Link href="/">
+              <Button variant="ghost" size="icon" className="rounded-full text-slate-500 hover:text-slate-900 -ml-2">
+                <ArrowLeft className="w-6 h-6" />
+              </Button>
+            </Link>
+          )}
 
-      {/* Header */}
-      <header className="px-4 py-4 bg-white/80 backdrop-blur-md border-b border-border/40 sticky top-0 z-10">
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <div className="flex items-center space-x-3">
-            <Image
-              src="/NEVHA logo.svg"
-              alt="NEVHA Logo"
-              width={40}
-              height={40}
-              className="w-10 h-10"
-            />
-            <div>
-              <h1 className="text-lg font-bold text-foreground">NEVHA</h1>
-              <p className="text-xs text-primary font-medium">Northfields Executive Village</p>
-            </div>
-          </div>
-          <Button
-            size="sm"
-            onClick={() => router.push("/status")}
-            className="text-xs px-4"
-          >
-            Check Status
-          </Button>
+          <h1 className="text-[17px] font-semibold text-slate-900">
+            {step === 1 ? "Report Issue" : step === 2 ? "Who & Where" : step === 3 ? "Details" : "Review"}
+          </h1>
+        </div>
+        <div className="text-[13px] font-semibold text-slate-400">
+          Step {step} of 4
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="px-4 py-6 max-w-2xl mx-auto">
-        {/* Page Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-3">
-            <Button variant="ghost" size="icon" onClick={() => router.push("/")} className="rounded-full">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h2 className="text-2xl font-bold text-foreground">Report a Concern</h2>
-              <p className="text-sm text-muted-foreground">Share details to help us resolve it quickly</p>
-            </div>
-          </div>
+      <main className="px-4 py-6 max-w-md mx-auto space-y-6">
+
+        {/* Progress Bar */}
+        <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-blue-600 transition-all duration-500 ease-out"
+            style={{ width: `${(step / 4) * 100}%` }}
+          />
         </div>
 
-        <Card className="rounded-[2rem] border-border/50 shadow-lg bg-card overflow-hidden">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-foreground text-lg">Issue Details</CardTitle>
-            <CardDescription className="text-muted-foreground text-sm">
-              Please provide as much detail as possible. You don't need to sign in to submit.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
-                <Alert variant="destructive" className="border-red-200 bg-red-50 text-red-900 rounded-2xl">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+        {/* Step 1: Category Selection */}
+        {step === 1 && (
+          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+            <h2 className="text-[20px] font-bold text-slate-900 leading-tight px-2">
+              What kind of problem is it?
+            </h2>
+            <div className="grid grid-cols-2 gap-2.5">
+              {deptOptions.map((cat) => {
+                const Icon = getCategoryIcon(cat)
+                const isSelected = form.category === cat
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => update("category", cat)}
+                    className={`p-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${isSelected
+                      ? "bg-blue-600 border-blue-600 shadow-md shadow-blue-500/20"
+                      : "bg-white border-slate-100 shadow-sm hover:border-slate-200"
+                      }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${isSelected ? "bg-white/20 text-white" : "bg-slate-50 text-slate-600"
+                      }`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span className={`font-bold text-[15px] block leading-tight ${isSelected ? "text-white" : "text-slate-900"}`}>
+                      {cat}
+                    </span>
+                  </button>
+                )
+              })}
+              <button
+                onClick={() => update("category", "Others")}
+                className={`p-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${form.category === "Others"
+                  ? "bg-slate-800 border-slate-800 shadow-lg shadow-slate-900/30"
+                  : "bg-white border-slate-100 shadow-sm hover:border-slate-200"
+                  }`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${form.category === "Others" ? "bg-white/20 text-white" : "bg-slate-50 text-slate-600"
+                  }`}>
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <span className={`font-bold text-[15px] block leading-tight ${form.category === "Others" ? "text-white" : "text-slate-900"}`}>
+                  Others
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
 
-              <div className="pt-2">
-                <p className="text-xs font-bold text-primary uppercase tracking-wider">Your Details</p>
-              </div>
+        {/* Step 2: Who & Where */}
+        {step === 2 && (
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+            <div className="px-2">
+              <h2 className="text-[24px] font-bold text-slate-900 leading-tight mb-2">
+                First, let's verify it's you.
+              </h2>
+              <p className="text-slate-500 text-[15px]">
+                Start typing your name and select it from the list.
+              </p>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="reporter_full_name" className="text-foreground/80 text-sm font-medium">Full Name</Label>
+            <div className="bg-white p-6 rounded-[1.75rem] shadow-sm border border-slate-100 space-y-4">
+              <div>
+                <Label className="text-[13px] text-slate-500 font-bold uppercase tracking-wide mb-2 block pl-1">Your Name</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="reporter_full_name"
-                    placeholder="Full Name"
                     value={form.reporter_full_name}
                     onChange={(e) => {
                       update("reporter_full_name", e.target.value)
                       if (selectedResidentToken) setSelectedResidentToken(null)
-                      if (verifyError) setVerifyError(false)
                     }}
-                    disabled={isSubmitting}
-                    className={`pl-10 h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl ${verifyError ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
+                    className="h-14 bg-slate-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500/20 text-[17px] px-4"
+                    placeholder="e.g. Juan Della Cruz"
+                    autoFocus
                   />
                   {selectedResidentToken && (
-                    <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
+                    <div className="absolute right-4 top-4 text-emerald-500 bg-white rounded-full p-0.5 shadow-sm">
+                      <CheckCircle className="w-6 h-6" />
+                    </div>
                   )}
                 </div>
-                {!selectedResidentToken && (
-                  <div className="mt-2 text-[11px] sm:text-xs border border-amber-200/50 bg-amber-50 text-amber-800 rounded-xl px-3 py-2">
-                    Only registered homeowners can submit. Start typing your full name and select from the list to verify.
-                  </div>
-                )}
-                {verifyError && (
-                  <p className="mt-1 text-xs text-destructive font-medium">Please select your name from the suggestions to verify before submitting.</p>
-                )}
-                {!selectedResidentToken && (nameSuggestions.length > 0 || isSearchingName) && (
-                  <div className="mt-2 border border-border/50 rounded-xl bg-white shadow-lg overflow-hidden">
-                    {isSearchingName && (
-                      <div className="px-4 py-3 text-xs text-muted-foreground">Searching…</div>
-                    )}
-                    {nameSuggestions.map((s) => (
+
+                {/* Suggestions */}
+                {!selectedResidentToken && form.reporter_full_name.length > 2 && (
+                  <div className="mt-3 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden divide-y divide-slate-50">
+                    {nameSuggestions.map(s => (
                       <button
-                        type="button"
                         key={s.token}
                         onClick={() => {
                           setSelectedResidentToken(s.token)
                           update("reporter_full_name", s.name)
                           setNameSuggestions([])
-                          if (verifyError) setVerifyError(false)
                         }}
-                        className="block w-full text-left px-4 py-3 text-sm hover:bg-secondary/50 transition-colors border-b border-border/50 last:border-0"
+                        className="w-full text-left p-4 hover:bg-blue-50 transition-colors flex items-center justify-between group"
                       >
-                        {s.name}
+                        <span className="font-medium text-slate-700 group-hover:text-blue-700">{s.name}</span>
+                        <div className="w-6 h-6 rounded-full border-2 border-slate-200 group-hover:border-blue-500" />
                       </button>
                     ))}
+                    {nameSuggestions.length === 0 && !isSearchingName && (
+                      <div className="p-4 text-slate-400 text-sm italic text-center">No residents found. Keep typing...</div>
+                    )}
                   </div>
+                )}
+                {selectedResidentToken && (
+                  <p className="text-emerald-600 text-sm font-medium mt-2 pl-2 flex items-center gap-1.5">
+                    <CheckCircle className="w-4 h-4" /> Verified Resident
+                  </p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="reporter_phone" className="text-foreground/80 text-sm font-medium">Contact Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="reporter_phone"
-                    placeholder="Contact Number"
-                    value={form.reporter_phone}
-                    onChange={(e) => update("reporter_phone", e.target.value)}
-                    disabled={isSubmitting}
-                    className="pl-10 h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="reporter_block" className="text-foreground/80 text-sm font-medium">Block</Label>
-                  <Input
-                    id="reporter_block"
-                    placeholder="Blk"
-                    value={form.reporter_block}
-                    onChange={(e) => update("reporter_block", e.target.value)}
-                    disabled={isSubmitting}
-                    className="h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl text-center"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reporter_lot" className="text-foreground/80 text-sm font-medium">Lot</Label>
-                  <Input
-                    id="reporter_lot"
-                    placeholder="Lot"
-                    value={form.reporter_lot}
-                    onChange={(e) => update("reporter_lot", e.target.value)}
-                    disabled={isSubmitting}
-                    className="h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl text-center"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reporter_phase" className="text-foreground/80 text-sm font-medium">Phase</Label>
-                  <Input
-                    id="reporter_phase"
-                    placeholder="Ph"
-                    value={form.reporter_phase}
-                    onChange={(e) => update("reporter_phase", e.target.value)}
-                    disabled={isSubmitting}
-                    className="h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl text-center"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reporter_street" className="text-foreground/80 text-sm font-medium">Street</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="reporter_street"
-                      placeholder="St"
-                      value={form.reporter_street}
-                      onChange={(e) => update("reporter_street", e.target.value)}
-                      disabled={isSubmitting}
-                      className="pl-9 h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl"
-                    />
+              <div className="pt-2">
+                <Label className="text-[13px] text-slate-500 font-bold uppercase tracking-wide mb-2 block pl-1">Category Selected</Label>
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl">
+                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600">
+                    {(() => {
+                      const Icon = getCategoryIcon(form.category)
+                      return <Icon className="w-5 h-5" />
+                    })()}
                   </div>
+                  <span className="font-bold text-slate-900">{form.category}</span>
+                  <button onClick={() => setStep(1)} className="ml-auto text-xs font-bold text-blue-600 px-3 py-1 bg-white rounded-lg shadow-sm">
+                    Change
+                  </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
 
-              <div className="space-y-2">
-                <Label htmlFor="reporter_email" className="text-foreground/80 text-sm font-medium">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="reporter_email"
-                    type="email"
-                    placeholder="Email"
-                    value={form.reporter_email}
-                    onChange={(e) => update("reporter_email", e.target.value)}
-                    disabled={isSubmitting}
-                    className="pl-10 h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl"
-                  />
-                </div>
-              </div>
+        {/* Step 3: Details */}
+        {step === 3 && (
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+            <div className="px-2">
+              <h2 className="text-[24px] font-bold text-slate-900 leading-tight mb-2">
+                Describe the issue.
+              </h2>
+              <p className="text-slate-500 text-[15px]">
+                The more details, the faster we can fix it.
+              </p>
+            </div>
 
-              <div className="pt-4">
-                <p className="text-xs font-bold text-primary uppercase tracking-wider">Concern Details</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="category" className="text-foreground/80 text-sm font-medium">Issue Related To *</Label>
-                <Select value={form.category} onValueChange={(v) => update("category", v)} disabled={isSubmitting}>
-                  <SelectTrigger className="h-11 bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border/50 shadow-lg">
-                    {deptOptions.map((name) => (
-                      <SelectItem key={name} value={name} className="rounded-lg my-1 cursor-pointer">
-                        {name}
-                      </SelectItem>
-                    ))}
-                    <SelectItem key="Others" value="Others" className="rounded-lg my-1 cursor-pointer">
-                      Others
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-foreground/80 text-sm font-medium">Describe Your Concern *</Label>
+            <div className="bg-white p-6 rounded-[1.75rem] shadow-sm border border-slate-100 space-y-4">
+              <div>
                 <Textarea
-                  id="description"
-                  placeholder="Provide details (when it started, frequency, any context)."
                   value={form.description}
                   onChange={(e) => update("description", e.target.value)}
-                  disabled={isSubmitting}
-                  rows={5}
-                  className="bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl resize-none p-4"
+                  className="min-h-[180px] bg-slate-50 border-0 rounded-2xl text-[16px] leading-[1.6] resize-none p-5 focus:ring-2 focus:ring-blue-500/20"
+                  placeholder="Example: Street light blinking in front of Block 5, Lot 2..."
+                  autoFocus
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="suggested_solution" className="text-foreground/80 text-sm font-medium">Do you have any solution to suggest?</Label>
-                <Textarea
-                  id="suggested_solution"
-                  placeholder="Your suggestion"
-                  value={form.suggested_solution}
-                  onChange={(e) => update("suggested_solution", e.target.value)}
-                  disabled={isSubmitting}
-                  rows={3}
-                  className="bg-secondary/30 border-transparent focus:border-primary/30 focus:bg-white transition-all rounded-xl resize-none p-4"
-                />
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <div>
+                  <Label className="text-[13px] text-slate-500 font-bold uppercase tracking-wide mb-2 block pl-1">Phone (Optional)</Label>
+                  <Input
+                    value={form.reporter_phone}
+                    onChange={(e) => update("reporter_phone", e.target.value)}
+                    className="h-12 bg-slate-50 border-0 rounded-xl"
+                    placeholder="0917..."
+                  />
+                </div>
+                <div>
+                  <Label className="text-[13px] text-slate-500 font-bold uppercase tracking-wide mb-2 block pl-1">Email (Required)</Label>
+                  <Input
+                    value={form.reporter_email}
+                    onChange={(e) => update("reporter_email", e.target.value)}
+                    className="h-12 bg-slate-50 border-0 rounded-xl"
+                    placeholder="name@example.com"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[13px] text-slate-500 font-bold uppercase tracking-wide mb-2 block pl-1">Location (Optional)</Label>
+                  <Input
+                    value={form.reporter_block}
+                    onChange={(e) => update("reporter_block", e.target.value)}
+                    className="h-12 bg-slate-50 border-0 rounded-xl"
+                    placeholder="Blk/Lot..."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Review */}
+        {step === 4 && (
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+            <div className="px-2">
+              <h2 className="text-[24px] font-bold text-slate-900 leading-tight">
+                Almost done!
+              </h2>
+              <p className="text-slate-500 text-[15px]">
+                Review your report before sending.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-[1.75rem] shadow-sm border border-slate-100 space-y-6">
+
+              {/* Summary Cards */}
+              <div className="space-y-4">
+                <div className="flex gap-4 items-start">
+                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 flex-shrink-0">
+                    {(() => {
+                      const Icon = getCategoryIcon(form.category)
+                      return <Icon className="w-5 h-5" />
+                    })()}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">{form.category}</h4>
+                    <p className="text-slate-500 text-sm">Category</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 flex-shrink-0">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">{form.reporter_full_name}</h4>
+                    <p className="text-emerald-600 text-sm font-medium flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" /> Verified Resident
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl">
+                  <p className="text-slate-700 italic text-[15px] leading-relaxed">
+                    "{form.description}"
+                  </p>
+                </div>
               </div>
 
-              <div className="flex items-start gap-4 rounded-xl border border-primary/20 p-4 bg-primary/5">
+              {/* Checkbox */}
+              <div className="flex items-start gap-4 pt-2 cursor-pointer" onClick={() => update("acknowledged", !form.acknowledged)}>
                 <Checkbox
-                  id="acknowledged"
+                  id="ack"
                   checked={form.acknowledged}
-                  onCheckedChange={(v) => update("acknowledged", Boolean(v))}
-                  disabled={isSubmitting}
-                  className="mt-0.5 h-5 w-5 border-2 border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded-md"
+                  onCheckedChange={(c) => update("acknowledged", !!c)}
+                  className="mt-1 w-6 h-6 rounded-lg border-2 border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 transition-all"
                 />
-                <Label htmlFor="acknowledged" className="text-sm text-foreground/90 leading-relaxed font-medium cursor-pointer">
-                  I understand that this is not an Emergency hotline and I shouldn't expect immediate response. The
-                  concern I am raising is to further improve the community of Northfields.
-                </Label>
+                <label htmlFor="ack" className="text-[14px] text-slate-600 leading-snug cursor-pointer select-none">
+                  I verify that this report is true and accurate. I understand that malicious reporting may lead to penalties.
+                </label>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <Button type="button" variant="ghost" onClick={() => router.push("/")} disabled={isSubmitting} className="w-full sm:flex-1 rounded-full text-muted-foreground hover:bg-secondary">
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting || !selectedResidentToken} className="w-full sm:flex-1 rounded-full shadow-lg hover:shadow-xl transition-all">
-                  {isSubmitting ? "Submitting..." : "Submit Report"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          </div>
+        )}
 
-      {/* Bottom Navigation */}
-      <BottomNav />
+        {/* Error Message */}
+        {error && (
+          <div className="animate-in slide-in-from-bottom-2 fade-in duration-300 bg-red-50 text-red-600 p-4 rounded-[1.25rem] text-sm font-bold border border-red-100 flex items-center gap-3 shadow-sm">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            {error}
+          </div>
+        )}
+
+        {/* Action Button */}
+        <div className="pt-2">
+          {step < 4 ? (
+            <Button
+              onClick={nextStep}
+              className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-[1.5rem] shadow-xl shadow-slate-900/10 text-[18px] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              Next Step <ChevronRight className="w-5 h-5" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !form.acknowledged}
+              className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-[1.5rem] shadow-xl shadow-blue-600/20 text-[18px] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+            >
+              {isSubmitting ? (
+                "Sending Report..."
+              ) : (
+                <>Submit Report <CheckCircle className="w-5 h-5" /></>
+              )}
+            </Button>
+          )}
+        </div>
+
+      </main>
     </div>
   )
 }

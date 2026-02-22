@@ -1,14 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, Building2, LogIn, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
+import { motion } from "framer-motion"
 
 interface DeptItem { id: string; name: string }
 
@@ -20,30 +20,24 @@ export default function DeptLoginPage() {
   const [displayName, setDisplayName] = useState("")
   const [loading, setLoading] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    // Prefill saved display name
     const savedName = localStorage.getItem("dept_display_name") || ""
     if (savedName) setDisplayName(savedName)
 
-    async function loadDepts() {
-      try {
-        const res = await fetch("/api/dept/departments", { cache: "no-store" })
-        const json = await res.json()
-        if (!res.ok) throw new Error(json?.error || "Failed to load departments")
-        setDepartments(Array.isArray(json.items) ? json.items : [])
-      } catch (e) {
-        toast.error((e as any)?.message || "Failed to load departments")
-      }
-    }
-    loadDepts()
+    fetch("/api/dept/departments", { cache: "no-store" })
+      .then(r => r.json())
+      .then(j => setDepartments(Array.isArray(j.items) ? j.items : []))
+      .catch(() => toast.error("Failed to load departments"))
   }, [])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!departmentId) return toast.error("Please select a department")
-    if (!password) return toast.error("Please enter the department password")
-    if (!displayName.trim()) return toast.error("Please enter your name for audit trail")
+    setError("")
+    if (!departmentId) { setError("Please select a department"); return }
+    if (!password) { setError("Please enter the portal password"); return }
+    if (!displayName.trim()) { setError("Please enter your name for the audit trail"); return }
 
     setLoading(true)
     try {
@@ -54,30 +48,49 @@ export default function DeptLoginPage() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json?.error || "Login failed")
-
       localStorage.setItem("dept_display_name", displayName.trim())
-      toast.success("Logged in")
       router.replace("/dept/issues")
-    } catch (e) {
-      toast.error((e as any)?.message || "Login failed")
+    } catch (e: any) {
+      setError(e?.message || "Login failed")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Department Portal Login</CardTitle>
-        </CardHeader>
-        <CardContent>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="relative w-full max-w-sm"
+      >
+        {/* Glass card */}
+        <div className="bg-white/[0.06] backdrop-blur-2xl border border-white/10 rounded-3xl p-7 shadow-2xl">
+          {/* Icon + branding */}
+          <div className="flex flex-col items-center gap-3 mb-8">
+            <div className="w-14 h-14 bg-blue-500/20 border border-blue-400/30 rounded-2xl flex items-center justify-center">
+              <Building2 className="w-7 h-7 text-blue-300" />
+            </div>
+            <div className="text-center">
+              <h1 className="text-xl font-bold text-white tracking-tight">Department Portal</h1>
+              <p className="text-sm text-white/50 mt-0.5">NEVHA Issue Management</p>
+            </div>
+          </div>
+
           <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Department</Label>
+            {/* Department picker */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-white/60">Department</Label>
               <Select value={departmentId} onValueChange={setDepartmentId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
+                <SelectTrigger className="h-11 bg-white/10 border-white/10 text-white rounded-xl focus:ring-white/20 focus:border-white/30">
+                  <SelectValue placeholder="Select your department" />
                 </SelectTrigger>
                 <SelectContent>
                   {departments.map((d) => (
@@ -86,38 +99,75 @@ export default function DeptLoginPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Department Password</Label>
+
+            {/* Password */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-white/60">Portal Password</Label>
               <div className="relative">
                 <Input
                   type={showPwd ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="pr-10"
+                  className="h-11 pr-10 bg-white/10 border-white/10 text-white placeholder:text-white/30 rounded-xl focus:border-white/30"
                 />
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
-                  className="absolute inset-y-0 right-0 h-full"
-                  onClick={() => setShowPwd((s) => !s)}
+                  className="absolute inset-y-0 right-0 h-full text-white/50 hover:text-white"
+                  onClick={() => setShowPwd(s => !s)}
                   aria-label={showPwd ? "Hide password" : "Show password"}
                 >
-                  {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </Button>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Your name (for updates)</Label>
-              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g., Jane D." required />
+
+            {/* Display name */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-white/60">Your name (for audit trail)</Label>
+              <Input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g., Jane D."
+                required
+                className="h-11 bg-white/10 border-white/10 text-white placeholder:text-white/30 rounded-xl focus:border-white/30"
+              />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
+
+            {/* Error */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-400/20 rounded-xl"
+              >
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-300">{error}</p>
+              </motion.div>
+            )}
+
+            {/* Submit */}
+            <Button
+              type="submit"
+              className="w-full h-11 gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold shadow-lg shadow-blue-500/25 mt-2"
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <LogIn className="w-4 h-4" />
+              )}
+              {loading ? "Signing in…" : "Sign in"}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+
+        <p className="text-center text-white/25 text-xs mt-5">
+          Northfields Executive Village Homeowners Association
+        </p>
+      </motion.div>
     </div>
   )
 }

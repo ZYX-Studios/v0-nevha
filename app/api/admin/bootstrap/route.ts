@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { requireAdminAPI } from "@/lib/supabase/guards"
 
 export async function POST(req: Request) {
+
+
   try {
     const url = new URL(req.url)
     const key = url.searchParams.get("key")
@@ -45,6 +48,8 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+
+
   // Convenience GET to perform the same bootstrap as POST
   try {
     const url = new URL(req.url)

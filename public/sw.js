@@ -1,6 +1,6 @@
 // Service Worker for PWA offline functionality
 
-const CACHE_VERSION = "v3.2" // Update this when deploying changes
+const CACHE_VERSION = "v3.3" // Update this when deploying changes
 const CACHE_NAME = `nevha-pwa-${CACHE_VERSION}`
 const STATIC_CACHE_URLS = [
   "/",
@@ -12,6 +12,9 @@ const STATIC_CACHE_URLS = [
   "/nevha-apple-touch-icon.png",
   "/nevha-og-image.png"
 ]
+
+// Routes that must NEVER serve stale/cached HTML (admin needs real-time data)
+const NEVER_CACHE_PREFIXES = ["/admin", "/dept"]
 
 // Track if this is a new service worker version
 let isNewVersion = false
@@ -79,6 +82,9 @@ self.addEventListener("fetch", (event) => {
 
   // NEVER cache API responses to avoid stale data
   if (url.pathname.startsWith("/api/")) return
+
+  // NEVER cache admin/dept pages — they require real-time data
+  if (NEVER_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p))) return
 
   // Network First strategy for HTML pages (to get latest content)
   if (event.request.mode === "navigate" || event.request.headers.get("accept")?.includes("text/html")) {
@@ -203,7 +209,7 @@ async function notifyClientsOfUpdate() {
   try {
     const clients = await self.clients.matchAll()
     console.log(`[SW] Notifying ${clients.length} clients about update`)
-    
+
     clients.forEach(client => {
       client.postMessage({
         type: 'APP_UPDATE_AVAILABLE',
@@ -218,7 +224,7 @@ async function notifyClientsOfUpdate() {
 // Handle messages from clients
 self.addEventListener('message', (event) => {
   console.log('[SW] Message received:', event.data)
-  
+
   if (event.data && event.data.type === 'FORCE_REFRESH') {
     // Clear all caches and force refresh
     caches.keys().then(cacheNames => {

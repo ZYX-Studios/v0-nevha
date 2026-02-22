@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server-admin';
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 export const dynamic = 'force-dynamic';
 // GET /api/admin/dues/summary - Get dues collection summary
 export async function GET(request: NextRequest) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient();
     
     const searchParams = request.nextUrl.searchParams;

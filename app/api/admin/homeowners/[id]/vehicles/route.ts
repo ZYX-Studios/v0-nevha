@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 import { z } from "zod"
+import { requireAdminAPI } from "@/lib/supabase/guards"
 
 const UpsertVehicleSchema = z.object({
   plateNo: z.string().min(1),
@@ -10,6 +11,8 @@ const UpsertVehicleSchema = z.object({
 })
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const supabase = createAdminClient()
     const homeownerId = params.id
@@ -39,6 +42,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const supabase = createAdminClient()
     const homeownerId = params.id
@@ -62,7 +67,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .maybeSingle()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-
     return NextResponse.json({ id: data?.id }, { status: 201 })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })

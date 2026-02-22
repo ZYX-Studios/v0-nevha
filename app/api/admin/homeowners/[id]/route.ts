@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
+import { requireAdminAPI } from "@/lib/supabase/guards"
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const supabase = createAdminClient()
     const id = params.id
@@ -36,7 +39,6 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       emergencyContactName: data.emergency_contact_name as string | null,
       emergencyContactPhone: data.emergency_contact_phone as string | null,
       notes: data.notes as string | null,
-      // enriched fields
       firstName: data.first_name as string | null,
       lastName: data.last_name as string | null,
       middleInitial: data.middle_initial as string | null,
@@ -64,50 +66,38 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const supabase = createAdminClient()
     const id = params.id
     const body = await req.json()
 
-    // Map frontend fields to DB columns
     const updates: any = {}
     if (body.firstName !== undefined) updates.first_name = body.firstName
     if (body.lastName !== undefined) updates.last_name = body.lastName
     if (body.middleInitial !== undefined) updates.middle_initial = body.middleInitial
     if (body.suffix !== undefined) updates.suffix = body.suffix
-
     if (body.block !== undefined) updates.block = body.block
     if (body.lot !== undefined) updates.lot = body.lot
     if (body.phase !== undefined) updates.phase = body.phase
     if (body.street !== undefined) updates.street = body.street
     if (body.unitNumber !== undefined) updates.unit_number = body.unitNumber
-
     if (body.contactNumber !== undefined) updates.contact_number = body.contactNumber
     if (body.email !== undefined) updates.email = body.email
     if (body.facebookProfile !== undefined) updates.facebook_profile = body.facebookProfile
     if (body.isOwner !== undefined) updates.is_owner = body.isOwner
-
     if (body.moveInDate !== undefined) updates.move_in_date = body.moveInDate
     if (body.residencyStartDate !== undefined) updates.residency_start_date = body.residencyStartDate
     if (body.lengthOfResidency !== undefined) {
-      if (body.lengthOfResidency === "") {
-        updates.length_of_residency = null
-      } else {
-        updates.length_of_residency = Number(body.lengthOfResidency)
-      }
+      updates.length_of_residency = body.lengthOfResidency === "" ? null : Number(body.lengthOfResidency)
     }
-
     if (body.emergencyContactName !== undefined) updates.emergency_contact_name = body.emergencyContactName
     if (body.emergencyContactPhone !== undefined) updates.emergency_contact_phone = body.emergencyContactPhone
     if (body.notes !== undefined) updates.notes = body.notes
-
     updates.updated_at = new Date().toISOString()
 
-    const { error } = await supabase
-      .from("homeowners")
-      .update(updates)
-      .eq("id", id)
-
+    const { error } = await supabase.from("homeowners").update(updates).eq("id", id)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
     return NextResponse.json({ success: true }, { status: 200 })

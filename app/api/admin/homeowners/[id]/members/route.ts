@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 import { z } from "zod"
+import { requireAdminAPI } from "@/lib/supabase/guards"
 
 const CreateMemberSchema = z.object({
   fullName: z.string().min(1),
@@ -10,6 +11,8 @@ const CreateMemberSchema = z.object({
 })
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const supabase = createAdminClient()
     const homeownerId = params.id
@@ -40,6 +43,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const supabase = createAdminClient()
     const homeownerId = params.id
@@ -60,7 +65,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-
     return NextResponse.json({ success: true }, { status: 201 })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })

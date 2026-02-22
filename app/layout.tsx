@@ -5,6 +5,7 @@ import { GeistMono as geistMono } from "geist/font/mono"
 import { AuthProvider } from "@/hooks/use-auth"
 import { DevTools } from "@/components/dev/dev-tools"
 import { PWAWrapper } from "@/components/pwa/pwa-wrapper"
+import { BottomNav } from "@/components/ui/bottom-nav"
 import { Suspense } from "react"
 import { Toaster } from "sonner"
 import "./globals.css"
@@ -57,11 +58,38 @@ export const viewport: Viewport = {
   themeColor: "#1f2937",
 }
 
-export default function RootLayout({
+import { createClient } from "@/lib/supabase/server"
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  let initialSessionData = null
+  if (user) {
+    const [{ data: dbUser }, { data: req }] = await Promise.all([
+      supabase.from('users').select('*').eq('id', user.id).maybeSingle(),
+      supabase.from('registration_requests').select('status, documents').eq('user_id', user.id).maybeSingle()
+    ])
+
+    if (dbUser) {
+      initialSessionData = {
+        role: dbUser.role,
+        firstName: dbUser.first_name,
+        lastName: dbUser.last_name,
+        phone: dbUser.phone,
+        isActive: dbUser.is_active,
+        createdAt: dbUser.created_at,
+        updatedAt: dbUser.updated_at,
+        registrationStatus: req?.status || null,
+        hasDocuments: Array.isArray(req?.documents) && (req?.documents?.length || 0) > 0
+      }
+    }
+  }
+
   return (
     <html lang="en">
       <head>
@@ -142,11 +170,12 @@ export default function RootLayout({
           />
         )}
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-gray-900`} style={{backgroundColor: '#111827'}}>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-gray-900`} style={{ backgroundColor: '#111827' }}>
         <Suspense fallback={<div>Loading...</div>}>
-          <AuthProvider>
+          <AuthProvider initialUser={user} initialSessionData={initialSessionData}>
             <PWAWrapper>
               {children}
+              <BottomNav />
               {process.env.NODE_ENV !== "production" && <DevTools />}
               {/* Global toaster for notifications */}
               <Toaster richColors position="top-right" />

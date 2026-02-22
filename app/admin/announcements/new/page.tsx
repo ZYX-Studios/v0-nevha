@@ -1,404 +1,291 @@
-// Create new announcement page
-
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import React, { useState } from "react"
 import { useRouter } from "next/navigation"
+import { motion, AnimatePresence } from "framer-motion"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import { useAuth } from "@/hooks/use-auth"
+import {
+  ArrowLeft, Megaphone, Flame, AlertTriangle, Info, ArrowUp, CheckCircle2,
+  Eye, EyeOff, Clock, CalendarClock, Trash2
+} from "lucide-react"
 import type { CreateAnnouncementData } from "@/lib/types"
-import { ArrowLeft, AlertCircle, CheckCircle, Calendar } from "lucide-react"
 
-function CreateAnnouncementContent() {
-  const { session } = useAuth()
+const PRIORITIES = [
+  { value: "low", label: "Low", icon: Info, color: "text-slate-500", bg: "bg-slate-100 border-slate-200 data-[selected=true]:bg-slate-200 data-[selected=true]:border-slate-400" },
+  { value: "normal", label: "Normal", icon: ArrowUp, color: "text-blue-600", bg: "bg-blue-50 border-blue-100 data-[selected=true]:bg-blue-100 data-[selected=true]:border-blue-400" },
+  { value: "high", label: "High", icon: AlertTriangle, color: "text-orange-600", bg: "bg-orange-50 border-orange-100 data-[selected=true]:bg-orange-100 data-[selected=true]:border-orange-400" },
+  { value: "urgent", label: "Urgent", icon: Flame, color: "text-red-600", bg: "bg-red-50 border-red-100 data-[selected=true]:bg-red-100 data-[selected=true]:border-red-400" },
+]
+
+type PublishMode = "draft" | "now" | "schedule"
+
+export default function CreateAnnouncementPage() {
   const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSubmitted, setIsSubmitted] = useState(false)
-  const [error, setError] = useState("")
-  const titleMax = 120
-  const contentMax = 2000
+  const [title, setTitle] = useState("")
+  const [content, setContent] = useState("")
+  const [priority, setPriority] = useState<"low" | "normal" | "high" | "urgent">("normal")
+  const [publishMode, setPublishMode] = useState<PublishMode>("now")
+  const [scheduleDate, setScheduleDate] = useState("")
+  const [expiryDate, setExpiryDate] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState(false)
 
-  const initialForm: CreateAnnouncementData & { isPublished: boolean; schedulePublish: boolean } = {
-    title: "",
-    content: "",
-    priority: "normal",
-    publishDate: "",
-    expiryDate: "",
-    isPublished: false,
-    schedulePublish: false,
-  }
-
-  const [formData, setFormData] = useState<
-    CreateAnnouncementData & {
-      isPublished: boolean
-      schedulePublish: boolean
-    }
-  >(initialForm)
-
-  const handleChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  // Min datetime string in local time for the datetime-local input
+  const nowLocal = () => {
+    const now = new Date()
+    now.setSeconds(0, 0)
+    return now.toISOString().slice(0, 16)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
+    if (!title.trim() || !content.trim()) { toast.error("Title and content are required"); return }
+    if (publishMode === "schedule" && !scheduleDate) { toast.error("Please pick a publish date/time"); return }
 
-    // Validation
-    if (!formData.title.trim() || !formData.content.trim()) {
-      setError("Please fill in all required fields")
-      return
-    }
-
-    if (formData.schedulePublish && !formData.publishDate) {
-      setError("Please select a publish date when scheduling")
-      return
-    }
-
-    if (formData.expiryDate && formData.publishDate) {
-      const publishDate = new Date(formData.publishDate)
-      const expiryDate = new Date(formData.expiryDate)
-      if (expiryDate <= publishDate) {
-        setError("Expiry date must be after publish date")
-        return
-      }
-    }
-
-    setIsSubmitting(true)
-
+    setSubmitting(true)
     try {
-      const payload = {
-        title: formData.title.trim(),
-        content: formData.content.trim(),
-        priority: formData.priority,
-        // If scheduling, mark published with a future publishDate
-        isPublished: formData.schedulePublish ? true : formData.isPublished,
-        publishDate: formData.schedulePublish ? formData.publishDate : undefined,
-        expiryDate: formData.expiryDate || undefined,
+      const payload: CreateAnnouncementData & { isPublished: boolean } = {
+        title: title.trim(),
+        content: content.trim(),
+        priority,
+        isPublished: publishMode === "now",
+        publishDate: publishMode === "schedule" ? scheduleDate : undefined,
+        expiryDate: expiryDate || undefined,
       }
-
       const res = await fetch("/api/admin/announcements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
       const json = await res.json()
-      if (!res.ok) {
-        throw new Error(json?.error || "Failed to create announcement")
-      }
-
-      setIsSubmitted(true)
-    } catch (err: any) {
-      setError(err?.message || "Failed to create announcement. Please try again.")
+      if (!res.ok) throw new Error(json?.error || "Failed to create announcement")
+      setDone(true)
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to create announcement")
     } finally {
-      setIsSubmitting(false)
+      setSubmitting(false)
     }
   }
 
-  const getPriorityVariant = (priority: string): "default" | "secondary" | "destructive" | "outline" => {
-    switch (priority) {
-      case "urgent":
-        return "destructive"
-      case "high":
-        return "secondary"
-      default:
-        return "outline"
-    }
-  }
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return ""
-    const d = new Date(dateString)
-    return d.toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
-
-  const toLocalInputValue = (date: Date) => {
-    const pad = (n: number) => `${n}`.padStart(2, "0")
-    const yyyy = date.getFullYear()
-    const mm = pad(date.getMonth() + 1)
-    const dd = pad(date.getDate())
-    const hh = pad(date.getHours())
-    const mi = pad(date.getMinutes())
-    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
-  }
-
-  const setExpiryInDays = (days: number) => {
-    const base = formData.schedulePublish && formData.publishDate ? new Date(formData.publishDate) : new Date()
-    const d = new Date(base)
-    d.setDate(d.getDate() + days)
-    handleChange("expiryDate", toLocalInputValue(d))
-  }
-
-  if (isSubmitted) {
+  if (done) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="text-center py-8">
-            <div className="bg-green-100 rounded-full p-3 w-fit mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-            <h2 className="text-xl font-semibold mb-2">Announcement Created</h2>
-            <p className="text-muted-foreground mb-6">
-              Your announcement has been {formData.isPublished ? "published" : "saved as draft"} successfully.
-            </p>
-            <div className="space-y-2">
-              <Button onClick={() => router.push("/admin/announcements")} className="w-full">
-                Back to Announcements
-              </Button>
-              <Button variant="outline" onClick={() => router.push("/admin/announcements/new")} className="w-full">
-                Create Another
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-6">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-white rounded-xl shadow-sm border border-slate-100 p-10 text-center max-w-sm w-full"
+        >
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-1">Announcement Created</h2>
+          <p className="text-sm text-slate-500 mb-6">
+            {publishMode === "now" ? "Published immediately." :
+              publishMode === "schedule" ? `Scheduled for ${new Date(scheduleDate).toLocaleString()}.` :
+                "Saved as draft."}
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button onClick={() => router.push("/admin/announcements")} className="w-full rounded-xl">
+              Back to Announcements
+            </Button>
+            <Button variant="outline" onClick={() => { setDone(false); setTitle(""); setContent(""); }} className="w-full rounded-xl">
+              Create Another
+            </Button>
+          </div>
+        </motion.div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#F2F2F7] pb-20">
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push("/admin/announcements")}
-              className="flex items-center space-x-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back</span>
-            </Button>
-            <div>
-              <h1 className="text-lg font-bold">Create Announcement</h1>
-              <p className="text-sm text-muted-foreground">Share important information with the community</p>
-            </div>
-          </div>
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-black/5 px-4 sm:px-6 py-3 flex items-center gap-3">
+        <button
+          onClick={() => router.push("/admin/announcements")}
+          className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4 text-slate-600" />
+        </button>
+        <div className="flex items-center gap-2 flex-1">
+          <Megaphone className="w-4 h-4 text-orange-500" />
+          <h1 className="text-[17px] font-bold text-slate-900">New Announcement</h1>
         </div>
+        <Button
+          form="announcement-form"
+          type="submit"
+          disabled={submitting || !title.trim() || !content.trim()}
+          size="sm"
+          className="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5"
+        >
+          {submitting ? "Publishing…" : publishMode === "draft" ? "Save Draft" : publishMode === "schedule" ? "Schedule" : "Publish"}
+        </Button>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>Announcement Details</CardTitle>
-            <CardDescription>Create a new announcement to share with homeowners.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+      <form id="announcement-form" onSubmit={handleSubmit} className="px-4 sm:px-6 py-5 max-w-2xl mx-auto space-y-4">
 
-              <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  placeholder="Announcement title"
-                  value={formData.title}
-                  onChange={(e) => handleChange("title", e.target.value)}
-                  disabled={isSubmitting}
-                  maxLength={titleMax}
-                />
-                <div className="text-xs text-muted-foreground text-right">{formData.title.length} / {titleMax}</div>
-              </div>
+        {/* Title */}
+        <div className="bg-white rounded-lg border border-slate-100 shadow-sm p-4 space-y-1">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Title</label>
+          <Input
+            placeholder="Announcement title…"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            maxLength={120}
+            className="border-0 p-0 h-auto text-[17px] font-semibold text-slate-900 placeholder:text-slate-300 focus-visible:ring-0 shadow-none"
+          />
+          <div className="text-right text-[10px] text-slate-300">{title.length}/120</div>
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="priority">Priority</Label>
-                <Select
-                  value={formData.priority}
-                  onValueChange={(value) => handleChange("priority", value)}
-                  disabled={isSubmitting}
+        {/* Content */}
+        <div className="bg-white rounded-lg border border-slate-100 shadow-sm p-4 space-y-1">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Content</label>
+          <Textarea
+            placeholder="Write your announcement here…"
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            maxLength={2000}
+            rows={6}
+            className="border-0 p-0 resize-none text-sm text-slate-700 placeholder:text-slate-300 focus-visible:ring-0 shadow-none"
+          />
+          <div className="text-right text-[10px] text-slate-300">{content.length}/2000</div>
+        </div>
+
+        {/* Priority */}
+        <div className="bg-white rounded-lg border border-slate-100 shadow-sm p-4 space-y-3">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block">Priority</label>
+          <div className="grid grid-cols-4 gap-2">
+            {PRIORITIES.map(p => {
+              const Icon = p.icon
+              const selected = priority === p.value
+              return (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => setPriority(p.value as "low" | "normal" | "high" | "urgent")}
+                  data-selected={selected}
+                  className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-[11px] font-semibold transition-all ${p.bg} ${selected ? "ring-2 ring-offset-1 ring-current" : ""}`}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Urgent items appear highlighted on the public page.</p>
-              </div>
+                  <Icon className={`w-4 h-4 ${p.color}`} />
+                  <span className={p.color}>{p.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="content">Content *</Label>
-                <Textarea
-                  id="content"
-                  placeholder="Write your announcement content here..."
-                  value={formData.content}
-                  onChange={(e) => handleChange("content", e.target.value)}
-                  disabled={isSubmitting}
-                  rows={6}
-                  maxLength={contentMax}
-                />
-                <div className="text-xs text-muted-foreground text-right">{formData.content.length} / {contentMax}</div>
-              </div>
+        {/* Publish mode */}
+        <div className="bg-white rounded-lg border border-slate-100 shadow-sm p-4 space-y-3">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block">Publish</label>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { value: "now", icon: Eye, label: "Now" },
+              { value: "schedule", icon: CalendarClock, label: "Schedule" },
+              { value: "draft", icon: EyeOff, label: "Draft" },
+            ] as { value: PublishMode; icon: React.ElementType; label: string }[]).map(m => {
+              const Icon = m.icon
+              const selected = publishMode === m.value
+              return (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => setPublishMode(m.value)}
+                  className={`flex flex-col items-center gap-1 py-3 rounded-xl border text-[11px] font-semibold transition-all ${selected
+                    ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                    : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
+                    }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {m.label}
+                </button>
+              )
+            })}
+          </div>
 
-              {/* Publishing Options */}
-              <div className="space-y-4 p-4 border rounded-lg">
-                <h3 className="font-medium">Publishing Options</h3>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="isPublished"
-                    checked={formData.isPublished}
-                    onCheckedChange={(checked) => handleChange("isPublished", checked as boolean)}
-                    disabled={isSubmitting || formData.schedulePublish}
-                    className="h-5 w-5 border-2 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
-                  />
-                  <Label htmlFor="isPublished" className="font-medium">Publish immediately</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="schedulePublish"
-                    checked={formData.schedulePublish}
-                    onCheckedChange={(checked) => {
-                      handleChange("schedulePublish", checked as boolean)
-                      if (checked) {
-                        handleChange("isPublished", false)
-                      }
-                    }}
-                    disabled={isSubmitting}
-                    className="h-5 w-5 border-2 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
-                  />
-                  <Label htmlFor="schedulePublish" className="font-medium">Schedule for later</Label>
-                </div>
-
-                {formData.schedulePublish && (
-                  <div className="space-y-2 ml-6">
-                    <Label htmlFor="publishDate">Publish Date & Time</Label>
-                    <Input
-                      id="publishDate"
-                      type="datetime-local"
-                      value={formData.publishDate}
-                      onChange={(e) => handleChange("publishDate", e.target.value)}
-                      disabled={isSubmitting}
-                      min={toLocalInputValue(new Date())}
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="expiryDate">Expiry Date (Optional)</Label>
+          {/* Schedule date picker */}
+          <AnimatePresence>
+            {publishMode === "schedule" && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-1 space-y-1">
+                  <label className="text-[11px] text-slate-400 font-medium">Publish at</label>
                   <Input
-                    id="expiryDate"
                     type="datetime-local"
-                    value={formData.expiryDate}
-                    onChange={(e) => handleChange("expiryDate", e.target.value)}
-                    disabled={isSubmitting}
-                    min={formData.publishDate || toLocalInputValue(new Date())}
+                    value={scheduleDate}
+                    min={nowLocal()}
+                    onChange={e => setScheduleDate(e.target.value)}
+                    className="h-9 rounded-xl text-sm border-slate-200"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    The announcement will automatically be hidden after this date
-                  </p>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button type="button" variant="secondary" size="sm" disabled={isSubmitting} onClick={() => setExpiryInDays(7)}>
-                      +7 days
-                    </Button>
-                    <Button type="button" variant="secondary" size="sm" disabled={isSubmitting} onClick={() => setExpiryInDays(14)}>
-                      +14 days
-                    </Button>
-                    <Button type="button" variant="secondary" size="sm" disabled={isSubmitting} onClick={() => setExpiryInDays(30)}>
-                      +30 days
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isSubmitting}
-                      onClick={() => handleChange("expiryDate", "")}
-                    >
-                      Clear
-                    </Button>
-                  </div>
                 </div>
-              </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-              <div className="flex gap-4 flex-wrap">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push("/admin/announcements")}
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setFormData(initialForm)}
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  Reset
-                </Button>
-                <Button type="submit" disabled={isSubmitting} className="flex-1">
-                  {isSubmitting ? "Creating..." : "Create Announcement"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+        {/* Optional expiry */}
+        <div className="bg-white rounded-lg border border-slate-100 shadow-sm p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Expiry <span className="normal-case font-normal">(optional)</span></label>
+            {expiryDate && (
+              <button type="button" onClick={() => setExpiryDate("")} className="text-[10px] text-slate-400 hover:text-red-500 flex items-center gap-0.5 transition-colors">
+                <Trash2 className="w-3 h-3" /> Clear
+              </button>
+            )}
+          </div>
+          <Input
+            type="datetime-local"
+            value={expiryDate}
+            min={scheduleDate || nowLocal()}
+            onChange={e => setExpiryDate(e.target.value)}
+            className="h-9 rounded-xl text-sm border-slate-200"
+          />
+          <div className="flex gap-2">
+            {[7, 14, 30].map(d => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => {
+                  const base = publishMode === "schedule" && scheduleDate ? new Date(scheduleDate) : new Date()
+                  base.setDate(base.getDate() + d)
+                  base.setSeconds(0, 0)
+                  setExpiryDate(base.toISOString().slice(0, 16))
+                }}
+                className="text-[11px] px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors font-medium"
+              >
+                +{d}d
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {/* Live Preview */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Live Preview</CardTitle>
-            <CardDescription>How this will appear on the public announcements page</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-start justify-between">
-              <div className="space-y-2 flex-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant={getPriorityVariant(formData.priority)} className="capitalize">
-                    {formData.priority}
-                  </Badge>
-                  <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    <span>
-                      {formData.schedulePublish && formData.publishDate
-                        ? formatDate(formData.publishDate)
-                        : "Publishes immediately"}
-                    </span>
-                    {formData.expiryDate && <span> • Expires: {formatDate(formData.expiryDate)}</span>}
-                  </div>
-                </div>
-                <h3 className="text-xl font-semibold">{formData.title || "Untitled announcement"}</h3>
-              </div>
+        {/* Live preview */}
+        <div className="bg-white rounded-lg border border-slate-100 shadow-sm p-4 space-y-2">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block">Preview</label>
+          <div className="rounded-xl bg-[#F2F2F7] p-3 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${priority === "urgent" ? "bg-red-100 text-red-700 border-red-200" :
+                priority === "high" ? "bg-orange-100 text-orange-700 border-orange-200" :
+                  priority === "normal" ? "bg-blue-50 text-blue-600 border-blue-100" :
+                    "bg-slate-100 text-slate-500 border-slate-200"
+                }`}>
+                {PRIORITIES.find(p => p.value === priority)?.label}
+              </span>
+              <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                <Clock className="w-2.5 h-2.5" /> Just now
+              </span>
             </div>
-            <div className="mt-2 text-muted-foreground whitespace-pre-wrap">
-              {formData.content || "Content preview will appear here as you type."}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <p className="font-semibold text-[14px] text-slate-900">{title || "Untitled announcement"}</p>
+            <p className="text-[12px] text-slate-500 line-clamp-3">{content || "Content preview will appear here…"}</p>
+          </div>
+        </div>
+      </form>
     </div>
   )
-}
-
-export default function CreateAnnouncementPage() {
-  return <CreateAnnouncementContent />
 }

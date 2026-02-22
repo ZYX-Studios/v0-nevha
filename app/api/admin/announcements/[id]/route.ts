@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
+import { requireAdminAPI } from "@/lib/supabase/guards"
 
 function mapRow(row: any) {
   return {
@@ -16,6 +17,8 @@ function mapRow(row: any) {
 }
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const supabase = createAdminClient()
     const { id } = params
@@ -29,6 +32,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const supabase = createAdminClient()
     const { id } = params
@@ -41,9 +46,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       expiryDate: string | null
     }>
 
-    const update: any = {
-      updated_at: new Date().toISOString(),
-    }
+    const update: any = { updated_at: new Date().toISOString() }
 
     if (typeof body.title === "string") update.title = body.title.trim()
     if (typeof body.content === "string") update.content = body.content.trim()
@@ -58,13 +61,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (body.publishDate !== undefined) {
       const iso = body.publishDate ? new Date(body.publishDate).toISOString() : null
       update.publish_date = iso
-      // If scheduling for the future, clear published_at to avoid early visibility
-      if (iso) {
-        const now = new Date()
-        if (new Date(iso) > now) {
-          update.published_at = null
-        }
-      }
+      if (iso && new Date(iso) > new Date()) update.published_at = null
     }
 
     if (body.expiryDate !== undefined) {
@@ -73,12 +70,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     if (typeof body.isPublished === "boolean") {
       update.is_published = body.isPublished
-      // Maintain PRD-friendly published_at: set when publishing now, clear when unpublishing
       if (body.isPublished) {
-        // Only set published_at if there is no future-dated publish_date
-        if (!body.publishDate) {
-          update.published_at = new Date().toISOString()
-        }
+        if (!body.publishDate) update.published_at = new Date().toISOString()
       } else {
         update.published_at = null
       }
@@ -92,7 +85,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-
     return NextResponse.json({ item: mapRow(data) }, { status: 200 })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })
@@ -100,13 +92,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const supabase = createAdminClient()
     const { id } = params
-
     const { error } = await supabase.from("announcements").delete().eq("id", id)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })

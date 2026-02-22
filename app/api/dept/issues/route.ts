@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getDeptContext } from "@/lib/dept/auth"
 import { createAdminClient } from "@/lib/supabase/server-admin"
+import { requireDeptSessionAPI } from "@/lib/supabase/guards"
 
 function mapPriority(dbPriority: string | null): "P1" | "P2" | "P3" | "P4" {
   switch ((dbPriority || "").toUpperCase()) {
@@ -36,6 +37,9 @@ function mapStatus(dbStatus: string | null): "not_started" | "in_progress" | "on
 }
 
 export async function GET(req: Request) {
+  const authError = await requireDeptSessionAPI()
+  if (authError) return authError
+
   try {
     const ctx = await getDeptContext()
     if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

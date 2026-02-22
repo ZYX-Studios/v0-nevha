@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/server-admin"
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 const PatchSchema = z.object({
   id: z.string().uuid(),
   status: z.enum(["not_started", "in_progress", "on_hold", "resolved", "closed"]),
@@ -26,7 +26,12 @@ function uiToDbStatus(ui: "not_started" | "in_progress" | "on_hold" | "resolved"
 }
 
 export async function PATCH(req: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const json = await req.json().catch(() => ({}))
     console.info("[IssuesStatusFallback] Incoming PATCH", { path: "/api/admin/issues/status", body: json })
     const parsed = PatchSchema.safeParse(json)

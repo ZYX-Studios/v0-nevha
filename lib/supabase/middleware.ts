@@ -1,13 +1,47 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+/**
+ * Routes that require a valid Supabase auth session (homeowner or admin).
+ * Unauthenticated users are redirected to /auth.
+ */
+const MEMBER_PROTECTED_ROUTES = ["/bills", "/profile", "/vehicles", "/onboarding", "/refresh"]
 
-  // With Fluid compute, don't put this client in a global environment
-  // variable. Always create a new one on each request.
+/**
+ * Routes that require ADMIN or STAFF role.
+ * Unauthenticated users → /auth; authenticated non-admins → /
+ */
+const ADMIN_PROTECTED_PREFIX = "/admin"
+
+/**
+ * Routes that require a valid dept_session cookie.
+ * Users without the cookie are redirected to /dept/login.
+ */
+const DEPT_PROTECTED_PREFIX = "/dept"
+
+/** Public routes that bypass all auth checks */
+const PUBLIC_ROUTE_PREFIXES = [
+  "/auth",
+  "/api/auth",
+  "/api/report",
+  "/api/status",
+  "/api/announcements",
+  "/api/residents",
+  "/api/dept",
+  "/dept/login",
+  "/status",
+  "/report",
+  "/announcements",
+]
+
+/** Public API routes that bypass auth */
+const PUBLIC_API_ROUTES = ["/api/departments"]
+
+export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  let supabaseResponse = NextResponse.next({ request })
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -18,173 +52,83 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
         },
       },
-    },
+    }
   )
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: If you remove getUser() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
+  // IMPORTANT: Always call getUser() to refresh the session cookie.
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const url = request.nextUrl
-  const path = url.pathname
-
-  // Department portal routes (password-gated, custom auth)
-  const isDeptRoute = path.startsWith("/dept") || path.startsWith("/api/dept")
-  if (isDeptRoute) {
-    const isDeptPublic = path === "/dept/login" || path.startsWith("/api/dept/session") || path.startsWith("/api/dept/departments")
-    if (!isDeptPublic) {
-      const hasCookie = request.cookies.get("dept_session")?.value
-      if (!hasCookie) {
-        if (process.env.NODE_ENV !== "production") {
-          console.log("[mw] dept route missing cookie -> redirect to /dept/login", { path })
-        }
-        const dest = new URL(request.url)
-        dest.pathname = "/dept/login"
-        dest.search = ""
-        return NextResponse.redirect(dest)
-      }
+  // ── Dept Portal: cookie-based auth ──────────────────────────────────────────
+  if (
+    pathname.startsWith(DEPT_PROTECTED_PREFIX) &&
+    !pathname.startsWith("/dept/login") &&
+    !pathname.startsWith("/api/dept")
+  ) {
+    const deptSession = request.cookies.get("dept_session")
+    if (!deptSession) {
+      const loginUrl = request.nextUrl.clone()
+      loginUrl.pathname = "/dept/login"
+      return NextResponse.redirect(loginUrl)
     }
-    // Allow dept routes regardless of Supabase auth
     return supabaseResponse
   }
 
-  // Publicly accessible routes
+  // ── Skip auth checks for public routes ──────────────────────────────────────
   const isPublic =
-    path === "/" ||
-    // Auth
-    path.startsWith("/auth") ||
-    path.startsWith("/api/auth/sync") ||
-    // Public reporting and status lookup
-    path.startsWith("/report") || // e.g., /report
-    path.startsWith("/status") || // e.g., /status/REF-XXXX
-    path.startsWith("/api/report") ||
-    path.startsWith("/api/status") ||
-    // Public resident search (used by report page for name verification)
-    path.startsWith("/api/residents") ||
-    // Public announcements (homepage section and dedicated page)
-    path.startsWith("/announcements") ||
-    path.startsWith("/api/announcements") ||
-    path.startsWith("/api/departments") || // used by public report form for department options
-    // Update helper to break users out of stale PWA cache
-    path.startsWith("/refresh") ||
-    // Public emergency and applications pages
-    path.startsWith("/emergency") ||
-    path.startsWith("/applications") ||
-    // Admin bootstrap endpoints kept public intentionally
-    path.startsWith("/api/admin/create-user") ||
-    path.startsWith("/api/admin/reset-password") ||
-    path.startsWith("/api/admin/bootstrap") ||
-    // Email testing endpoint (key-gated)
-    path.startsWith("/api/admin/test-email") ||
-    // PWA assets
-    path === "/manifest.json" ||
-    path === "/sw.js"
+    pathname === "/" ||
+    pathname === "/emergency" ||
+    PUBLIC_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+    PUBLIC_API_ROUTES.some((route) => pathname.startsWith(route))
 
-  // Admin/staff-only areas (keep simple: only /admin and /api/admin)
-  const isAdminRoute = path.startsWith("/admin") || path.startsWith("/api/admin")
-
-
-  // Allow all public routes without requiring login (must come before admin gating)
   if (isPublic) {
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[mw] public route", { path, isPublic, hasUser: !!user })
+    return supabaseResponse
+  }
+
+  // ── Admin routes: require ADMIN or STAFF role ────────────────────────────────
+  if (pathname.startsWith(ADMIN_PROTECTED_PREFIX)) {
+    if (!user) {
+      const authUrl = request.nextUrl.clone()
+      authUrl.pathname = "/auth"
+      authUrl.searchParams.set("next", pathname)
+      return NextResponse.redirect(authUrl)
     }
 
-    // If the user is authenticated and visiting /auth, redirect them to a meaningful place
-    // EXCEPT when explicitly coming from a logout flow (?logout=1)
-    if (user && path.startsWith("/auth")) {
-      const fromLogout = url.searchParams.get("logout") === "1"
-      if (fromLogout) {
-        if (process.env.NODE_ENV !== "production") {
-          console.log("[mw] allow /auth after logout param despite authenticated user (race tolerance)")
-        }
-        return supabaseResponse
-      }
+    // Verify role via DB (anon client uses RLS — users can read their own row)
+    const { data: dbUser } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single()
 
-      const redirectParam = url.searchParams.get("redirect")
-      const isSafe = !!redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
-      const dest = new URL(request.url)
-      dest.pathname = isSafe ? redirectParam! : "/admin"
-      dest.search = ""
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[mw] redirect authenticated user away from /auth ->", dest.pathname)
-      }
-      return NextResponse.redirect(dest)
+    const role = dbUser?.role
+    if (role !== "ADMIN" && role !== "STAFF") {
+      const homeUrl = request.nextUrl.clone()
+      homeUrl.pathname = "/"
+      return NextResponse.redirect(homeUrl)
     }
 
     return supabaseResponse
   }
 
-  // For any other non-public route, if not authenticated, send to auth with redirect back
-  if (!user) {
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[mw] non-public and no user -> redirect to /auth", { path })
-    }
-    const redirectTo = encodeURIComponent(url.pathname + (url.search || ""))
-    const dest = new URL(request.url)
-    dest.pathname = "/auth"
-    dest.search = `?redirect=${redirectTo}`
-    return NextResponse.redirect(dest)
-  }
+  // ── Member-protected routes: require any authenticated session ───────────────
+  const isMemberProtected = MEMBER_PROTECTED_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(route + "/")
+  )
 
-  // Protect admin-only routes: authenticated but must be ADMIN/STAFF
-  if (isAdminRoute) {
-    // In development, bypass role checks to simplify local auth workflows
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[mw] dev mode: skipping admin role check", { path, hasUser: !!user })
-    } else {
-      try {
-        const { data: me } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle()
-        const role = me?.role as string | undefined
-        const allowed = role === "ADMIN" || role === "STAFF"
-        if (process.env.NODE_ENV !== "production") {
-          console.log("[mw] admin role check", { path, role, allowed })
-        }
-        if (!allowed) {
-          const dest = new URL(request.url)
-          dest.pathname = "/auth"
-          dest.search = ""
-          return NextResponse.redirect(dest)
-        }
-      } catch {
-        if (process.env.NODE_ENV !== "production") {
-          console.log("[mw] admin role check error -> redirect to /auth", { path })
-        }
-        const dest = new URL(request.url)
-        dest.pathname = "/auth"
-        dest.search = ""
-        return NextResponse.redirect(dest)
-      }
-    }
+  if (isMemberProtected && !user) {
+    const authUrl = request.nextUrl.clone()
+    authUrl.pathname = "/auth"
+    authUrl.searchParams.set("next", pathname)
+    return NextResponse.redirect(authUrl)
   }
-
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[mw] allow", { path, hasUser: !!user })
-  }
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
 
   return supabaseResponse
 }

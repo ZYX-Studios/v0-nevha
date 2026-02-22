@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 import { z } from "zod"
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 const SyncSchema = z.object({
   categories: z.array(z.string().min(1)).optional(),
 })
@@ -18,7 +18,12 @@ const DEFAULT_CATEGORIES = [
 ]
 
 export async function POST(req: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient()
     let cats = DEFAULT_CATEGORIES
     try {

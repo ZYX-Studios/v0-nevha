@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Search, Plus, Download, DollarSign, Users, TrendingUp, AlertCircle } from "lucide-react"
+import { ArrowLeft, Search, Plus, Download, DollarSign, Users, TrendingUp, AlertCircle, Pencil } from "lucide-react"
 import { toast } from "sonner"
+import { updateDuesConfig, createDuesConfig, DuesConfigUpdate, DuesConfigCreate } from "./actions"
 
 interface HomeownerDues {
   homeowner_id: string
@@ -49,6 +50,7 @@ interface DuesConfig {
   id: string
   dues_year: number
   annual_amount: number
+  car_sticker_price: number
   due_date: string
   late_fee_amount: number
   late_fee_grace_days: number
@@ -66,6 +68,7 @@ function DuesManagementContent() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
+  const [showConfigDialog, setShowConfigDialog] = useState(false)
   const [selectedHomeowner, setSelectedHomeowner] = useState<HomeownerDues | null>(null)
   const [paymentForm, setPaymentForm] = useState({
     amount_paid: "",
@@ -74,6 +77,9 @@ function DuesManagementContent() {
     receipt_number: "",
     notes: ""
   })
+  const [configForm, setConfigForm] = useState<DuesConfigUpdate | DuesConfigCreate | null>(null)
+  const [isUpdatingConfig, setIsUpdatingConfig] = useState(false)
+
 
   useEffect(() => {
     fetchDuesData()
@@ -87,10 +93,10 @@ function DuesManagementContent() {
         year: selectedYear.toString(),
         ...(statusFilter !== "all" && { status: statusFilter })
       })
-      
+
       const response = await fetch(`/api/admin/dues?${params}`)
       if (!response.ok) throw new Error("Failed to fetch dues data")
-      
+
       const data = await response.json()
       setHomeowners(data.homeowners || [])
     } catch (error) {
@@ -105,7 +111,7 @@ function DuesManagementContent() {
     try {
       const response = await fetch(`/api/admin/dues/summary?year=${selectedYear}`)
       if (!response.ok) throw new Error("Failed to fetch summary")
-      
+
       const data = await response.json()
       setSummary(data.summary)
       setConfig(data.config)
@@ -148,7 +154,7 @@ function DuesManagementContent() {
         receipt_number: "",
         notes: ""
       })
-      
+
       // Refresh data
       fetchDuesData()
       fetchSummary()
@@ -157,6 +163,59 @@ function DuesManagementContent() {
       toast.error("Failed to record payment")
     }
   }
+
+  const handleUpdateConfig = async () => {
+    if (!configForm) return
+
+    setIsUpdatingConfig(true)
+    try {
+      let result;
+      if ('id' in configForm && configForm.id) {
+        result = await updateDuesConfig(configForm as DuesConfigUpdate)
+      } else {
+        result = await createDuesConfig(configForm as DuesConfigCreate)
+      }
+
+      if (result.success) {
+        toast.success("Configuration saved successfully")
+        setShowConfigDialog(false)
+        fetchSummary() // Refresh data
+      } else {
+        toast.error(result.error || "Failed to save configuration")
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred")
+    } finally {
+      setIsUpdatingConfig(false)
+    }
+  }
+
+  const openConfigDialog = (existingConfig: DuesConfig | null) => {
+    if (existingConfig) {
+      setConfigForm({
+        id: existingConfig.id,
+        annual_amount: existingConfig.annual_amount,
+        car_sticker_price: existingConfig.car_sticker_price || 0,
+        due_date: existingConfig.due_date,
+        late_fee_amount: existingConfig.late_fee_amount,
+        late_fee_grace_days: existingConfig.late_fee_grace_days,
+        is_active: existingConfig.is_active
+      })
+    } else {
+      // Default values for new config
+      setConfigForm({
+        dues_year: selectedYear,
+        annual_amount: 500, // Default value
+        car_sticker_price: 1500, // Default value
+        due_date: `${selectedYear}-03-31T00:00:00.000Z`,
+        late_fee_amount: 50,
+        late_fee_grace_days: 7,
+        is_active: true
+      })
+    }
+    setShowConfigDialog(true)
+  }
+
 
   const filteredHomeowners = useMemo(() => {
     return homeowners.filter(homeowner => {
@@ -195,7 +254,7 @@ function DuesManagementContent() {
       "Name",
       "Address",
       "Block",
-      "Lot", 
+      "Lot",
       "Phase",
       "Contact Number",
       "Email",
@@ -207,7 +266,7 @@ function DuesManagementContent() {
       "Payment Method",
       "Good Standing"
     ]
-    
+
     const rows = filteredHomeowners.map((homeowner) => [
       homeowner.full_name || `${homeowner.first_name} ${homeowner.last_name}`,
       homeowner.property_address || "",
@@ -224,11 +283,11 @@ function DuesManagementContent() {
       homeowner.payment_method || "",
       homeowner.is_good_standing ? "Yes" : "No"
     ])
-    
+
     const csv = [headers, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
       .join("\n")
-    
+
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -236,7 +295,7 @@ function DuesManagementContent() {
     a.download = `hoa-dues-${selectedYear}-${statusFilter}-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
-    
+
     toast.success("Dues data exported successfully")
   }
 
@@ -295,7 +354,7 @@ function DuesManagementContent() {
                 <div className="text-2xl font-bold">{summary.total_homeowners}</div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Collection Rate</CardTitle>
@@ -308,7 +367,7 @@ function DuesManagementContent() {
                 </p>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Collected</CardTitle>
@@ -318,7 +377,7 @@ function DuesManagementContent() {
                 <div className="text-2xl font-bold">{formatCurrency(summary.total_collected)}</div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
@@ -337,24 +396,50 @@ function DuesManagementContent() {
         {/* Configuration Info */}
         {config && (
           <Card className="mb-6">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Dues Configuration for {selectedYear}</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => openConfigDialog(config)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit Configuration
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <Label className="text-sm font-medium">Annual Amount</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">Annual Amount</Label>
                   <p className="text-lg font-semibold">{formatCurrency(config.annual_amount)}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Due Date</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">Car Sticker Fee</Label>
+                  <p className="text-lg font-semibold">{formatCurrency(config.car_sticker_price || 0)}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Due Date</Label>
                   <p className="text-lg font-semibold">{new Date(config.due_date).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Late Fee</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">Late Fee</Label>
                   <p className="text-lg font-semibold">{formatCurrency(config.late_fee_amount)}</p>
+                  <p className="text-xs text-muted-foreground">after {config.late_fee_grace_days} days grace period</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!config && !loading && (
+          <Card className="mb-6 border-dashed">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-muted-foreground">No Configuration for {selectedYear}</CardTitle>
+              <Button size="sm" onClick={() => openConfigDialog(null)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Configuration
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Set up dues amount, deadlines, and fees for this year to start collecting payments.
+              </p>
             </CardContent>
           </Card>
         )}
@@ -420,7 +505,7 @@ function DuesManagementContent() {
                         {getStatusBadge(homeowner)}
                       </div>
                     </div>
-                    
+
                     <div className="text-right mr-4">
                       <p className="font-semibold">
                         {formatCurrency(homeowner.amount_paid)} / {formatCurrency(homeowner.annual_amount)}
@@ -436,7 +521,7 @@ function DuesManagementContent() {
                         </p>
                       )}
                     </div>
-                    
+
                     <Button
                       onClick={() => {
                         setSelectedHomeowner(homeowner)
@@ -463,7 +548,7 @@ function DuesManagementContent() {
                 Record a payment for {selectedHomeowner?.full_name || `${selectedHomeowner?.first_name} ${selectedHomeowner?.last_name}`}
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div>
                 <Label htmlFor="amount">Payment Amount *</Label>
@@ -476,7 +561,7 @@ function DuesManagementContent() {
                   placeholder="0.00"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="payment_date">Payment Date</Label>
                 <Input
@@ -486,7 +571,7 @@ function DuesManagementContent() {
                   onChange={(e) => setPaymentForm(prev => ({ ...prev, payment_date: e.target.value }))}
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="payment_method">Payment Method</Label>
                 <Select value={paymentForm.payment_method} onValueChange={(value) => setPaymentForm(prev => ({ ...prev, payment_method: value }))}>
@@ -501,7 +586,7 @@ function DuesManagementContent() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label htmlFor="receipt_number">Receipt Number</Label>
                 <Input
@@ -511,7 +596,7 @@ function DuesManagementContent() {
                   placeholder="Optional"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
@@ -522,7 +607,7 @@ function DuesManagementContent() {
                   rows={3}
                 />
               </div>
-              
+
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
                   Cancel
@@ -534,11 +619,81 @@ function DuesManagementContent() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Config Dialog */}
+        {configForm && (
+          <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{'id' in configForm && configForm.id ? 'Update' : 'Create'} Configuration ({selectedYear})</DialogTitle>
+                <DialogDescription>
+                  Modify dues amount, sticker price, and due dates.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Annual Amount</Label>
+                    <Input
+                      type="number"
+                      value={configForm.annual_amount}
+                      onChange={(e) => setConfigForm({ ...configForm, annual_amount: parseFloat(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Car Sticker Fee</Label>
+                    <Input
+                      type="number"
+                      value={configForm.car_sticker_price}
+                      onChange={(e) => setConfigForm({ ...configForm, car_sticker_price: parseFloat(e.target.value) })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Late Fee</Label>
+                    <Input
+                      type="number"
+                      value={configForm.late_fee_amount}
+                      onChange={(e) => setConfigForm({ ...configForm, late_fee_amount: parseFloat(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Grace Period (Days)</Label>
+                    <Input
+                      type="number"
+                      value={configForm.late_fee_grace_days}
+                      onChange={(e) => setConfigForm({ ...configForm, late_fee_grace_days: parseFloat(e.target.value) })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Due Date</Label>
+                  <Input
+                    type="date"
+                    value={configForm.due_date.split('T')[0]}
+                    onChange={(e) => setConfigForm({ ...configForm, due_date: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button variant="outline" onClick={() => setShowConfigDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpdateConfig} disabled={isUpdatingConfig}>
+                    {isUpdatingConfig ? 'Saving...' : ('id' in configForm && configForm.id ? 'Save Changes' : 'Create Configuration')}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   )
 }
-
 export default function DuesManagementPage() {
   return <DuesManagementContent />
 }

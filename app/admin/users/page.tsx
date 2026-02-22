@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
@@ -16,15 +17,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { 
-  ArrowLeft, 
-  Plus, 
-  Search, 
-  Users, 
-  ChevronLeft, 
-  ChevronRight, 
-  ChevronUp, 
-  ChevronDown, 
+import {
+  ArrowLeft,
+  Plus,
+  Search,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
   ArrowUpDown,
   MoreHorizontal,
   Shield,
@@ -52,7 +53,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   // Filters and pagination
   const [q, setQ] = useState("")
   const [role, setRole] = useState<string>("all")
@@ -62,6 +63,7 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const [total, setTotal] = useState(0)
+  const [activeTab, setActiveTab] = useState<"confirmed" | "pending">("confirmed")
 
   // Create user dialog
   const [createOpen, setCreateOpen] = useState(false)
@@ -88,6 +90,21 @@ export default function AdminUsersPage() {
       url.searchParams.set("page", String(page))
       url.searchParams.set("pageSize", String(pageSize))
 
+      // Tab-driven filters
+      if (activeTab === "confirmed") {
+        if (role === "all") {
+          // Show ADMIN and STAFF by default for confirmed tab
+          url.searchParams.set("role", "ADMIN,STAFF")
+        } else {
+          url.searchParams.set("role", role)
+        }
+        url.searchParams.set("isActive", isActive === "all" ? "true" : isActive)
+      } else {
+        // Pending: HOMEOWNER/PUBLIC or inactive accounts
+        url.searchParams.set("role", "HOMEOWNER,PUBLIC")
+        url.searchParams.set("isActive", "all")
+      }
+
       const res = await fetch(url.toString(), { cache: "no-store" })
       const text = await res.text()
       let json: any = null
@@ -97,7 +114,7 @@ export default function AdminUsersPage() {
         throw new Error("Access denied. Please sign in as an admin and try again.")
       }
       if (!res.ok) throw new Error(json?.error || "Failed to load users")
-      
+
       setUsers(json.items || [])
       setTotal(json.total || 0)
       if (typeof json.page === "number") setPage(json.page)
@@ -112,7 +129,7 @@ export default function AdminUsersPage() {
   useEffect(() => {
     fetchUsers()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sort, order, page, pageSize])
+  }, [sort, order, page, pageSize, activeTab])
 
   // Debounced search
   useEffect(() => {
@@ -138,6 +155,30 @@ export default function AdminUsersPage() {
   }
 
   const handleCreateUser = async () => {
+    const isValidEmail = (email: string) => {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    }
+
+    const isValidPhone = (phone: string) => {
+      const filtered = phone.replace(/\D/g, "")
+      return filtered.length >= 10
+    }
+
+    if (!isValidEmail(createForm.email)) {
+      setError("Please enter a valid email address.")
+      return
+    }
+
+    if (createForm.phone && !isValidPhone(createForm.phone)) {
+      setError("Please enter a valid phone number (at least 10 digits).")
+      return
+    }
+
+    if (createForm.password.length < 6) {
+      setError("Password must be at least 6 characters.")
+      return
+    }
+
     setCreating(true)
     setError(null)
     try {
@@ -154,7 +195,7 @@ export default function AdminUsersPage() {
         throw new Error("Access denied. Please sign in as an admin.")
       }
       if (!res.ok) throw new Error(json?.error || "Failed to create user")
-      
+
       setCreateOpen(false)
       setCreateForm({
         email: "",
@@ -199,7 +240,7 @@ export default function AdminUsersPage() {
         throw new Error(json?.error || "Failed to reset password")
       }
       const json = await res.json()
-      alert(json.message || "Password reset email sent")
+      toast.success(json.message || "Password reset email sent")
     } catch (e: any) {
       setError(e?.message || "Failed to reset password")
     }
@@ -351,6 +392,27 @@ export default function AdminUsersPage() {
       </header>
 
       <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Tab Bar */}
+        <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1 mb-6 w-fit">
+          <button
+            onClick={() => { setActiveTab("confirmed"); setPage(1) }}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === "confirmed"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+              }`}
+          >
+            Confirmed
+          </button>
+          <button
+            onClick={() => { setActiveTab("pending"); setPage(1) }}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === "pending"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+              }`}
+          >
+            Pending
+          </button>
+        </div>
         {/* Error Display */}
         {error && (
           <Card className="mb-6 border-destructive">

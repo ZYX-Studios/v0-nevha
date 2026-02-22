@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 export async function GET(req: Request) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient()
     const { searchParams } = new URL(req.url)
     const raw = (searchParams.get("plate") || "").trim()

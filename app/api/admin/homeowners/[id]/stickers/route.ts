@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server-admin"
 import { z } from "zod"
+import { requireAdminAPI } from "@/lib/supabase/guards"
 
 const UpsertStickerSchema = z.object({
   code: z.string().min(1),
@@ -16,11 +17,12 @@ const UpsertStickerSchema = z.object({
 })
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const supabase = createAdminClient()
     const homeownerId = params.id
 
-    // Try PRD stickers table first
     const res1 = await supabase
       .from("stickers")
       .select("id, homeowner_id, vehicle_id, code, status, issued_at, expires_at, amount_paid, notes, vehicles:vehicles(plate_no, make, model, color, category)")
@@ -28,7 +30,6 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       .order("issued_at", { ascending: false })
 
     if (res1.error) {
-      // Try minimal PRD query without order in case of column-specific errors
       const resAlt = await supabase
         .from("stickers")
         .select("id, homeowner_id, vehicle_id, code, status, issued_at, expires_at, amount_paid, notes")
@@ -44,31 +45,6 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
           expiresAt: row.expires_at as string | null,
           amountPaid: (row.amount_paid as number | null) ?? null,
           notes: row.notes as string | null,
-        }))
-        return NextResponse.json({ items }, { status: 200 })
-      }
-      const msg = String(resAlt.error?.message || res1.error.message || "")
-      // Fallback to legacy car_stickers if PRD stickers doesn't exist in this environment or has incompatible schema
-      if (/relation .*stickers.* does not exist/i.test(msg) || /table .*stickers.* does not exist/i.test(msg) || /column .*created_at.* does not exist/i.test(msg)) {
-        const res2 = await supabase
-          .from("car_stickers")
-          .select("*")
-          .eq("homeowner_id", homeownerId)
-          .order("issue_date", { ascending: false })
-        if (res2.error) return NextResponse.json({ error: res2.error.message }, { status: 400 })
-
-        const items = (res2.data || []).map((row: any) => ({
-          id: row.id as string,
-          homeownerId: row.homeowner_id as string,
-          vehicleId: null as string | null,
-          code: row.sticker_number as string,
-          status: (row.is_active ? "ACTIVE" : "EXPIRED") as "ACTIVE" | "EXPIRED" | "REVOKED",
-          issuedAt: row.issue_date as string,
-          expiresAt: row.expiry_date as string | null,
-          vehiclePlateNo: row.license_plate as string | undefined,
-          vehicleMake: row.vehicle_make as string | undefined,
-          vehicleModel: row.vehicle_model as string | undefined,
-          vehicleColor: row.vehicle_color as string | undefined,
         }))
         return NextResponse.json({ items }, { status: 200 })
       }
@@ -99,6 +75,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
   try {
     const supabase = createAdminClient()
     const homeownerId = params.id
@@ -109,9 +87,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
     const v = parsed.data
 
-    // Optionally upsert/get vehicle by plate
     let vehicleId: string | null = null
-    if (v.vehiclePlateNo && v.vehiclePlateNo.trim()) {
+    if (v.vehiclePlateNo?.trim()) {
       const { data: veh, error: vehErr } = await supabase
         .from("vehicles")
         .upsert({
@@ -127,45 +104,31 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       vehicleId = veh?.id || null
     }
 
-    const res1 = await supabase
+    // Auto-compute expires_at: Feb 1 of (issued_year + 1) if not provided
+    let computedExpiresAt = v.expiresAt || null
+    if (!computedExpiresAt) {
+      const issuedDate = v.issuedAt ? new Date(v.issuedAt) : new Date()
+      const issuedYear = issuedDate.getFullYear()
+      computedExpiresAt = `${issuedYear + 1}-02-01T00:00:00Z`
+    }
+
+    const { data, error } = await supabase
       .from("stickers")
       .upsert({
         code: v.code.trim(),
         homeowner_id: homeownerId,
         vehicle_id: vehicleId,
-        issued_at: v.issuedAt || null,
-        expires_at: v.expiresAt || null,
-        amount_paid: (typeof v.amountPaid === 'number' ? v.amountPaid : null) as any,
+        issued_at: v.issuedAt || new Date().toISOString(),
+        expires_at: computedExpiresAt,
+        amount_paid: (typeof v.amountPaid === "number" ? v.amountPaid : null) as any,
         notes: v.notes || null,
         status: (v.status as any) || "ACTIVE",
       }, { onConflict: "code" })
       .select("id")
       .maybeSingle()
 
-    if (res1.error) {
-      const msg = String(res1.error.message || "")
-      if (/relation .*stickers.* does not exist/i.test(msg) || /table .*stickers.* does not exist/i.test(msg)) {
-        // Fallback to legacy car_stickers
-        const isActive = (v.status ?? "ACTIVE") === "ACTIVE"
-        const res2 = await supabase
-          .from("car_stickers")
-          .upsert({
-            homeowner_id: homeownerId,
-            sticker_number: v.code.trim(),
-            license_plate: v.vehiclePlateNo || null,
-            issue_date: v.issuedAt || null,
-            expiry_date: v.expiresAt || null,
-            is_active: isActive,
-          }, { onConflict: "sticker_number" })
-          .select("id")
-          .maybeSingle()
-        if (res2.error) return NextResponse.json({ error: res2.error.message }, { status: 400 })
-        return NextResponse.json({ id: res2.data?.id }, { status: 201 })
-      }
-      return NextResponse.json({ error: res1.error.message }, { status: 400 })
-    }
-
-    return NextResponse.json({ id: res1.data?.id }, { status: 201 })
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ id: data?.id }, { status: 201 })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })
   }

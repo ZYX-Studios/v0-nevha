@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server-admin';
-
+import { requireAdminAPI } from "@/lib/supabase/guards"
 // GET /api/admin/dues - Get dues data for a specific year
 export async function GET(request: NextRequest) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient();
     
     const searchParams = request.nextUrl.searchParams;
@@ -50,7 +55,12 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin/dues - Record a payment
 export async function POST(request: NextRequest) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+
   try {
+    const denied = await requireAdminAPI()
+    if (denied) return denied
     const supabase = createAdminClient();
     
     const body = await request.json();

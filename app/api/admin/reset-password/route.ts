@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdminAPI } from "@/lib/supabase/guards"
 
 export async function POST(req: Request) {
+
+
   try {
     const url = new URL(req.url)
     const key = url.searchParams.get("key")
