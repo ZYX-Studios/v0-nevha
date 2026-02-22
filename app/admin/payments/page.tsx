@@ -218,6 +218,14 @@ export default function AdminPaymentsPage() {
 
     const handleCreate = async () => {
         if (!selectedHo) { toast.error("Select a homeowner"); return }
+
+        // Validate car sticker items
+        const missingSticker = lineItems.some(li => li.feeType === "car_sticker" && !li.stickerCode?.trim())
+        if (missingSticker) {
+            toast.error("Please provide a Sticker Code for all car sticker payments.")
+            return
+        }
+
         setCreating(true)
         try {
             const currentYear = new Date().getFullYear()

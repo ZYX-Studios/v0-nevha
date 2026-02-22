@@ -111,6 +111,7 @@ interface LineItemInput {
     amount: number
     paymentMethod: string
     // Car sticker fields (only when feeType = 'car_sticker')
+    vehicleRequestId?: string
     stickerCode?: string
     plateNo?: string
     make?: string
@@ -182,6 +183,9 @@ export async function POST(req: NextRequest) {
             if (!item.paymentMethod || !["cash", "gcash", "bank_transfer", "check"].includes(item.paymentMethod)) {
                 return NextResponse.json({ error: `Invalid payment_method: ${item.paymentMethod}` }, { status: 400 })
             }
+            if (item.feeType === "car_sticker" && !item.stickerCode?.trim()) {
+                return NextResponse.json({ error: "Sticker code is required for car sticker payments" }, { status: 400 })
+            }
 
             // 1. Create payment row
             const { data: paymentData, error: paymentError } = await supabase
@@ -196,6 +200,7 @@ export async function POST(req: NextRequest) {
                     admin_notes: notes || "Walk-in payment recorded",
                     verified_by: adminUser?.id || null,
                     verified_at: now,
+                    ...(item.vehicleRequestId ? { vehicle_request_id: item.vehicleRequestId } : {}),
                 })
                 .select("id")
                 .single()
@@ -206,7 +211,7 @@ export async function POST(req: NextRequest) {
             createdIds.push(paymentData.id)
 
             // 2. For car stickers: also create vehicle + sticker
-            if (item.feeType === "car_sticker" && item.stickerCode?.trim()) {
+            if (item.feeType === "car_sticker") {
                 let vehicleId: string | null = null
 
                 // Upsert vehicle if plate provided
@@ -233,7 +238,7 @@ export async function POST(req: NextRequest) {
                 await supabase
                     .from("stickers")
                     .upsert({
-                        code: item.stickerCode.trim(),
+                        code: item.stickerCode!.trim(),
                         homeowner_id: homeownerId,
                         vehicle_id: vehicleId,
                         issued_at: now,
