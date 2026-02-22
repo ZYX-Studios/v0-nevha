@@ -28,56 +28,82 @@ export async function GET(req: NextRequest) {
              vehicles:vehicles(plate_no, make, model, color, category),
              homeowners:homeowners(first_name, last_name, block, lot, phase)`
 
-        // When searching, fetch ALL rows (no range) so we can filter across the full dataset
-        let query = supabase
-            .from("stickers")
-            .select(selectFields, { count: "exact" })
-            .order("issued_at", { ascending: false })
+        // Supabase caps at 1000 rows per query. Batch-fetch all rows.
+        let allData: any[] = []
+        const batchSize = 1000
+        let offset = 0
+        let keepFetching = true
 
-        // Status filter (applied server-side)
-        if (status && ["ACTIVE", "EXPIRED", "REVOKED"].includes(status)) {
-            query = query.eq("status", status)
+        while (keepFetching) {
+            const { data: batch, error } = await supabase
+                .from("stickers")
+                .select(selectFields)
+                .order("issued_at", { ascending: false })
+                .range(offset, offset + batchSize - 1)
+
+            if (error) {
+                return NextResponse.json({ error: error.message }, { status: 400 })
+            }
+
+            allData = allData.concat(batch || [])
+            if (!batch || batch.length < batchSize) {
+                keepFetching = false
+            } else {
+                offset += batchSize
+            }
         }
 
-        // Only apply range pagination when NOT searching
-        if (!q) {
-            const from = (page - 1) * pageSize
-            query = query.range(from, from + pageSize - 1)
-        }
+        // Map rows to API shape + compute effectiveStatus
+        let items = allData.map((row: any) => {
+            let effectiveStatus = row.status
+            if (row.status === "ACTIVE" && row.expires_at) {
+                const exp = new Date(row.expires_at)
+                if (!isNaN(exp.getTime()) && exp < new Date()) {
+                    effectiveStatus = "EXPIRED"
+                }
+            }
 
-        const { data, error, count } = await query
+            let parsedNotes: Record<string, string> | null = null
+            if (row.notes && row.notes.includes("|")) {
+                parsedNotes = {}
+                for (const part of row.notes.split("|")) {
+                    const [key, ...valParts] = part.split(":")
+                    if (key && valParts.length) {
+                        parsedNotes[key.trim()] = valParts.join(":").trim()
+                    }
+                }
+            }
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
-        }
+            return {
+                id: row.id,
+                homeownerId: row.homeowner_id,
+                code: row.code,
+                status: row.status,
+                effectiveStatus,
+                issuedAt: row.issued_at,
+                expiresAt: row.expires_at,
+                amountPaid: row.amount_paid ? Number(row.amount_paid) : null,
+                notes: row.notes,
+                parsedNotes,
+                vehiclePlateNo: row.vehicles?.plate_no || null,
+                vehicleMake: row.vehicles?.make || null,
+                vehicleModel: row.vehicles?.model || null,
+                vehicleColor: row.vehicles?.color || null,
+                vehicleCategory: row.vehicles?.category || null,
+                homeownerName: row.homeowners
+                    ? `${row.homeowners.first_name || ""} ${row.homeowners.last_name || ""}`.trim()
+                    : null,
+                homeownerAddress: row.homeowners
+                    ? [
+                        row.homeowners.block ? `Blk ${row.homeowners.block}` : "",
+                        row.homeowners.lot ? `Lot ${row.homeowners.lot}` : "",
+                        row.homeowners.phase ? `Ph ${row.homeowners.phase}` : "",
+                    ].filter(Boolean).join(" ")
+                    : null,
+            }
+        })
 
-        // Map rows to API shape
-        let items = (data || []).map((row: any) => ({
-            id: row.id,
-            homeownerId: row.homeowner_id,
-            code: row.code,
-            status: row.status,
-            issuedAt: row.issued_at,
-            expiresAt: row.expires_at,
-            amountPaid: row.amount_paid,
-            notes: row.notes,
-            vehiclePlateNo: row.vehicles?.plate_no || null,
-            vehicleMake: row.vehicles?.make || null,
-            vehicleModel: row.vehicles?.model || null,
-            vehicleCategory: row.vehicles?.category || null,
-            homeownerName: row.homeowners
-                ? `${row.homeowners.first_name || ""} ${row.homeowners.last_name || ""}`.trim()
-                : null,
-            homeownerAddress: row.homeowners
-                ? [
-                    row.homeowners.block ? `Blk ${row.homeowners.block}` : "",
-                    row.homeowners.lot ? `Lot ${row.homeowners.lot}` : "",
-                    row.homeowners.phase ? `Ph ${row.homeowners.phase}` : "",
-                ].filter(Boolean).join(" ")
-                : null,
-        }))
-
-        // Server-side search filtering across code, plate, and homeowner name
+        // Search filter (text-based)
         if (q) {
             const lower = q.toLowerCase()
             items = items.filter(i =>
@@ -87,18 +113,32 @@ export async function GET(req: NextRequest) {
             )
         }
 
-        // When searching, manually paginate the filtered result set
-        const filteredTotal = items.length
-        if (q) {
-            const from = (page - 1) * pageSize
-            items = items.slice(from, from + pageSize)
+        // Summary counts for the full (pre-pagination) result set
+        // Summary counts from ALL items (before status filter)
+        const summary = {
+            active: items.filter(i => i.effectiveStatus === "ACTIVE").length,
+            expired: items.filter(i => i.effectiveStatus === "EXPIRED").length,
+            revoked: items.filter(i => i.effectiveStatus === "REVOKED").length,
+            paid: items.filter(i => typeof i.amountPaid === "number" && i.amountPaid > 0).length,
+            unpaid: items.filter(i => !i.amountPaid || i.amountPaid <= 0).length,
         }
+
+        // Status filter — uses effectiveStatus so auto-expired stickers are filterable
+        if (status && ["ACTIVE", "EXPIRED", "REVOKED"].includes(status)) {
+            items = items.filter(i => i.effectiveStatus === status)
+        }
+
+        // Paginate in JS
+        const filteredTotal = items.length
+        const from = (page - 1) * pageSize
+        items = items.slice(from, from + pageSize)
 
         return NextResponse.json({
             items,
-            total: q ? filteredTotal : (count ?? items.length),
+            total: filteredTotal,
             page,
             pageSize,
+            summary,
         })
     } catch (e: any) {
         return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })

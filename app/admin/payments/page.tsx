@@ -122,9 +122,11 @@ export default function AdminPaymentsPage() {
             try {
                 const res = await fetch("/api/admin/dues/config", { cache: "no-store" })
                 const json = await res.json()
-                if (res.ok && json.config) {
-                    if (json.config.car_sticker_price) setStickerPrice(Number(json.config.car_sticker_price))
-                    if (json.config.annual_amount) setDuesAmount(Number(json.config.annual_amount))
+                // API returns { configs, current } — use `current` for the active year's config
+                const cfg = json.current
+                if (res.ok && cfg) {
+                    if (cfg.car_sticker_price) setStickerPrice(Number(cfg.car_sticker_price))
+                    if (cfg.annual_amount) setDuesAmount(Number(cfg.annual_amount))
                 }
             } catch { /* defaults */ }
         })()
