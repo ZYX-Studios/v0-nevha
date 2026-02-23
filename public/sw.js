@@ -1,6 +1,6 @@
 // Service Worker for PWA offline functionality
 
-const CACHE_VERSION = "v3.3" // Update this when deploying changes
+const CACHE_VERSION = "v3.4" // Update this when deploying changes
 const CACHE_NAME = `nevha-pwa-${CACHE_VERSION}`
 const STATIC_CACHE_URLS = [
   "/",
@@ -70,7 +70,7 @@ self.addEventListener("activate", (event) => {
   )
 })
 
-// Fetch event - Network First strategy for HTML, Cache First for assets
+// Fetch event - Network First strategy for HTML & Data, Cache First for assets
 self.addEventListener("fetch", (event) => {
   // Skip non-GET requests
   if (event.request.method !== "GET") return
@@ -86,8 +86,17 @@ self.addEventListener("fetch", (event) => {
   // NEVER cache admin/dept pages — they require real-time data
   if (NEVER_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p))) return
 
-  // Network First strategy for HTML pages (to get latest content)
-  if (event.request.mode === "navigate" || event.request.headers.get("accept")?.includes("text/html")) {
+  // Identify next.js data requests (Client-side navigation RSC payloads)
+  const isNextDataRequest =
+    event.request.headers.get("rsc") === "1" ||
+    url.pathname.includes("/_next/data/")
+
+  // Network First strategy for HTML pages AND Next.js Data/RSC to ensure latest content
+  if (
+    event.request.mode === "navigate" ||
+    event.request.headers.get("accept")?.includes("text/html") ||
+    isNextDataRequest
+  ) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -102,7 +111,7 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => {
           // Fallback to cache if network fails
-          return caches.match(event.request) || caches.match("/")
+          return caches.match(event.request) || (isNextDataRequest ? undefined : caches.match("/"))
         })
     )
     return
