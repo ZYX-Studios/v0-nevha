@@ -28,6 +28,34 @@ export default async function ProfilePage() {
             .maybeSingle()
 
         if (request) {
+            // ── Rejected registration ──
+            if (request.status === 'rejected') {
+                return (
+                    <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-sm text-center max-w-md">
+                            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-600">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </div>
+                            <h2 className="text-xl font-bold text-slate-900 mb-2">Registration Rejected</h2>
+                            <p className="text-slate-500 text-sm mb-3">
+                                Your registration for Block {request.claimed_block}, Lot {request.claimed_lot} was not approved.
+                            </p>
+                            {request.admin_notes && (
+                                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-4 text-left">
+                                    <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">Reason</p>
+                                    <p className="text-sm text-red-700">{request.admin_notes}</p>
+                                </div>
+                            )}
+                            <p className="text-slate-400 text-xs mb-4">
+                                If you believe this is an error, please contact the HOA admin office.
+                            </p>
+                            <LogoutButton />
+                        </div>
+                    </div>
+                )
+            }
+
+            // ── Pending registration ──
             return (
                 <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-4">
                     <div className="bg-white p-8 rounded-2xl shadow-sm text-center max-w-md">

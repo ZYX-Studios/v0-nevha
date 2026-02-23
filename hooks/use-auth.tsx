@@ -21,10 +21,17 @@ interface AuthContextType {
     password: string
     firstName: string
     lastName: string
+    middleInitial?: string
+    suffix?: string
     phone?: string
     block?: string
     lot?: string
     phase?: string
+    street?: string
+    moveInDate?: string
+    emergencyContactName?: string
+    emergencyContactPhone?: string
+    facebookProfile?: string
   }) => Promise<{ success: boolean; error?: string }>
   homeownerProfile: any | null
   registrationStatus: string | null
@@ -366,7 +373,7 @@ export function AuthProvider({ children, initialUser, initialSessionData }: { ch
     }
   }
 
-  const register = async (input: { email: string; password: string; firstName: string; lastName: string; phone?: string; block?: string; lot?: string; phase?: string }) => {
+  const register = async (input: { email: string; password: string; firstName: string; lastName: string; middleInitial?: string; suffix?: string; phone?: string; block?: string; lot?: string; phase?: string; street?: string; moveInDate?: string; emergencyContactName?: string; emergencyContactPhone?: string; facebookProfile?: string }) => {
     try {
       setOpLoading(true)
 

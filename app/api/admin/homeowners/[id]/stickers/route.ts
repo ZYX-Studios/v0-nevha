@@ -51,22 +51,49 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: resAlt.error?.message || res1.error.message }, { status: 400 })
     }
 
-    const items = (res1.data || []).map((row: any) => ({
-      id: row.id as string,
-      homeownerId: row.homeowner_id as string,
-      vehicleId: row.vehicle_id as string | null,
-      code: row.code as string,
-      status: row.status as "ACTIVE" | "EXPIRED" | "REVOKED",
-      issuedAt: row.issued_at as string,
-      expiresAt: row.expires_at as string | null,
-      amountPaid: (row.amount_paid as number | null) ?? null,
-      notes: row.notes as string | null,
-      vehiclePlateNo: row.vehicles?.plate_no as string | undefined,
-      vehicleMake: row.vehicles?.make as string | undefined,
-      vehicleModel: row.vehicles?.model as string | undefined,
-      vehicleColor: row.vehicles?.color as string | undefined,
-      vehicleCategory: row.vehicles?.category as string | undefined,
-    }))
+    const items = (res1.data || []).map((row: any) => {
+      // Compute effective status (same logic as global stickers API)
+      let effectiveStatus = row.status
+      if (row.status === "ACTIVE" && row.expires_at) {
+        const exp = new Date(row.expires_at)
+        if (!isNaN(exp.getTime()) && exp < new Date()) {
+          effectiveStatus = "EXPIRED"
+        }
+      }
+
+      // Derive sticker year from expires_at (sticker expiring Feb 2026 = "2025" sticker)
+      let stickerYear: string | null = null
+      if (row.expires_at) {
+        const exp = new Date(row.expires_at)
+        if (!isNaN(exp.getTime())) {
+          stickerYear = String(exp.getFullYear() - 1)
+        }
+      } else if (row.issued_at) {
+        const iss = new Date(row.issued_at)
+        if (!isNaN(iss.getTime())) {
+          stickerYear = String(iss.getFullYear())
+        }
+      }
+
+      return {
+        id: row.id as string,
+        homeownerId: row.homeowner_id as string,
+        vehicleId: row.vehicle_id as string | null,
+        code: row.code as string,
+        status: row.status as "ACTIVE" | "EXPIRED" | "REVOKED",
+        effectiveStatus: effectiveStatus as "ACTIVE" | "EXPIRED" | "REVOKED",
+        stickerYear,
+        issuedAt: row.issued_at as string,
+        expiresAt: row.expires_at as string | null,
+        amountPaid: (row.amount_paid as number | null) ?? null,
+        notes: row.notes as string | null,
+        vehiclePlateNo: row.vehicles?.plate_no as string | undefined,
+        vehicleMake: row.vehicles?.make as string | undefined,
+        vehicleModel: row.vehicles?.model as string | undefined,
+        vehicleColor: row.vehicles?.color as string | undefined,
+        vehicleCategory: row.vehicles?.category as string | undefined,
+      }
+    })
 
     return NextResponse.json({ items }, { status: 200 })
   } catch (e: any) {

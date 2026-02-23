@@ -5,11 +5,18 @@ import { createAdminClient } from '@/lib/supabase/server-admin'
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json()
-        const { email, password, firstName, lastName, phone, block, lot, phase } = body
+        const {
+            email, password, firstName, lastName, phone, block, lot, phase,
+            middleInitial, suffix, street, moveInDate,
+            emergencyContactName, emergencyContactPhone, facebookProfile,
+        } = body
 
         // 1. Validate input
         if (!email || !password || !firstName || !lastName || !block || !lot || !phase) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+        }
+        if (!phone || !street || !moveInDate || !emergencyContactName || !emergencyContactPhone || !facebookProfile) {
+            return NextResponse.json({ error: 'Phone, street, move-in date, emergency contact, and Facebook profile are required' }, { status: 400 })
         }
 
         const supabaseAdmin = createAdminClient()
@@ -22,10 +29,13 @@ export async function POST(req: NextRequest) {
             user_metadata: {
                 firstName,
                 lastName,
+                middleInitial,
+                suffix,
                 phone,
                 block,
                 lot,
-                phase
+                phase,
+                street,
             }
         })
 
@@ -140,10 +150,18 @@ export async function POST(req: NextRequest) {
                 email,
                 first_name: firstName,
                 last_name: lastName,
+                middle_initial: middleInitial || null,
+                suffix: suffix || null,
                 phone,
                 claimed_block: block,
                 claimed_lot: lot,
                 claimed_phase: phase,
+                claimed_street: street || null,
+                is_owner: true,
+                move_in_date: moveInDate || null,
+                emergency_contact_name: emergencyContactName || null,
+                emergency_contact_phone: emergencyContactPhone || null,
+                facebook_profile: facebookProfile || null,
                 matched_homeowner_id: matchedHomeownerId,
                 match_confidence: matchConfidence,
                 status: 'pending'

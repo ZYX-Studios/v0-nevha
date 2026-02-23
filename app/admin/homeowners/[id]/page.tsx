@@ -425,7 +425,7 @@ export default function HomeownerDetailPage() {
               <UsersRound className="w-4 h-4" /> Members {members.length > 0 && <span className="text-xs text-slate-400">({members.length})</span>}
             </TabsTrigger>
             <TabsTrigger value="stickers" className="gap-1.5 text-sm px-3.5 py-2 rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <Tag className="w-4 h-4" /> Stickers {stickers.length > 0 && <span className="text-xs text-slate-400">({stickers.length})</span>}
+              <Tag className="w-4 h-4" /> Vehicles & Stickers {stickers.length > 0 && <span className="text-xs text-slate-400">({stickers.length})</span>}
             </TabsTrigger>
             <TabsTrigger value="payments" className="gap-1.5 text-sm px-3.5 py-2 rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <CreditCard className="w-4 h-4" /> Payments {payments.length > 0 && <span className="text-xs text-slate-400">({payments.length})</span>}
@@ -465,27 +465,124 @@ export default function HomeownerDetailPage() {
             </div>
           </TabsContent>
 
-          {/* ── Stickers ──────────────────────────────────────────────────── */}
+          {/* ── Vehicles & Stickers ──────────────────────────────────── */}
           <TabsContent value="stickers" className="mt-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2 space-y-2">
-                {stickers.length === 0 ? (
-                  <EmptyState icon={Tag} text="No stickers" />
-                ) : stickers.map(s => (
-                  <div key={s.id} className="bg-white rounded-lg border border-slate-100 shadow-sm p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-base font-semibold text-slate-900">{s.code}</span>
-                      <Badge className={`border-0 text-xs ${s.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : s.status === "EXPIRED" ? "bg-slate-100 text-slate-500" : "bg-red-100 text-red-700"}`}>
-                        {s.status}
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-slate-500 space-y-0.5">
-                      {s.vehiclePlateNo && <p>Plate: {s.vehiclePlateNo} {[s.vehicleMake, s.vehicleModel].filter(Boolean).join(" ")}</p>}
-                      <p>Issued: {formatDateLocal(s.issuedAt)} {typeof s.amountPaid === "number" ? `• ${formatCurrency(s.amountPaid)}` : ""}</p>
-                      {s.notes && <p className="text-slate-400">Note: {s.notes}</p>}
-                    </div>
-                  </div>
-                ))}
+              <div className="md:col-span-2 space-y-3">
+                {(() => {
+                  // Group stickers by vehicle
+                  const vehicleMap = new Map<string, { plate: string; make?: string; model?: string; color?: string; category?: string; stickers: typeof stickers }>()
+                  const unlinked: typeof stickers = []
+
+                  stickers.forEach(s => {
+                    if (s.vehiclePlateNo) {
+                      const key = s.vehiclePlateNo
+                      if (!vehicleMap.has(key)) {
+                        vehicleMap.set(key, {
+                          plate: s.vehiclePlateNo,
+                          make: (s as any).vehicleMake,
+                          model: (s as any).vehicleModel,
+                          color: (s as any).vehicleColor,
+                          category: (s as any).vehicleCategory,
+                          stickers: [],
+                        })
+                      }
+                      vehicleMap.get(key)!.stickers.push(s)
+                    } else {
+                      unlinked.push(s)
+                    }
+                  })
+
+                  const vehicles = Array.from(vehicleMap.values())
+
+                  if (vehicles.length === 0 && unlinked.length === 0) {
+                    return <EmptyState icon={Tag} text="No vehicles or stickers" />
+                  }
+
+                  const stickerStatusColor = (es: string) => {
+                    if (es === "ACTIVE") return "bg-emerald-100 text-emerald-700"
+                    if (es === "REVOKED") return "bg-red-100 text-red-700"
+                    return "bg-slate-100 text-slate-500"
+                  }
+
+                  return (
+                    <>
+                      {vehicles.map(v => {
+                        const vehicleLabel = [v.make, v.model].filter(Boolean).join(" ")
+                        return (
+                          <div key={v.plate} className="bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden">
+                            {/* Vehicle header */}
+                            <div className="bg-slate-50 px-4 py-3 flex items-center gap-3 border-b border-slate-100">
+                              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                                <Tag className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-slate-900">{v.plate}</p>
+                                <p className="text-xs text-slate-500">
+                                  {[vehicleLabel, v.color, v.category].filter(Boolean).join(" • ")}
+                                </p>
+                              </div>
+                              <span className="text-xs font-semibold text-slate-400">{v.stickers.length} sticker{v.stickers.length !== 1 ? "s" : ""}</span>
+                            </div>
+                            {/* Sticker rows */}
+                            <div className="divide-y divide-slate-50">
+                              {v.stickers.map(s => {
+                                const es = (s as any).effectiveStatus || s.status
+                                const year = (s as any).stickerYear
+                                return (
+                                  <div key={s.id} className="px-4 py-2.5 flex items-center gap-3">
+                                    <span className="text-sm font-semibold text-slate-900 font-mono">#{s.code}</span>
+                                    <Badge className={`border-0 text-[10px] ${stickerStatusColor(es)}`}>{es}</Badge>
+                                    {year && (
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">{year}</span>
+                                    )}
+                                    {typeof s.amountPaid === "number" && s.amountPaid > 0 && (
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        ₱{s.amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                      </span>
+                                    )}
+                                    <span className="ml-auto text-[11px] text-slate-400">
+                                      {s.issuedAt ? formatDateLocal(s.issuedAt) : ""}
+                                    </span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      {unlinked.length > 0 && (
+                        <div className="bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden">
+                          <div className="bg-slate-50 px-4 py-3 flex items-center gap-3 border-b border-slate-100">
+                            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                              <Tag className="w-4 h-4 text-slate-400" />
+                            </div>
+                            <p className="text-sm font-bold text-slate-500">Other Stickers (no vehicle linked)</p>
+                          </div>
+                          <div className="divide-y divide-slate-50">
+                            {unlinked.map(s => {
+                              const es = (s as any).effectiveStatus || s.status
+                              const year = (s as any).stickerYear
+                              return (
+                                <div key={s.id} className="px-4 py-2.5 flex items-center gap-3">
+                                  <span className="text-sm font-semibold text-slate-900 font-mono">#{s.code}</span>
+                                  <Badge className={`border-0 text-[10px] ${stickerStatusColor(es)}`}>{es}</Badge>
+                                  {year && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">{year}</span>
+                                  )}
+                                  <span className="ml-auto text-[11px] text-slate-400">
+                                    {s.issuedAt ? formatDateLocal(s.issuedAt) : ""}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
               <div className="bg-white rounded-lg border border-slate-100 shadow-sm p-4 space-y-3 h-fit">
                 <p className="text-sm font-semibold text-slate-500 uppercase">Add Sticker</p>

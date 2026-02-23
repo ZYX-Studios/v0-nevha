@@ -18,6 +18,7 @@ interface StickerRow {
     code: string
     status: "ACTIVE" | "EXPIRED" | "REVOKED"
     effectiveStatus: "ACTIVE" | "EXPIRED" | "REVOKED"
+    stickerYear: string | null
     issuedAt: string | null
     expiresAt: string | null
     amountPaid: number | null
@@ -253,6 +254,10 @@ export default function AdminStickersPage() {
                                                 <Badge className={`border ${sColor.border} ${sColor.bg} ${sColor.text} text-[10px] hover:opacity-100`}>
                                                     {s.effectiveStatus}
                                                 </Badge>
+                                                {/* Year badge */}
+                                                {s.stickerYear && (
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">{s.stickerYear}</span>
+                                                )}
                                                 {/* Payment badge */}
                                                 {typeof s.amountPaid === "number" && s.amountPaid > 0 ? (
                                                     <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">

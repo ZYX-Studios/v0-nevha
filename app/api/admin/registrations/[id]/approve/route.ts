@@ -110,17 +110,37 @@ export async function POST(
                 .filter(Boolean)
                 .join(", ")
 
+            // Auto-compute length_of_residency from move_in_date
+            let computedResidencyYears: number | null = null
+            if (req_.move_in_date) {
+                const moveIn = new Date(req_.move_in_date)
+                if (!isNaN(moveIn.getTime())) {
+                    computedResidencyYears = Math.floor(
+                        (Date.now() - moveIn.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+                    )
+                }
+            }
+
             const { data: newHomeowner, error: createError } = await supabase
                 .from("homeowners")
                 .insert({
                     user_id: req_.user_id,
                     first_name: req_.first_name,
                     last_name: req_.last_name,
+                    middle_initial: req_.middle_initial || null,
+                    suffix: req_.suffix || null,
                     email: req_.email,
                     contact_number: req_.phone,
                     block: req_.claimed_block,
                     lot: req_.claimed_lot,
                     phase: req_.claimed_phase,
+                    street: req_.claimed_street || null,
+                    is_owner: req_.is_owner ?? true,
+                    move_in_date: req_.move_in_date || null,
+                    length_of_residency: computedResidencyYears,
+                    emergency_contact_name: req_.emergency_contact_name || null,
+                    emergency_contact_phone: req_.emergency_contact_phone || null,
+                    facebook_profile: req_.facebook_profile || null,
                     property_address: computedAddress,
                 })
                 .select("id")

@@ -63,6 +63,20 @@ export async function GET(req: NextRequest) {
                 }
             }
 
+            // Derive sticker year from expires_at (sticker expiring Feb 2026 = "2025" sticker)
+            let stickerYear: string | null = null
+            if (row.expires_at) {
+                const exp = new Date(row.expires_at)
+                if (!isNaN(exp.getTime())) {
+                    stickerYear = String(exp.getFullYear() - 1)
+                }
+            } else if (row.issued_at) {
+                const iss = new Date(row.issued_at)
+                if (!isNaN(iss.getTime())) {
+                    stickerYear = String(iss.getFullYear())
+                }
+            }
+
             let parsedNotes: Record<string, string> | null = null
             if (row.notes && row.notes.includes("|")) {
                 parsedNotes = {}
@@ -80,6 +94,7 @@ export async function GET(req: NextRequest) {
                 code: row.code,
                 status: row.status,
                 effectiveStatus,
+                stickerYear,
                 issuedAt: row.issued_at,
                 expiresAt: row.expires_at,
                 amountPaid: row.amount_paid ? Number(row.amount_paid) : null,
