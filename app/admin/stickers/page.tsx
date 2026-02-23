@@ -17,10 +17,11 @@ interface StickerRow {
     homeownerId: string
     code: string
     status: "ACTIVE" | "EXPIRED" | "REVOKED"
-    effectiveStatus: "ACTIVE" | "EXPIRED" | "REVOKED"
+    effectiveStatus: "FOR_RELEASE" | "ACTIVE" | "EXPIRED" | "REVOKED"
     stickerYear: string | null
     issuedAt: string | null
     expiresAt: string | null
+    releasedAt: string | null
     amountPaid: number | null
     notes: string | null
     parsedNotes: Record<string, string> | null
@@ -34,6 +35,7 @@ interface StickerRow {
 }
 
 interface Summary {
+    forRelease: number
     active: number
     expired: number
     revoked: number
@@ -43,18 +45,23 @@ interface Summary {
 
 const STATUS_TABS = [
     { value: "", label: "All" },
+    { value: "FOR_RELEASE", label: "For Release" },
     { value: "ACTIVE", label: "Active" },
     { value: "EXPIRED", label: "Expired" },
     { value: "REVOKED", label: "Revoked" },
 ]
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+    FOR_RELEASE: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
     ACTIVE: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
     EXPIRED: { bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200" },
     REVOKED: { bg: "bg-red-50", text: "text-red-600", border: "border-red-200" },
 }
 
 const NEXT_STATUS: Record<string, { label: string; value: string; destructive?: boolean }[]> = {
+    FOR_RELEASE: [
+        { label: "Mark Released", value: "RELEASE" },
+    ],
     ACTIVE: [
         { label: "Expire", value: "EXPIRED" },
         { label: "Revoke", value: "REVOKED", destructive: true },
@@ -94,7 +101,7 @@ export default function AdminStickersPage() {
     const [items, setItems] = useState<StickerRow[]>([])
     const [loading, setLoading] = useState(true)
     const [total, setTotal] = useState(0)
-    const [summary, setSummary] = useState<Summary>({ active: 0, expired: 0, revoked: 0, paid: 0, unpaid: 0 })
+    const [summary, setSummary] = useState<Summary>({ forRelease: 0, active: 0, expired: 0, revoked: 0, paid: 0, unpaid: 0 })
     const [q, setQ] = useState("")
     const [status, setStatus] = useState("")
     const [page, setPage] = useState(1)
@@ -133,16 +140,26 @@ export default function AdminStickersPage() {
         if (!actionTarget) return
         setIsActioning(true)
         try {
+            const isRelease = actionTarget.action === "RELEASE"
             const res = await fetch("/api/admin/stickers", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: actionTarget.id, status: actionTarget.action }),
+                body: JSON.stringify(
+                    isRelease
+                        ? { id: actionTarget.id, action: "RELEASE" }
+                        : { id: actionTarget.id, status: actionTarget.action }
+                ),
             })
             if (!res.ok) throw new Error((await res.json()).error)
-            toast.success(`Sticker ${actionTarget.action.toLowerCase()}`)
+            toast.success(isRelease ? "Sticker marked as released" : `Sticker ${actionTarget.action.toLowerCase()}`)
             setItems(prev => prev.map(s =>
                 s.id === actionTarget.id
-                    ? { ...s, status: actionTarget.action as any, effectiveStatus: actionTarget.action as any }
+                    ? {
+                        ...s,
+                        status: isRelease ? s.status : (actionTarget.action as any),
+                        effectiveStatus: isRelease ? "ACTIVE" : (actionTarget.action as any),
+                        releasedAt: isRelease ? new Date().toISOString() : s.releasedAt
+                    }
                     : s
             ))
         } catch (e: any) {
@@ -172,17 +189,18 @@ export default function AdminStickersPage() {
             <main className="px-4 sm:px-6 py-4 max-w-5xl mx-auto space-y-4">
                 {/* Summary cards — server-side counts */}
                 {!loading && (
-                    <div className="grid grid-cols-5 gap-2">
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                         {[
+                            { label: "For Release", value: summary.forRelease, color: "text-blue-600", bg: "bg-blue-50" },
                             { label: "Active", value: summary.active, color: "text-emerald-600", bg: "bg-emerald-50" },
                             { label: "Expired", value: summary.expired, color: "text-slate-500", bg: "bg-slate-100" },
                             { label: "Revoked", value: summary.revoked, color: "text-red-600", bg: "bg-red-50" },
-                            { label: "Paid", value: summary.paid, color: "text-blue-600", bg: "bg-blue-50" },
+                            { label: "Paid", value: summary.paid, color: "text-teal-600", bg: "bg-teal-50" },
                             { label: "Unpaid", value: summary.unpaid, color: "text-amber-600", bg: "bg-amber-50" },
                         ].map(c => (
                             <div key={c.label} className={`${c.bg} rounded-xl p-3 text-center`}>
                                 <p className={`text-xl font-bold ${c.color} tabular-nums`}>{c.value}</p>
-                                <p className="text-[10px] text-slate-500 font-semibold mt-0.5">{c.label}</p>
+                                <p className="text-[10px] text-slate-500 font-semibold mt-0.5 whitespace-nowrap">{c.label}</p>
                             </div>
                         ))}
                     </div>
@@ -209,12 +227,17 @@ export default function AdminStickersPage() {
                             <button
                                 key={tab.value}
                                 onClick={() => { setStatus(tab.value); setPage(1) }}
-                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${status === tab.value
+                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${status === tab.value
                                     ? "bg-white text-slate-900 shadow-sm"
                                     : "text-slate-500 hover:text-slate-700"
                                     }`}
                             >
                                 {tab.label}
+                                {tab.value === "FOR_RELEASE" && summary.forRelease > 0 && (
+                                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${status === 'FOR_RELEASE' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
+                                        {summary.forRelease}
+                                    </span>
+                                )}
                             </button>
                         ))}
                     </div>
@@ -314,20 +337,25 @@ export default function AdminStickersPage() {
 
                                         {/* Right: actions */}
                                         <div className="flex gap-1.5 shrink-0">
-                                            {(NEXT_STATUS[s.effectiveStatus] || []).map(action => (
-                                                <Button
-                                                    key={action.value}
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setActionTarget({ id: s.id, action: action.value, label: action.label })}
-                                                    className={`h-7 px-2.5 text-[10px] font-semibold rounded-lg ${action.destructive
-                                                        ? "border-red-200 text-red-600 hover:bg-red-50"
-                                                        : ""
-                                                        }`}
-                                                >
-                                                    {action.label}
-                                                </Button>
-                                            ))}
+                                            {(NEXT_STATUS[s.effectiveStatus] || []).map(action => {
+                                                const isRelease = action.value === "RELEASE"
+                                                return (
+                                                    <Button
+                                                        key={action.value}
+                                                        variant={isRelease ? "default" : "outline"}
+                                                        size="sm"
+                                                        onClick={() => setActionTarget({ id: s.id, action: action.value, label: action.label })}
+                                                        className={`h-7 px-2.5 text-[10px] font-semibold rounded-lg ${isRelease
+                                                            ? "bg-blue-600 hover:bg-blue-700 text-white"
+                                                            : action.destructive
+                                                                ? "border-red-200 text-red-600 hover:bg-red-50"
+                                                                : ""
+                                                            }`}
+                                                    >
+                                                        {action.label}
+                                                    </Button>
+                                                )
+                                            })}
                                         </div>
                                     </div>
                                 </div>

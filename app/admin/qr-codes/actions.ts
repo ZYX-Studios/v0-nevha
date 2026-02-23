@@ -13,36 +13,43 @@ export async function uploadQRCode(formData: FormData) {
 
         if (!user) throw new Error("Unauthorized")
 
-        const file = formData.get("file") as File
+        const file = formData.get("file") as File | null
         const paymentMethod = formData.get("payment_method") as string
         const label = formData.get("label") as string
         const accountName = formData.get("account_name") as string
         const accountNumber = formData.get("account_number") as string
+        const bankName = formData.get("bank_name") as string
+        const bankBranch = formData.get("bank_branch") as string
 
-        if (!file || !paymentMethod || !label) {
+        if (!paymentMethod || !label) {
             throw new Error("Missing required fields")
         }
 
-        // 1. Upload to Storage
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${paymentMethod.toLowerCase()}-${randomUUID()}.${fileExt}`
-        const filePath = `${fileName}`
+        let publicUrl: string | null = null
 
-        const { error: uploadError } = await supabase.storage
-            .from('qr-codes')
-            .upload(filePath, file, {
-                contentType: file.type,
-                upsert: false
-            })
+        // Only upload image if a file was provided (skip for bank-details-only)
+        if (file && file.size > 0) {
+            const fileExt = file.name.split('.').pop()
+            const fileName = `${paymentMethod.toLowerCase()}-${randomUUID()}.${fileExt}`
+            const filePath = `${fileName}`
 
-        if (uploadError) throw new Error("Upload failed: " + uploadError.message)
+            const { error: uploadError } = await supabase.storage
+                .from('qr-codes')
+                .upload(filePath, file, {
+                    contentType: file.type,
+                    upsert: false
+                })
 
-        // 2. Get Public URL
-        const { data: { publicUrl } } = supabase.storage
-            .from('qr-codes')
-            .getPublicUrl(filePath)
+            if (uploadError) throw new Error("Upload failed: " + uploadError.message)
 
-        // 3. Insert into DB
+            const { data: { publicUrl: url } } = supabase.storage
+                .from('qr-codes')
+                .getPublicUrl(filePath)
+
+            publicUrl = url
+        }
+
+        // Insert into DB
         const { error: dbError } = await supabase
             .from('payment_qr_codes')
             .insert({
@@ -50,13 +57,20 @@ export async function uploadQRCode(formData: FormData) {
                 label: label,
                 account_name: accountName,
                 account_number: accountNumber,
+                bank_name: bankName || null,
+                bank_branch: bankBranch || null,
                 qr_image_url: publicUrl,
                 is_active: true
             })
 
         if (dbError) {
-            // Cleanup storage if DB insert fails
-            await supabase.storage.from('qr-codes').remove([filePath])
+            // Cleanup storage if DB insert fails (only if we uploaded a file)
+            if (publicUrl) {
+                const pathParts = publicUrl.split('/qr-codes/')
+                if (pathParts.length >= 2) {
+                    await supabase.storage.from('qr-codes').remove([pathParts[1]])
+                }
+            }
             throw new Error("Database insert failed: " + dbError.message)
         }
 

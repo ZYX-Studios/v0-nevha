@@ -47,21 +47,30 @@ export default async function BillsPage() {
     }
 
     // 3. Fetch Config, QR Codes, Payments, and approved vehicles in parallel
-    const [configRes, qrRes, paymentsRes, vehiclesRes] = await Promise.all([
+    const [configRes, qrRes, paymentsRes, vehicleReqRes, vehiclesRes] = await Promise.all([
         supabase.from('hoa_dues_config').select('*').eq('is_active', true).order('dues_year', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('payment_qr_codes').select('*').eq('is_active', true),
         supabase.from('payments').select('*').eq('homeowner_id', homeowner.id).order('created_at', { ascending: false }),
         supabase.from('vehicle_requests').select('id, vehicle_type, plate_number, sticker_price').eq('user_id', user.id).eq('status', 'approved'),
+        supabase.from('vehicles').select('id, plate_no, make, model, category, color').eq('homeowner_id', homeowner.id),
     ])
 
     const config = configRes.data as HoaDuesConfig | null
     const qrCodes = (qrRes.data || []) as PaymentQrCode[]
     const payments = (paymentsRes.data || []) as Payment[]
-    const approvedVehicles = (vehiclesRes.data || []) as {
+    const approvedVehicles = (vehicleReqRes.data || []) as {
         id: string
         vehicle_type: string
         plate_number: string
         sticker_price: number | null
+    }[]
+    const registeredVehicles = (vehiclesRes.data || []) as {
+        id: string
+        plate_no: string
+        make: string | null
+        model: string | null
+        category: string | null
+        color: string | null
     }[]
 
     // 4. Render Client Content
@@ -72,6 +81,7 @@ export default async function BillsPage() {
             config={config}
             homeownerId={homeowner.id}
             approvedVehicles={approvedVehicles}
+            registeredVehicles={registeredVehicles}
         />
     )
 }

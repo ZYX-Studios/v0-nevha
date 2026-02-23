@@ -17,7 +17,7 @@ import type { Homeowner, Member, Sticker, Payment } from "@/lib/types"
 import {
   ArrowLeft, Calendar, Home, Phone, User2, UsersRound, Tag, Mail, MapPin,
   CircleDollarSign, ExternalLink, DollarSign, Edit, CheckCircle2, XCircle,
-  Clock, CreditCard, FileText, ChevronRight,
+  Clock, CreditCard, FileText, ChevronRight, Pencil,
 } from "lucide-react"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -124,6 +124,67 @@ export default function HomeownerDetailPage() {
 
   const [savingMember, setSavingMember] = useState(false)
   const [savingSticker, setSavingSticker] = useState(false)
+
+  // Sticker edit dialog
+  const [editStickerOpen, setEditStickerOpen] = useState(false)
+  const [editingStickerSaving, setEditingStickerSaving] = useState(false)
+  const [editStickerForm, setEditStickerForm] = useState({
+    stickerId: "", code: "", status: "ACTIVE" as "ACTIVE" | "EXPIRED" | "REVOKED",
+    amountPaid: "", issuedAt: "", expiresAt: "", notes: "",
+    vehiclePlateNo: "", vehicleMake: "", vehicleModel: "", vehicleCategory: "", vehicleColor: "",
+  })
+
+  const openEditSticker = (s: Sticker) => {
+    setEditStickerForm({
+      stickerId: s.id,
+      code: s.code || "",
+      status: ((s as any).effectiveStatus || s.status || "ACTIVE") as "ACTIVE" | "EXPIRED" | "REVOKED",
+      amountPaid: s.amountPaid != null ? String(s.amountPaid) : "",
+      issuedAt: s.issuedAt ? s.issuedAt.split("T")[0] : "",
+      expiresAt: s.expiresAt ? s.expiresAt.split("T")[0] : "",
+      notes: s.notes || "",
+      vehiclePlateNo: s.vehiclePlateNo || (s as any).vehiclePlateNo || "",
+      vehicleMake: (s as any).vehicleMake || "",
+      vehicleModel: (s as any).vehicleModel || "",
+      vehicleCategory: (s as any).vehicleCategory || "",
+      vehicleColor: (s as any).vehicleColor || "",
+    })
+    setEditStickerOpen(true)
+  }
+
+  const onSaveEditSticker = async () => {
+    if (!homeowner) return
+    setEditingStickerSaving(true)
+    try {
+      const res = await fetch(`/api/admin/homeowners/${homeowner.id}/stickers`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stickerId: editStickerForm.stickerId,
+          code: editStickerForm.code.trim() || undefined,
+          status: editStickerForm.status,
+          amountPaid: editStickerForm.amountPaid !== "" ? Number(editStickerForm.amountPaid) : null,
+          issuedAt: editStickerForm.issuedAt || null,
+          expiresAt: editStickerForm.expiresAt || null,
+          notes: editStickerForm.notes.trim() || null,
+          vehiclePlateNo: editStickerForm.vehiclePlateNo.trim() || null,
+          vehicleMake: editStickerForm.vehicleMake.trim() || null,
+          vehicleModel: editStickerForm.vehicleModel.trim() || null,
+          vehicleCategory: editStickerForm.vehicleCategory || null,
+          vehicleColor: editStickerForm.vehicleColor.trim() || null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || "Failed to update")
+      toast.success("Sticker updated")
+      setEditStickerOpen(false)
+      // Refresh stickers
+      const r2 = await fetch(`/api/admin/homeowners/${homeowner.id}/stickers`)
+      const j2 = await r2.json()
+      if (r2.ok) setStickers(j2.items || [])
+    } catch (e: any) { toast.error(e?.message || "Failed to update sticker") }
+    finally { setEditingStickerSaving(false) }
+  }
 
   useEffect(() => {
     if (homeowner) {
@@ -530,7 +591,7 @@ export default function HomeownerDetailPage() {
                                 const es = (s as any).effectiveStatus || s.status
                                 const year = (s as any).stickerYear
                                 return (
-                                  <div key={s.id} className="px-4 py-2.5 flex items-center gap-3">
+                                  <div key={s.id} className="px-4 py-2.5 flex items-center gap-3 group/row">
                                     <span className="text-sm font-semibold text-slate-900 font-mono">#{s.code}</span>
                                     <Badge className={`border-0 text-[10px] ${stickerStatusColor(es)}`}>{es}</Badge>
                                     {year && (
@@ -544,6 +605,9 @@ export default function HomeownerDetailPage() {
                                     <span className="ml-auto text-[11px] text-slate-400">
                                       {s.issuedAt ? formatDateLocal(s.issuedAt) : ""}
                                     </span>
+                                    <button onClick={() => openEditSticker(s)} className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-slate-100">
+                                      <Pencil className="w-3.5 h-3.5 text-slate-400" />
+                                    </button>
                                   </div>
                                 )
                               })}
@@ -565,7 +629,7 @@ export default function HomeownerDetailPage() {
                               const es = (s as any).effectiveStatus || s.status
                               const year = (s as any).stickerYear
                               return (
-                                <div key={s.id} className="px-4 py-2.5 flex items-center gap-3">
+                                <div key={s.id} className="px-4 py-2.5 flex items-center gap-3 group/row">
                                   <span className="text-sm font-semibold text-slate-900 font-mono">#{s.code}</span>
                                   <Badge className={`border-0 text-[10px] ${stickerStatusColor(es)}`}>{es}</Badge>
                                   {year && (
@@ -574,6 +638,9 @@ export default function HomeownerDetailPage() {
                                   <span className="ml-auto text-[11px] text-slate-400">
                                     {s.issuedAt ? formatDateLocal(s.issuedAt) : ""}
                                   </span>
+                                  <button onClick={() => openEditSticker(s)} className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-slate-100">
+                                    <Pencil className="w-3.5 h-3.5 text-slate-400" />
+                                  </button>
                                 </div>
                               )
                             })}
@@ -603,6 +670,7 @@ export default function HomeownerDetailPage() {
                       <SelectItem value="SUV">SUV</SelectItem><SelectItem value="Truck">Truck</SelectItem>
                       <SelectItem value="Motorcycle">Motorcycle</SelectItem><SelectItem value="Electric">Electric</SelectItem>
                       <SelectItem value="ELF">ELF</SelectItem>
+                      <SelectItem value="E-Bike">E-Bike</SelectItem><SelectItem value="Tricycle">Tricycle</SelectItem>
                     </SelectContent>
                   </Select>
                   <Input placeholder="Notes" value={stickerForm.notes} onChange={e => setStickerForm(f => ({ ...f, notes: e.target.value }))} />
@@ -613,6 +681,92 @@ export default function HomeownerDetailPage() {
               </div>
             </div>
           </TabsContent>
+
+          {/* ── Edit Sticker Dialog ─────────────────────────────────── */}
+          <Dialog open={editStickerOpen} onOpenChange={setEditStickerOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-lg font-bold">Edit Sticker</DialogTitle>
+                <DialogDescription className="text-sm text-slate-400">Update the fields and save.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 mt-1">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Sticker Code</Label>
+                    <Input value={editStickerForm.code} onChange={e => setEditStickerForm(f => ({ ...f, code: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Status</Label>
+                    <Select value={editStickerForm.status} onValueChange={v => setEditStickerForm(f => ({ ...f, status: v as any }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ACTIVE">Active</SelectItem>
+                        <SelectItem value="EXPIRED">Expired</SelectItem>
+                        <SelectItem value="REVOKED">Revoked</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Issued At</Label>
+                    <Input type="date" value={editStickerForm.issuedAt} onChange={e => setEditStickerForm(f => ({ ...f, issuedAt: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Expires At</Label>
+                    <Input type="date" value={editStickerForm.expiresAt} onChange={e => setEditStickerForm(f => ({ ...f, expiresAt: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-500">Amount Paid</Label>
+                  <Input type="number" value={editStickerForm.amountPaid} onChange={e => setEditStickerForm(f => ({ ...f, amountPaid: e.target.value }))} />
+                </div>
+                <hr className="border-slate-100" />
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Vehicle Info</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Plate No</Label>
+                    <Input value={editStickerForm.vehiclePlateNo} onChange={e => setEditStickerForm(f => ({ ...f, vehiclePlateNo: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Color</Label>
+                    <Input value={editStickerForm.vehicleColor} onChange={e => setEditStickerForm(f => ({ ...f, vehicleColor: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Make</Label>
+                    <Input value={editStickerForm.vehicleMake} onChange={e => setEditStickerForm(f => ({ ...f, vehicleMake: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Model</Label>
+                    <Input value={editStickerForm.vehicleModel} onChange={e => setEditStickerForm(f => ({ ...f, vehicleModel: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Category</Label>
+                    <Select value={editStickerForm.vehicleCategory || "none"} onValueChange={v => setEditStickerForm(f => ({ ...f, vehicleCategory: v === "none" ? "" : v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">—</SelectItem>
+                        <SelectItem value="Sedan">Sedan</SelectItem><SelectItem value="Van">Van</SelectItem>
+                        <SelectItem value="SUV">SUV</SelectItem><SelectItem value="Truck">Truck</SelectItem>
+                        <SelectItem value="Motorcycle">Motorcycle</SelectItem><SelectItem value="Electric">Electric</SelectItem>
+                        <SelectItem value="ELF">ELF</SelectItem>
+                        <SelectItem value="E-Bike">E-Bike</SelectItem><SelectItem value="Tricycle">Tricycle</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-500">Notes</Label>
+                  <Input value={editStickerForm.notes} onChange={e => setEditStickerForm(f => ({ ...f, notes: e.target.value }))} />
+                </div>
+                <Button onClick={onSaveEditSticker} disabled={editingStickerSaving} className="w-full bg-blue-600 hover:bg-blue-700">
+                  {editingStickerSaving ? "Saving…" : "Save Changes"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* ── Payments ──────────────────────────────────────────────────── */}
           <TabsContent value="payments" className="mt-4 space-y-2">

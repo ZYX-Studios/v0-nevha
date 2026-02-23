@@ -25,11 +25,42 @@ async function fetchPayments() {
         .select('id, first_name, last_name, block, lot')
         .in('id', homeownerIds)
 
+    // Fetch vehicle info for car sticker payments
+    const vehicleRequestIds = rawPayments.map(p => p.vehicle_request_id).filter(Boolean)
+    const vehicleIds = rawPayments.map(p => p.vehicle_id).filter(Boolean)
+
+    const [vReqRes, vehRes] = await Promise.all([
+        vehicleRequestIds.length > 0
+            ? supabase.from('vehicle_requests').select('id, plate_number, vehicle_type').in('id', vehicleRequestIds)
+            : { data: [] },
+        vehicleIds.length > 0
+            ? supabase.from('vehicles').select('id, plate_no, make, model, category').in('id', vehicleIds)
+            : { data: [] },
+    ])
+
+    const vReqMap = new Map((vReqRes.data || []).map(v => [v.id, v]))
+    const vehMap = new Map((vehRes.data || []).map(v => [v.id, v]))
+
     const homeownerMap = new Map(homeowners?.map(h => [h.id, h]))
-    const payments = rawPayments.map(p => ({
-        ...p,
-        homeowners: homeownerMap.get(p.homeowner_id) || null,
-    }))
+    const payments = rawPayments.map(p => {
+        let vehiclePlate: string | null = null
+        let vehicleDesc: string | null = null
+        if (p.vehicle_id && vehMap.has(p.vehicle_id)) {
+            const v = vehMap.get(p.vehicle_id)!
+            vehiclePlate = v.plate_no
+            vehicleDesc = [v.make, v.model].filter(Boolean).join(' ') || v.category || null
+        } else if (p.vehicle_request_id && vReqMap.has(p.vehicle_request_id)) {
+            const v = vReqMap.get(p.vehicle_request_id)!
+            vehiclePlate = v.plate_number
+            vehicleDesc = v.vehicle_type || null
+        }
+        return {
+            ...p,
+            homeowners: homeownerMap.get(p.homeowner_id) || null,
+            vehiclePlate,
+            vehicleDesc,
+        }
+    })
     return { payments, error: null }
 }
 

@@ -160,3 +160,92 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })
   }
 }
+
+const PatchStickerSchema = z.object({
+  stickerId: z.string().min(1),
+  code: z.string().optional(),
+  status: z.enum(["ACTIVE", "EXPIRED", "REVOKED"]).optional(),
+  amountPaid: z.number().optional().nullable(),
+  issuedAt: z.string().optional().nullable(),
+  expiresAt: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  vehiclePlateNo: z.string().optional().nullable(),
+  vehicleMake: z.string().optional().nullable(),
+  vehicleModel: z.string().optional().nullable(),
+  vehicleCategory: z.string().optional().nullable(),
+  vehicleColor: z.string().optional().nullable(),
+})
+
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const authError = await requireAdminAPI()
+  if (authError) return authError
+  try {
+    const supabase = createAdminClient()
+    const homeownerId = params.id
+    const json = await req.json()
+    const parsed = PatchStickerSchema.safeParse(json)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    }
+    const v = parsed.data
+
+    // Verify sticker belongs to this homeowner
+    const { data: existing } = await supabase
+      .from("stickers")
+      .select("id, vehicle_id")
+      .eq("id", v.stickerId)
+      .eq("homeowner_id", homeownerId)
+      .single()
+
+    if (!existing) {
+      return NextResponse.json({ error: "Sticker not found" }, { status: 404 })
+    }
+
+    // Optionally update/create vehicle
+    let vehicleId: string | null | undefined = undefined // undefined = don't change
+    if (v.vehiclePlateNo !== undefined) {
+      if (v.vehiclePlateNo?.trim()) {
+        const { data: veh, error: vehErr } = await supabase
+          .from("vehicles")
+          .upsert({
+            homeowner_id: homeownerId,
+            plate_no: v.vehiclePlateNo.trim(),
+            make: (v.vehicleMake || null) as any,
+            model: (v.vehicleModel || null) as any,
+            category: (v.vehicleCategory || null) as any,
+            color: (v.vehicleColor || null) as any,
+          }, { onConflict: "plate_no" })
+          .select("id")
+          .maybeSingle()
+        if (vehErr) return NextResponse.json({ error: vehErr.message }, { status: 400 })
+        vehicleId = veh?.id || null
+      } else {
+        vehicleId = null // unlink vehicle
+      }
+    }
+
+    // Build update payload
+    const update: Record<string, any> = {}
+    if (v.code !== undefined) update.code = v.code.trim()
+    if (v.status !== undefined) update.status = v.status
+    if (v.amountPaid !== undefined) update.amount_paid = v.amountPaid
+    if (v.issuedAt !== undefined) update.issued_at = v.issuedAt
+    if (v.expiresAt !== undefined) update.expires_at = v.expiresAt
+    if (v.notes !== undefined) update.notes = v.notes
+    if (vehicleId !== undefined) update.vehicle_id = vehicleId
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: "No fields to update" }, { status: 400 })
+    }
+
+    const { error } = await supabase
+      .from("stickers")
+      .update(update)
+      .eq("id", v.stickerId)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ success: true }, { status: 200 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 })
+  }
+}

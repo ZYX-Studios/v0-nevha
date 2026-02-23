@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
         const page = Math.max(1, parseInt(sp.get("page") || "1", 10))
         const pageSize = Math.min(100, Math.max(1, parseInt(sp.get("pageSize") || "25", 10)))
 
-        const selectFields = `id, homeowner_id, vehicle_id, code, status, issued_at, expires_at, amount_paid, notes,
+        const selectFields = `id, homeowner_id, vehicle_id, code, status, issued_at, expires_at, amount_paid, notes, released_at,
              vehicles:vehicles(plate_no, make, model, color, category),
              homeowners:homeowners(first_name, last_name, block, lot, phase)`
 
@@ -56,10 +56,15 @@ export async function GET(req: NextRequest) {
         // Map rows to API shape + compute effectiveStatus
         let items = allData.map((row: any) => {
             let effectiveStatus = row.status
-            if (row.status === "ACTIVE" && row.expires_at) {
-                const exp = new Date(row.expires_at)
-                if (!isNaN(exp.getTime()) && exp < new Date()) {
-                    effectiveStatus = "EXPIRED"
+            if (row.status === "ACTIVE") {
+                if (row.expires_at) {
+                    const exp = new Date(row.expires_at)
+                    if (!isNaN(exp.getTime()) && exp < new Date()) {
+                        effectiveStatus = "EXPIRED"
+                    }
+                }
+                if (effectiveStatus === "ACTIVE" && !row.released_at) {
+                    effectiveStatus = "FOR_RELEASE"
                 }
             }
 
@@ -97,6 +102,7 @@ export async function GET(req: NextRequest) {
                 stickerYear,
                 issuedAt: row.issued_at,
                 expiresAt: row.expires_at,
+                releasedAt: row.released_at,
                 amountPaid: row.amount_paid ? Number(row.amount_paid) : null,
                 notes: row.notes,
                 parsedNotes,
@@ -131,6 +137,7 @@ export async function GET(req: NextRequest) {
         // Summary counts for the full (pre-pagination) result set
         // Summary counts from ALL items (before status filter)
         const summary = {
+            forRelease: items.filter(i => i.effectiveStatus === "FOR_RELEASE").length,
             active: items.filter(i => i.effectiveStatus === "ACTIVE").length,
             expired: items.filter(i => i.effectiveStatus === "EXPIRED").length,
             revoked: items.filter(i => i.effectiveStatus === "REVOKED").length,
@@ -138,8 +145,8 @@ export async function GET(req: NextRequest) {
             unpaid: items.filter(i => !i.amountPaid || i.amountPaid <= 0).length,
         }
 
-        // Status filter — uses effectiveStatus so auto-expired stickers are filterable
-        if (status && ["ACTIVE", "EXPIRED", "REVOKED"].includes(status)) {
+        // Status filter — uses effectiveStatus so auto-expired stickers and for-release are filterable
+        if (status && ["FOR_RELEASE", "ACTIVE", "EXPIRED", "REVOKED"].includes(status)) {
             items = items.filter(i => i.effectiveStatus === status)
         }
 
@@ -172,9 +179,21 @@ export async function PATCH(req: NextRequest) {
     try {
         const supabase = createAdminClient()
         const body = await req.json()
-        const { id, status } = body
+        const { id, status, action } = body
 
-        if (!id || !["ACTIVE", "EXPIRED", "REVOKED"].includes(status)) {
+        if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 })
+
+        if (action === "RELEASE") {
+            const { error } = await supabase
+                .from("stickers")
+                .update({ released_at: new Date().toISOString() })
+                .eq("id", id)
+
+            if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+            return NextResponse.json({ success: true })
+        }
+
+        if (!["ACTIVE", "EXPIRED", "REVOKED"].includes(status)) {
             return NextResponse.json({ error: "Invalid id or status" }, { status: 400 })
         }
 

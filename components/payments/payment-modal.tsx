@@ -25,6 +25,14 @@ interface PaymentModalProps {
         plate_number: string
         sticker_price: number | null
     }[]
+    registeredVehicles?: {
+        id: string
+        plate_no: string
+        make: string | null
+        model: string | null
+        category: string | null
+        color: string | null
+    }[]
 }
 
 interface LineItem {
@@ -52,6 +60,7 @@ export function PaymentModal({
     config,
     carStickerPrice,
     approvedVehicles = [],
+    registeredVehicles = [],
 }: PaymentModalProps) {
     const [step, setStep] = useState<Step>("items")
     const [lineItems, setLineItems] = useState<LineItem[]>([makeItem()])
@@ -80,6 +89,30 @@ export function PaymentModal({
         [lineItems, duesAmount, stickerPrice]
     )
 
+    // Merge approved vehicle requests + registered vehicles into one list
+    const allVehicles = useMemo(() => {
+        const seen = new Set<string>()
+        const merged: { id: string; label: string; stickerPrice: number | null; source: 'request' | 'vehicle' }[] = []
+        // Approved vehicle requests first (they have sticker_price)
+        for (const v of approvedVehicles) {
+            const plate = v.plate_number?.toUpperCase()
+            if (plate && !seen.has(plate)) {
+                seen.add(plate)
+                merged.push({ id: v.id, label: `${v.vehicle_type} · ${plate}`, stickerPrice: v.sticker_price, source: 'request' })
+            }
+        }
+        // Registered vehicles (from vehicles table)
+        for (const v of registeredVehicles) {
+            const plate = v.plate_no?.toUpperCase()
+            if (plate && !seen.has(plate)) {
+                seen.add(plate)
+                const desc = [v.make, v.model].filter(Boolean).join(' ') || v.category || 'Vehicle'
+                merged.push({ id: v.id, label: `${desc} · ${plate}`, stickerPrice: null, source: 'vehicle' })
+            }
+        }
+        return merged
+    }, [approvedVehicles, registeredVehicles])
+
     // Deduplicate payment methods from configured QR codes
     const availableMethods = Array.from(new Set(qrCodes.map(qr => qr.payment_method)))
     const activeQr = qrCodes.find(qr => qr.payment_method === method)
@@ -96,7 +129,7 @@ export function PaymentModal({
         if (step === "items") {
             // Validate car sticker items have a vehicle selected (if vehicles exist)
             for (const li of lineItems) {
-                if (li.feeType === "car_sticker" && approvedVehicles.length > 0 && !li.vehicleRequestId) {
+                if (li.feeType === "car_sticker" && allVehicles.length > 0 && !li.vehicleRequestId) {
                     setError("Please select a vehicle for each car sticker item")
                     return
                 }
@@ -156,7 +189,12 @@ export function PaymentModal({
                         paymentMethod: method,
                         proofUrl: uploadData.url,
                         proofFileId: uploadData.fileId,
-                        ...(li.vehicleRequestId ? { vehicleRequestId: li.vehicleRequestId } : {}),
+                        ...(() => {
+                            if (!li.vehicleRequestId) return {}
+                            const veh = allVehicles.find(v => v.id === li.vehicleRequestId)
+                            if (veh?.source === 'vehicle') return { vehicleId: li.vehicleRequestId }
+                            return { vehicleRequestId: li.vehicleRequestId }
+                        })(),
                     }),
                 })
                 const paymentData = await paymentRes.json()
@@ -268,16 +306,16 @@ export function PaymentModal({
                                         </div>
 
                                         {/* Vehicle selector for car sticker */}
-                                        {li.feeType === "car_sticker" && approvedVehicles.length > 0 && (
+                                        {li.feeType === "car_sticker" && allVehicles.length > 0 && (
                                             <select
                                                 value={li.vehicleRequestId}
                                                 onChange={e => updateItem(li.id, { vehicleRequestId: e.target.value })}
                                                 className="w-full h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             >
                                                 <option value="">— Select vehicle —</option>
-                                                {approvedVehicles.map(v => (
+                                                {allVehicles.map(v => (
                                                     <option key={v.id} value={v.id}>
-                                                        {v.vehicle_type} · {v.plate_number}
+                                                        {v.label}
                                                     </option>
                                                 ))}
                                             </select>
@@ -352,8 +390,8 @@ export function PaymentModal({
                                                     key={m}
                                                     onClick={() => setMethod(m)}
                                                     className={`p-3.5 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all ${method === m
-                                                            ? "border-blue-500 bg-blue-50 text-blue-700"
-                                                            : "border-slate-200 hover:border-blue-200"
+                                                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                                                        : "border-slate-200 hover:border-blue-200"
                                                         }`}
                                                 >
                                                     <span className="font-bold text-sm capitalize">{m.replace(/_/g, ' ')}</span>
@@ -367,24 +405,60 @@ export function PaymentModal({
                                     )}
                                 </div>
 
-                                {/* QR Code */}
+                                {/* QR Code or Bank Details */}
                                 {activeQr ? (
-                                    <div className="bg-white border-2 border-slate-100 rounded-2xl p-4 flex flex-col items-center text-center shadow-sm">
-                                        <p className="font-bold text-slate-800 mb-2">{activeQr.label}</p>
-                                        <div className="relative w-48 h-48 bg-slate-100 rounded-lg mb-3 overflow-hidden">
-                                            <Image
-                                                src={activeQr.qr_image_url}
-                                                alt="QR Code"
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        </div>
-                                        <p className="text-sm font-medium text-slate-600">{activeQr.account_name}</p>
-                                        <p className="text-sm font-bold text-slate-900 tracking-wider">{activeQr.account_number}</p>
+                                    <div className="bg-white border-2 border-slate-100 rounded-2xl p-5 shadow-sm">
+                                        {activeQr.qr_image_url ? (
+                                            /* ── QR Code mode: image centered ── */
+                                            <div className="flex flex-col items-center text-center">
+                                                <p className="font-bold text-slate-800 mb-3">{activeQr.label}</p>
+                                                <div className="relative w-48 h-48 bg-slate-100 rounded-lg mb-3 overflow-hidden">
+                                                    <Image
+                                                        src={activeQr.qr_image_url}
+                                                        alt="QR Code"
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                </div>
+                                                {activeQr.account_name && <p className="text-sm font-medium text-slate-600">{activeQr.account_name}</p>}
+                                                {activeQr.account_number && <p className="text-sm font-bold text-slate-900 tracking-wider">{activeQr.account_number}</p>}
+                                            </div>
+                                        ) : (
+                                            /* ── Bank Transfer mode: clean structured card ── */
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><line x1="3" x2="21" y1="22" y2="22"></line><line x1="6" x2="6" y1="18" y2="22"></line><line x1="18" x2="18" y1="18" y2="22"></line><rect x="3" y="2" width="18" height="16" rx="2"></rect><path d="M12 6v4"></path><path d="M8 10h8"></path></svg>
+                                                    </div>
+                                                    <p className="font-bold text-slate-800">{activeQr.label}</p>
+                                                </div>
+                                                <div className="bg-slate-50 rounded-xl p-4 space-y-2.5">
+                                                    {activeQr.bank_name && (
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Bank</span>
+                                                            <span className="text-sm font-bold text-slate-800">{activeQr.bank_name}{activeQr.bank_branch ? ` — ${activeQr.bank_branch}` : ''}</span>
+                                                        </div>
+                                                    )}
+                                                    {activeQr.account_name && (
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Name</span>
+                                                            <span className="text-sm font-semibold text-slate-700">{activeQr.account_name}</span>
+                                                        </div>
+                                                    )}
+                                                    {activeQr.account_number && (
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Account No.</span>
+                                                            <span className="text-sm font-bold text-slate-900 font-mono tracking-wider">{activeQr.account_number}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <p className="text-[11px] text-slate-400 text-center">Transfer the exact amount above and upload the receipt in the next step.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="p-4 bg-yellow-50 text-yellow-700 text-sm rounded-xl text-center">
-                                        No QR code available for this method. Please contact admin.
+                                        No payment method available for this option. Please contact admin.
                                     </div>
                                 )}
                             </motion.div>

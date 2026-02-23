@@ -5,12 +5,12 @@ import { requireAdminAPI } from "@/lib/supabase/guards"
 
 /**
  * POST /api/admin/payments/[id]/verify
- * Body: { action: 'verified' | 'rejected', adminNotes?: string }
+ * Body: { action: 'verified' | 'rejected', adminNotes?: string, stickerCode?: string }
  *
  * On verify:
  *   - Updates payments.status = 'verified'
  *   - If fee_type = 'annual_dues': upserts hoa_dues row, marking dues as paid
- *   - If fee_type = 'car_sticker': updates sticker amount_paid
+ *   - If fee_type = 'car_sticker': requires stickerCode, resolves vehicle, creates sticker record
  * On reject:
  *   - Updates payments.status = 'rejected' with admin_notes
  */
@@ -23,7 +23,11 @@ export async function POST(
 
     const paymentId = params.id
     const body = await req.json().catch(() => ({}))
-    const { action, adminNotes } = body as { action?: string; adminNotes?: string }
+    const { action, adminNotes, stickerCode } = body as {
+        action?: string
+        adminNotes?: string
+        stickerCode?: string
+    }
 
     if (action !== "verified" && action !== "rejected") {
         return NextResponse.json({ error: "action must be 'verified' or 'rejected'" }, { status: 400 })
@@ -62,7 +66,20 @@ export async function POST(
             return NextResponse.json({ success: true, action: "rejected" })
         }
 
-        // ── Verify the payment ─────────────────────────────────────────────────────
+        // ── Verify the payment ─────────────────────────────────────────
+        const feeType = payment.fee_type
+        const homeownerId = payment.homeowner_id
+        const feeYear = payment.fee_year || new Date().getFullYear()
+
+        // For car sticker payments, sticker code is required
+        if (feeType === "car_sticker" && !stickerCode?.trim()) {
+            return NextResponse.json(
+                { error: "Sticker code is required when verifying car sticker payments" },
+                { status: 400 }
+            )
+        }
+
+        // Update payment status
         await supabase
             .from("payments")
             .update({
@@ -72,10 +89,6 @@ export async function POST(
                 verified_at: new Date().toISOString(),
             })
             .eq("id", paymentId)
-
-        const feeType = payment.fee_type
-        const feeYear = payment.fee_year || new Date().getFullYear()
-        const homeownerId = payment.homeowner_id
 
         if (feeType === "annual_dues") {
             // Upsert hoa_dues — mark as paid
@@ -94,22 +107,56 @@ export async function POST(
                     { onConflict: "homeowner_id,dues_year" }
                 )
         } else if (feeType === "car_sticker") {
-            // Update the sticker's amount_paid for this homeowner
-            // Find the most recent sticker for this homeowner
-            const { data: sticker } = await supabase
-                .from("stickers")
-                .select("id")
-                .eq("homeowner_id", homeownerId)
-                .order("issued_at", { ascending: false })
-                .limit(1)
-                .maybeSingle()
+            // ── Resolve the vehicle ────────────────────────────────────
+            let vehicleId: string | null = payment.vehicle_id || null
 
-            if (sticker) {
-                await supabase
-                    .from("stickers")
-                    .update({ amount_paid: payment.amount })
-                    .eq("id", sticker.id)
+            // If we have a vehicle_request_id but no vehicle_id, resolve from vehicle_requests
+            if (!vehicleId && payment.vehicle_request_id) {
+                const { data: vReq } = await supabase
+                    .from("vehicle_requests")
+                    .select("id, vehicle_type, plate_number")
+                    .eq("id", payment.vehicle_request_id)
+                    .maybeSingle()
+
+                if (vReq) {
+                    // Upsert into vehicles table from the vehicle request
+                    const { data: vehicle } = await supabase
+                        .from("vehicles")
+                        .upsert(
+                            {
+                                homeowner_id: homeownerId,
+                                plate_no: vReq.plate_number,
+                                category: vReq.vehicle_type,
+                            },
+                            { onConflict: "plate_no" }
+                        )
+                        .select("id")
+                        .maybeSingle()
+
+                    vehicleId = vehicle?.id || null
+
+                    // Also update the payment to reference the resolved vehicle_id
+                    if (vehicleId) {
+                        await supabase
+                            .from("payments")
+                            .update({ vehicle_id: vehicleId })
+                            .eq("id", paymentId)
+                    }
+                }
             }
+
+            // ── Create the sticker record ──────────────────────────────
+            await supabase
+                .from("stickers")
+                .insert({
+                    homeowner_id: homeownerId,
+                    vehicle_id: vehicleId,
+                    code: stickerCode!.trim(),
+                    status: "ACTIVE",
+                    issued_at: new Date().toISOString(),
+                    amount_paid: payment.amount,
+                    released_at: null, // Not yet physically released
+                })
         }
 
         return NextResponse.json({ success: true, action: "verified" })

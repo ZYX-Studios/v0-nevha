@@ -117,6 +117,7 @@ interface LineItemInput {
     make?: string
     model?: string
     category?: string
+    color?: string
 }
 
 /**
@@ -224,6 +225,7 @@ export async function POST(req: NextRequest) {
                             make: item.make?.trim() || null,
                             model: item.model?.trim() || null,
                             category: item.category || null,
+                            color: item.color?.trim() || null,
                         }, { onConflict: "plate_no" })
                         .select("id")
                         .maybeSingle()
@@ -245,6 +247,7 @@ export async function POST(req: NextRequest) {
                         expires_at: expiresAt,
                         amount_paid: item.amount,
                         status: "ACTIVE",
+                        released_at: now, // Admin payments are in-person releases
                     }, { onConflict: "code" })
             }
 

@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
             proofUrl,
             proofFileId,
             vehicleRequestId,
+            vehicleId,
         } = body
 
         // Validate inputs
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
                 proof_drive_file_id: proofFileId,
                 status: 'pending',
                 ...(vehicleRequestId ? { vehicle_request_id: vehicleRequestId } : {}),
+                ...(vehicleId ? { vehicle_id: vehicleId } : {}),
             })
             .select()
             .single()

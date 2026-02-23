@@ -44,6 +44,7 @@ interface VehicleOption {
     make: string | null
     model: string | null
     category: string | null
+    color: string | null
     prevSticker?: string
 }
 
@@ -56,6 +57,7 @@ interface LineItem {
     make: string
     model: string
     category: string
+    color: string
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -86,6 +88,7 @@ function makeBlankItem(): LineItem {
         make: "",
         model: "",
         category: "",
+        color: "",
     }
 }
 
@@ -191,7 +194,7 @@ export default function AdminPaymentsPage() {
                 for (const s of json.items || []) {
                     const plate = s.vehiclePlateNo
                     if (plate && !m.has(plate)) {
-                        m.set(plate, { id: s.vehicleId || plate, plateNo: plate, make: s.vehicleMake || null, model: s.vehicleModel || null, category: s.vehicleCategory || null, prevSticker: s.code })
+                        m.set(plate, { id: s.vehicleId || plate, plateNo: plate, make: s.vehicleMake || null, model: s.vehicleModel || null, category: s.vehicleCategory || null, color: s.vehicleColor || null, prevSticker: s.code })
                     }
                 }
                 setHoVehicles(Array.from(m.values()))
@@ -206,9 +209,9 @@ export default function AdminPaymentsPage() {
     }
 
     const selectVehicle = (itemId: string, vehicleId: string) => {
-        if (vehicleId === "__new__") { updateItem(itemId, { vehicleId: "", plateNo: "", make: "", model: "", category: "" }); return }
+        if (vehicleId === "__new__") { updateItem(itemId, { vehicleId: "", plateNo: "", make: "", model: "", category: "", color: "" }); return }
         const v = hoVehicles.find(v => v.id === vehicleId)
-        if (v) updateItem(itemId, { vehicleId: v.id, plateNo: v.plateNo, make: v.make || "", model: v.model || "", category: v.category || "" })
+        if (v) updateItem(itemId, { vehicleId: v.id, plateNo: v.plateNo, make: v.make || "", model: v.model || "", category: v.category || "", color: v.color || "" })
     }
 
     const removeItem = (id: string) => setLineItems(prev => prev.length > 1 ? prev.filter(li => li.id !== id) : prev)
@@ -247,6 +250,7 @@ export default function AdminPaymentsPage() {
                             make: li.make || undefined,
                             model: li.model || undefined,
                             category: li.category || undefined,
+                            color: li.color || undefined,
                         } : {}),
                     })),
                 }),
@@ -570,6 +574,7 @@ export default function AdminPaymentsPage() {
                                                             <Input className="h-9 text-sm rounded-lg" placeholder="Plate No" value={li.plateNo} onChange={e => updateItem(li.id, { plateNo: e.target.value })} />
                                                             <Input className="h-9 text-sm rounded-lg" placeholder="Make" value={li.make} onChange={e => updateItem(li.id, { make: e.target.value })} />
                                                             <Input className="h-9 text-sm rounded-lg" placeholder="Model" value={li.model} onChange={e => updateItem(li.id, { model: e.target.value })} />
+                                                            <Input className="h-9 text-sm rounded-lg" placeholder="Color" value={li.color} onChange={e => updateItem(li.id, { color: e.target.value })} />
                                                             <Select value={li.category || "none"} onValueChange={v => updateItem(li.id, { category: v === "none" ? "" : v })}>
                                                                 <SelectTrigger className="h-9 text-sm rounded-lg"><SelectValue placeholder="Category" /></SelectTrigger>
                                                                 <SelectContent>
@@ -581,6 +586,8 @@ export default function AdminPaymentsPage() {
                                                                     <SelectItem value="Motorcycle">Motorcycle</SelectItem>
                                                                     <SelectItem value="Electric">Electric</SelectItem>
                                                                     <SelectItem value="ELF">ELF</SelectItem>
+                                                                    <SelectItem value="E-Bike">E-Bike</SelectItem>
+                                                                    <SelectItem value="Tricycle">Tricycle</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
                                                         </div>

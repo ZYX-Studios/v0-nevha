@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Plus, Trash2, Loader2, Upload, AlertTriangle, ZoomIn, ZoomOut, Move } from 'lucide-react'
+import { Plus, Trash2, Loader2, Upload, AlertTriangle, ZoomIn, ZoomOut, Move, Landmark } from 'lucide-react'
 import { uploadQRCode, deleteQRCode, toggleQRCodeStatus } from '@/app/admin/qr-codes/actions'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,8 @@ interface QRCode {
     label: string
     account_name?: string
     account_number?: string
+    bank_name?: string
+    bank_branch?: string
     qr_image_url: string
     is_active: boolean
 }
@@ -210,7 +212,11 @@ export function QRCodeList({ initialData }: { initialData: QRCode[] }) {
 
     const resetUploadForm = () => {
         setSelectedFile(null)
+        setBankDetailsOnly(false)
     }
+
+    // Bank details only toggle
+    const [bankDetailsOnly, setBankDetailsOnly] = useState(false)
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.[0]) {
@@ -221,8 +227,8 @@ export function QRCodeList({ initialData }: { initialData: QRCode[] }) {
     const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
 
-        if (!selectedFile || !cropRef.current) {
-            toast.error('Please upload a QR image first')
+        if (!bankDetailsOnly && (!selectedFile || !cropRef.current)) {
+            toast.error('Please upload a QR image or switch to Bank Details Only')
             return
         }
 
@@ -231,15 +237,20 @@ export function QRCodeList({ initialData }: { initialData: QRCode[] }) {
             // Capture form data BEFORE any async work (e.currentTarget becomes null after await)
             const formData = new FormData(e.currentTarget)
 
-            // Auto-crop from current position before uploading
-            const croppedFile = await cropRef.current.crop()
-            if (!croppedFile) {
-                toast.error('Failed to crop image. Please try again.')
-                return
+            if (!bankDetailsOnly && cropRef.current) {
+                // Auto-crop from current position before uploading
+                const croppedFile = await cropRef.current.crop()
+                if (!croppedFile) {
+                    toast.error('Failed to crop image. Please try again.')
+                    setIsUploading(false)
+                    return
+                }
+                formData.delete('file')
+                formData.set('file', croppedFile, croppedFile.name)
+            } else {
+                // No file — remove any leftover file field
+                formData.delete('file')
             }
-
-            formData.delete('file')
-            formData.set('file', croppedFile, croppedFile.name)
 
             const result = await uploadQRCode(formData)
             if (result.success) {
@@ -296,84 +307,135 @@ export function QRCodeList({ initialData }: { initialData: QRCode[] }) {
                         <DialogHeader>
                             <DialogTitle>Add Payment Method</DialogTitle>
                             <DialogDescription>
-                                Upload a QR code image. You can crop it to show only the QR area.
+                                Choose how residents will pay — via QR code scan or bank transfer details.
                             </DialogDescription>
                         </DialogHeader>
-                        <form onSubmit={handleUpload} className="space-y-4 mt-2">
+                        <form onSubmit={handleUpload} className="space-y-5 mt-2">
+
+                            {/* ① Mode selector — top of form */}
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <Label>Provider</Label>
-                                    <select
-                                        name="payment_method"
-                                        required
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        {PAYMENT_METHODS.map(m => (
-                                            <option key={m.value} value={m.value}>{m.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label>Label</Label>
-                                    <Input name="label" placeholder="e.g. My GCash" required className="rounded-lg" />
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => { setBankDetailsOnly(false) }}
+                                    className={`relative p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${!bankDetailsOnly
+                                            ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200'
+                                            : 'border-slate-200 hover:border-slate-300 bg-white'
+                                        }`}
+                                >
+                                    <Upload className={`w-6 h-6 ${!bankDetailsOnly ? 'text-blue-600' : 'text-slate-400'}`} />
+                                    <span className={`text-sm font-bold ${!bankDetailsOnly ? 'text-blue-700' : 'text-slate-600'}`}>QR Code</span>
+                                    <span className="text-[10px] text-slate-400 leading-tight">Upload a scannable QR image</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setBankDetailsOnly(true); setSelectedFile(null) }}
+                                    className={`relative p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${bankDetailsOnly
+                                            ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200'
+                                            : 'border-slate-200 hover:border-slate-300 bg-white'
+                                        }`}
+                                >
+                                    <Landmark className={`w-6 h-6 ${bankDetailsOnly ? 'text-blue-600' : 'text-slate-400'}`} />
+                                    <span className={`text-sm font-bold ${bankDetailsOnly ? 'text-blue-700' : 'text-slate-600'}`}>Bank Transfer</span>
+                                    <span className="text-[10px] text-slate-400 leading-tight">Show account details only</span>
+                                </button>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <Label>Account Name</Label>
-                                    <Input name="account_name" placeholder="John Doe" className="rounded-lg" />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label>Account Number</Label>
-                                    <Input name="account_number" placeholder="0917..." className="rounded-lg" />
-                                </div>
-                            </div>
-
-                            {/* QR Image section */}
-                            <div className="space-y-2">
-                                <Label>QR Code Image</Label>
-
-                                {/* File picker (hidden input + nice button) */}
-                                {!selectedFile && (
-                                    <div
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-blue-300 transition-all cursor-pointer"
-                                    >
-                                        <Upload className="w-8 h-8 mb-2 text-slate-400" />
-                                        <p className="text-sm font-semibold text-slate-600">Tap to upload QR image</p>
-                                        <p className="text-xs text-slate-400 mt-1">Screenshot from your e-wallet app</p>
-                                    </div>
-                                )}
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    name="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={handleFileSelect}
-                                />
-
-                                {/* Crop/position UI — shown as soon as file is selected */}
-                                {selectedFile && (
-                                    <div className="space-y-2">
-                                        <ImageCropPreview ref={cropRef} file={selectedFile} />
-                                        <button
-                                            type="button"
-                                            onClick={() => { resetUploadForm(); fileInputRef.current?.click() }}
-                                            className="block mx-auto text-xs text-blue-600 font-semibold hover:underline"
+                            {/* ② Provider & Label */}
+                            <div>
+                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Details</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs text-slate-500">Provider</Label>
+                                        <select
+                                            name="payment_method"
+                                            required
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         >
-                                            Choose different image
-                                        </button>
+                                            {PAYMENT_METHODS.map(m => (
+                                                <option key={m.value} value={m.value}>{m.label}</option>
+                                            ))}
+                                        </select>
                                     </div>
-                                )}
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs text-slate-500">Label</Label>
+                                        <Input name="label" placeholder="e.g. My GCash" required className="rounded-lg" />
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="flex gap-2 pt-2">
+                            {/* ③ Account Info */}
+                            <div>
+                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Account Information</p>
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs text-slate-500">Account Name</Label>
+                                            <Input name="account_name" placeholder="Juan Dela Cruz" className="rounded-lg" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs text-slate-500">Account Number</Label>
+                                            <Input name="account_number" placeholder="0917..." className="rounded-lg" />
+                                        </div>
+                                    </div>
+                                    {/* Bank Name & Branch — only for bank transfer mode */}
+                                    {bankDetailsOnly && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-slate-500">Bank Name</Label>
+                                                <Input name="bank_name" placeholder="e.g. BDO" className="rounded-lg" />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-slate-500">Branch</Label>
+                                                <Input name="bank_branch" placeholder="e.g. SM Molino" className="rounded-lg" />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* ④ QR Image Upload — only for QR mode */}
+                            {!bankDetailsOnly && (
+                                <div>
+                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">QR Code Image</p>
+                                    {!selectedFile && (
+                                        <div
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-blue-300 transition-all cursor-pointer"
+                                        >
+                                            <Upload className="w-8 h-8 mb-2 text-slate-400" />
+                                            <p className="text-sm font-semibold text-slate-600">Tap to upload QR image</p>
+                                            <p className="text-xs text-slate-400 mt-1">Screenshot from your e-wallet app</p>
+                                        </div>
+                                    )}
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        name="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleFileSelect}
+                                    />
+                                    {selectedFile && (
+                                        <div className="space-y-2">
+                                            <ImageCropPreview ref={cropRef} file={selectedFile} />
+                                            <button
+                                                type="button"
+                                                onClick={() => { resetUploadForm(); fileInputRef.current?.click() }}
+                                                className="block mx-auto text-xs text-blue-600 font-semibold hover:underline"
+                                            >
+                                                Choose different image
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ⑤ Actions */}
+                            <div className="flex gap-2 pt-1">
                                 <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); resetUploadForm() }} className="flex-1 rounded-lg">
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={isUploading || !selectedFile} className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg">
+                                <Button type="submit" disabled={isUploading || (!bankDetailsOnly && !selectedFile)} className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg">
                                     {isUploading && <Loader2 className="w-4 h-4 animate-spin" />}
                                     {isUploading ? 'Uploading…' : 'Save Method'}
                                 </Button>
@@ -413,7 +475,7 @@ export function QRCodeList({ initialData }: { initialData: QRCode[] }) {
                         key={qr.id}
                         className={`bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col transition-all ${!qr.is_active ? 'opacity-60 grayscale' : ''}`}
                     >
-                        {/* Image */}
+                        {/* Image or Bank Details */}
                         <div className="relative aspect-square bg-slate-50 flex items-center justify-center overflow-hidden">
                             {qr.qr_image_url ? (
                                 <Image
@@ -423,7 +485,13 @@ export function QRCodeList({ initialData }: { initialData: QRCode[] }) {
                                     className="object-contain p-4"
                                 />
                             ) : (
-                                <span className="text-slate-300 text-sm">No Image</span>
+                                <div className="flex flex-col items-center gap-2 text-slate-400">
+                                    <Landmark className="w-10 h-10" />
+                                    <span className="text-xs font-bold uppercase tracking-wide">Bank Details</span>
+                                    {qr.bank_name && <span className="text-sm text-slate-600 font-semibold">{qr.bank_name}{qr.bank_branch ? ` — ${qr.bank_branch}` : ''}</span>}
+                                    {qr.account_name && <span className="text-sm text-slate-600 font-medium">{qr.account_name}</span>}
+                                    {qr.account_number && <span className="text-sm text-slate-500 font-mono">{qr.account_number}</span>}
+                                </div>
                             )}
                             {/* Status badge */}
                             <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold border ${qr.is_active

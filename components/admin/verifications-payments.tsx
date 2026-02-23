@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, X, Loader2, FileText, DollarSign } from 'lucide-react'
+import { Check, X, Loader2, FileText, DollarSign, Car } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import {
     Dialog,
@@ -33,6 +35,8 @@ interface PaymentWithHomeowner {
         block: string
         lot: string
     } | null
+    vehiclePlate: string | null
+    vehicleDesc: string | null
 }
 
 interface Props {
@@ -50,15 +54,27 @@ export function VerificationsPayments({ payments }: Props) {
     const [processingId, setProcessingId] = useState<string | null>(null)
     const [rejectDialog, setRejectDialog] = useState<string | null>(null)
     const [rejectNotes, setRejectNotes] = useState('')
+    // Sticker code approval dialog state
+    const [approveDialog, setApproveDialog] = useState<PaymentWithHomeowner | null>(null)
+    const [stickerCode, setStickerCode] = useState('')
+    const [approveNotes, setApproveNotes] = useState('')
     const router = useRouter()
 
-    const callVerify = async (paymentId: string, action: 'verified' | 'rejected', adminNotes?: string) => {
+    const callVerify = async (
+        paymentId: string,
+        action: 'verified' | 'rejected',
+        extra?: { adminNotes?: string; stickerCode?: string }
+    ) => {
         setProcessingId(paymentId)
         try {
             const res = await fetch(`/api/admin/payments/${paymentId}/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, adminNotes }),
+                body: JSON.stringify({
+                    action,
+                    adminNotes: extra?.adminNotes,
+                    stickerCode: extra?.stickerCode,
+                }),
             })
             const data = await res.json()
             if (!res.ok) {
@@ -75,9 +91,36 @@ export function VerificationsPayments({ payments }: Props) {
         }
     }
 
+    const handleApproveClick = (p: PaymentWithHomeowner) => {
+        if (p.fee_type === 'car_sticker') {
+            // Open the sticker code dialog
+            setApproveDialog(p)
+            setStickerCode('')
+            setApproveNotes('')
+        } else {
+            // Direct approval for non-sticker payments
+            callVerify(p.id, 'verified')
+        }
+    }
+
+    const handleApproveConfirm = () => {
+        if (!approveDialog) return
+        if (!stickerCode.trim()) {
+            toast.error('Please enter a sticker code')
+            return
+        }
+        callVerify(approveDialog.id, 'verified', {
+            stickerCode: stickerCode.trim(),
+            adminNotes: approveNotes.trim() || undefined,
+        })
+        setApproveDialog(null)
+        setStickerCode('')
+        setApproveNotes('')
+    }
+
     const handleRejectConfirm = () => {
         if (!rejectDialog) return
-        callVerify(rejectDialog, 'rejected', rejectNotes.trim() || undefined)
+        callVerify(rejectDialog, 'rejected', { adminNotes: rejectNotes.trim() || undefined })
         setRejectDialog(null)
         setRejectNotes('')
     }
@@ -131,10 +174,26 @@ export function VerificationsPayments({ payments }: Props) {
                                         )}
                                     </td>
                                     <td className="px-5 py-4">
-                                        <span className="font-medium text-slate-800">
-                                            {FEE_TYPE_LABELS[p.fee_type] || p.fee_type.replace(/_/g, ' ')}
-                                        </span>
-                                        <span className="text-slate-400 ml-1.5 text-xs">({p.fee_year})</span>
+                                        <div>
+                                            <span className="font-medium text-slate-800">
+                                                {FEE_TYPE_LABELS[p.fee_type] || p.fee_type.replace(/_/g, ' ')}
+                                            </span>
+                                            <span className="text-slate-400 ml-1.5 text-xs">({p.fee_year})</span>
+                                        </div>
+                                        {/* Show vehicle info for car sticker payments */}
+                                        {p.fee_type === 'car_sticker' && p.vehiclePlate && (
+                                            <div className="flex items-center gap-1 mt-0.5">
+                                                <Car className="w-3 h-3 text-slate-400" />
+                                                <span className="text-xs text-slate-500 font-medium">
+                                                    {p.vehiclePlate}
+                                                </span>
+                                                {p.vehicleDesc && (
+                                                    <span className="text-xs text-slate-400">
+                                                        ({p.vehicleDesc})
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-5 py-4 font-mono font-semibold text-slate-700">
                                         {formatCurrency(p.amount)}
@@ -180,7 +239,7 @@ export function VerificationsPayments({ payments }: Props) {
                                                 <X className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => callVerify(p.id, 'verified')}
+                                                onClick={() => handleApproveClick(p)}
                                                 disabled={!!processingId}
                                                 className="p-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-70 flex items-center justify-center min-w-[32px]"
                                                 title="Verify"
@@ -200,6 +259,81 @@ export function VerificationsPayments({ payments }: Props) {
                 </div>
             </div>
 
+            {/* ── Sticker Code Approval Dialog ──────────────────────── */}
+            <Dialog open={!!approveDialog} onOpenChange={() => setApproveDialog(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-emerald-700">Verify Car Sticker Payment</DialogTitle>
+                        <DialogDescription>
+                            Assign a sticker code to approve this payment. A sticker record will be created automatically.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {approveDialog && (
+                        <div className="space-y-4">
+                            {/* Payment summary */}
+                            <div className="bg-slate-50 rounded-xl p-3 space-y-1 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Homeowner</span>
+                                    <span className="font-semibold text-slate-800">
+                                        {approveDialog.homeowners?.first_name} {approveDialog.homeowners?.last_name}
+                                    </span>
+                                </div>
+                                {approveDialog.vehiclePlate && (
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Vehicle</span>
+                                        <span className="font-semibold text-slate-800">
+                                            {approveDialog.vehiclePlate}
+                                            {approveDialog.vehicleDesc ? ` (${approveDialog.vehicleDesc})` : ''}
+                                        </span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Amount</span>
+                                    <span className="font-bold text-slate-900">{formatCurrency(approveDialog.amount)}</span>
+                                </div>
+                            </div>
+
+                            {/* Sticker code input */}
+                            <div className="space-y-1.5">
+                                <Label className="text-sm font-semibold">
+                                    Sticker Code <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                    value={stickerCode}
+                                    onChange={(e) => setStickerCode(e.target.value)}
+                                    placeholder="e.g. STK-2026-001"
+                                    className="font-mono text-sm"
+                                    autoFocus
+                                />
+                            </div>
+
+                            {/* Optional notes */}
+                            <div className="space-y-1.5">
+                                <Label className="text-sm text-slate-500">Notes (optional)</Label>
+                                <Textarea
+                                    placeholder="Any notes about this sticker..."
+                                    value={approveNotes}
+                                    onChange={(e) => setApproveNotes(e.target.value)}
+                                    rows={2}
+                                />
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setApproveDialog(null)}>Cancel</Button>
+                        <Button
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                            onClick={handleApproveConfirm}
+                            disabled={!!processingId || !stickerCode.trim()}
+                        >
+                            {processingId ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                            Verify & Create Sticker
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Reject Dialog ─────────────────────────────────────── */}
             <Dialog open={!!rejectDialog} onOpenChange={() => setRejectDialog(null)}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>

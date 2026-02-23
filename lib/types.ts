@@ -234,7 +234,9 @@ export interface PaymentQrCode {
   label: string
   account_name?: string
   account_number?: string
-  qr_image_url: string
+  bank_name?: string
+  bank_branch?: string
+  qr_image_url: string | null
   is_active: boolean
 }
 

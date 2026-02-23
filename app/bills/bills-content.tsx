@@ -22,9 +22,17 @@ interface BillsContentProps {
         plate_number: string
         sticker_price: number | null
     }[]
+    registeredVehicles: {
+        id: string
+        plate_no: string
+        make: string | null
+        model: string | null
+        category: string | null
+        color: string | null
+    }[]
 }
 
-export function BillsContent({ initialPayments, qrCodes, config, homeownerId, approvedVehicles }: BillsContentProps) {
+export function BillsContent({ initialPayments, qrCodes, config, homeownerId, approvedVehicles, registeredVehicles }: BillsContentProps) {
     const [payments, setPayments] = useState<Payment[]>(initialPayments)
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
 
@@ -50,6 +58,7 @@ export function BillsContent({ initialPayments, qrCodes, config, homeownerId, ap
                 homeownerId={homeownerId}
                 onSuccess={handlePaymentSuccess}
                 approvedVehicles={approvedVehicles}
+                registeredVehicles={registeredVehicles}
             />
 
             {/* Header */}
