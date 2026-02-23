@@ -44,6 +44,7 @@ interface VehicleOption {
     make: string | null
     model: string | null
     category: string | null
+    prevSticker?: string
 }
 
 interface LineItem {
@@ -190,7 +191,7 @@ export default function AdminPaymentsPage() {
                 for (const s of json.items || []) {
                     const plate = s.vehiclePlateNo
                     if (plate && !m.has(plate)) {
-                        m.set(plate, { id: s.vehicleId || plate, plateNo: plate, make: s.vehicleMake || null, model: s.vehicleModel || null, category: s.vehicleCategory || null })
+                        m.set(plate, { id: s.vehicleId || plate, plateNo: plate, make: s.vehicleMake || null, model: s.vehicleModel || null, category: s.vehicleCategory || null, prevSticker: s.code })
                     }
                 }
                 setHoVehicles(Array.from(m.values()))
@@ -554,7 +555,7 @@ export default function AdminPaymentsPage() {
                                                                     <SelectItem key={v.id} value={v.id}>
                                                                         <span className="flex items-center gap-1">
                                                                             <Car className="w-3 h-3 text-slate-400" />
-                                                                            {v.plateNo} — {[v.make, v.model].filter(Boolean).join(" ") || "–"} {v.category ? `(${v.category})` : ""}
+                                                                            {v.plateNo} — {[v.make, v.model].filter(Boolean).join(" ") || "–"} {v.category ? `(${v.category})` : ""} {v.prevSticker ? `(Prev: ${v.prevSticker})` : ""}
                                                                         </span>
                                                                     </SelectItem>
                                                                 ))}
@@ -586,6 +587,11 @@ export default function AdminPaymentsPage() {
                                                     )}
 
                                                     <Input className="h-10 text-sm rounded-lg" placeholder="Sticker # (from physical sticker)" value={li.stickerCode} onChange={e => updateItem(li.id, { stickerCode: e.target.value })} />
+                                                    {li.vehicleId && hoVehicles.find(v => v.id === li.vehicleId)?.prevSticker && (
+                                                        <p className="text-xs text-slate-500 pl-1 mt-0.5">
+                                                            Previous Sticker: <span className="font-semibold text-slate-700">{hoVehicles.find(v => v.id === li.vehicleId)?.prevSticker}</span>
+                                                        </p>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
