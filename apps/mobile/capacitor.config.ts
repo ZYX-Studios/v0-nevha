@@ -6,7 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'www',
   server: {
     url: 'https://nevha.org',
-    cleartext: true
+    cleartext: true,
+    allowNavigation: ['nevha.org', '*.nevha.org']
   }
 };
 
