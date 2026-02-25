@@ -190,6 +190,27 @@ export default function HomePage() {
                     </div>
                 </section>
 
+                {/* Emergency Quick Action */}
+                <section>
+                    <Link href="/emergency" className="block w-full mb-6">
+                        <div className="bg-white rounded-[1.25rem] p-4 shadow-sm border border-red-100 flex items-center justify-between active:scale-[0.98] transition-all hover:shadow-md relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-red-50/50 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500 ease-out" />
+                            <div className="relative z-10 flex items-center gap-4">
+                                <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center shrink-0 text-red-500">
+                                    <Phone className="w-5 h-5 animate-pulse" />
+                                </div>
+                                <div>
+                                    <h3 className="text-[15px] font-bold text-slate-900 leading-tight">Emergency Contacts</h3>
+                                    <p className="text-[12px] text-slate-500 font-medium mt-0.5">Security, Rescue, & 911</p>
+                                </div>
+                            </div>
+                            <div className="relative z-10 w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 group-hover:text-red-500 group-hover:bg-red-50 transition-colors">
+                                <ChevronRight className="w-4 h-4" />
+                            </div>
+                        </div>
+                    </Link>
+                </section>
+
                 {/* 4. Community Feed (Carousel) */}
                 <section>
                     <div className="flex items-center justify-between mb-4 px-1">
