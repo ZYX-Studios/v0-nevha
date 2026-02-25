@@ -56,6 +56,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#1f2937",
+  viewportFit: "cover",
 }
 
 import { createClient } from "@/lib/supabase/server"
@@ -174,8 +175,10 @@ export default async function RootLayout({
         <Suspense fallback={<div>Loading...</div>}>
           <AuthProvider initialUser={user} initialSessionData={initialSessionData}>
             <PWAWrapper>
-              {children}
-              <BottomNav />
+              <div className="flex flex-col min-h-screen pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+                {children}
+                <BottomNav />
+              </div>
               {process.env.NODE_ENV !== "production" && <DevTools />}
               {/* Global toaster for notifications */}
               <Toaster richColors position="top-right" />

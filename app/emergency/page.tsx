@@ -28,32 +28,102 @@ const itemVariants = {
 export default function EmergencyPage() {
   const emergencyContacts = [
     {
-      title: "National Emergency",
-      numbers: ["911"],
-      description: "Police, Fire, Medical usually respond.",
-      icon: AlertTriangle,
-      theme: "red"
-    },
-    {
-      title: "Northfields Guard House",
+      title: "Northfields Main Gate Guard",
       numbers: ["0995 076 1754"],
       description: "24/7 Security & Roaming Guard",
       icon: Shield,
       theme: "blue"
     },
     {
-      title: "Barangay Guginto",
-      numbers: ["0933 460 3822"],
-      description: "Barangay Hall / Public Safety",
-      icon: MapPin,
-      theme: "blue"
+      title: "Bulacan Rescue",
+      numbers: ["911", "(044) 791 0566"],
+      description: "National Emergency & Rescue",
+      icon: AlertTriangle,
+      theme: "red"
     },
     {
       title: "Malolos Rescue",
-      numbers: ["(044) 760 5160"],
+      numbers: ["0928 226 9801", "0977 640 5828", "(044) 760 5160"],
       description: "City Disaster Risk Reduction",
       icon: AlertTriangle,
       theme: "orange"
+    },
+    {
+      title: "Ace Hospital",
+      numbers: ["(044) 816 7698", "0998 975 3115"],
+      description: "Medical Center",
+      icon: Phone,
+      theme: "blue"
+    },
+    {
+      title: "Bulacan Medical Center",
+      numbers: ["0933 350 7791 (E.R. Triage)", "0923 449 8262 (E.R. Surgery)", "0919 853 7331", "(044) 449 4207"],
+      description: "Hospital / Emergency Room",
+      icon: Phone,
+      theme: "blue"
+    },
+    {
+      title: "Sacred Heart Hospital",
+      numbers: ["(044) 794 4744", "794 7192", "791 2911"],
+      description: "Hospital",
+      icon: Phone,
+      theme: "blue"
+    },
+    {
+      title: "City Fire Station",
+      numbers: ["0995 186 0370", "(044) 791 6129"],
+      description: "Fire Emergencies",
+      icon: AlertTriangle,
+      theme: "red"
+    },
+    {
+      title: "City Police Station",
+      numbers: ["0933 610 4327", "0998 598 5383", "(044) 796 2483"],
+      description: "Crime & Public Safety",
+      icon: Shield,
+      theme: "blue"
+    },
+    {
+      title: "Calumpit Police Hotline",
+      numbers: ["0998 598 5380"],
+      description: "Neighboring City Police",
+      icon: Shield,
+      theme: "blue"
+    },
+    {
+      title: "City Health Office",
+      numbers: ["(044) 931 8888 Local 2207"],
+      description: "Public Health Services",
+      icon: Phone,
+      theme: "blue"
+    },
+    {
+      title: "City Mayor's Office",
+      numbers: ["(044) 931 8888 Local 2201-2202"],
+      description: "LGU Admin",
+      icon: Phone,
+      theme: "blue"
+    },
+    {
+      title: "Philippine Red Cross",
+      numbers: ["0968 243 3409", "(044) 662 5922"],
+      description: "Blood & Medical Assistance",
+      icon: Phone,
+      theme: "red"
+    },
+    {
+      title: "Malolos Water District",
+      numbers: ["0917 103 6903", "(044) 896 0536"],
+      description: "Water Utility",
+      icon: Phone,
+      theme: "blue"
+    },
+    {
+      title: "Prime Water",
+      numbers: ["0919 074 2083"],
+      description: "Water Utility",
+      icon: Phone,
+      theme: "blue"
     },
     {
       title: "Meralco",
@@ -61,13 +131,6 @@ export default function EmergencyPage() {
       description: "Power Outages & Lines",
       icon: Phone,
       theme: "orange"
-    },
-    {
-      title: "Malolos Water",
-      numbers: ["(044) 791 0358"],
-      description: "Water Interruption",
-      icon: Phone,
-      theme: "blue"
     },
     {
       title: "PLDT",
